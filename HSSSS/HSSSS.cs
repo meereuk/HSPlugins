@@ -8,13 +8,13 @@ namespace HSSSS
 {
     public class HSSSS : IEnhancedPlugin
     {
-        #region Info
+        #region Plugin Info
         public string Name { get { return "HSSSS";  } }
         public string Version { get { return "0.20"; } }
         public string[] Filter { get { return new[] { "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
-        #region Variables
+        #region Global Variables
         // 
         private static AssetBundle bundle;
         private static Shader deferredSkin;
@@ -27,7 +27,8 @@ namespace HSSSS
         internal static Texture2D skinLUT;
 
         // 
-        private static Material alloySkin;
+        private static Material skinMaterial;
+        private static Material overMaterial;
         private static Texture2D bodyThickness;
         private static Texture2D faceThickness;
         private static Texture2D spotCookie;
@@ -38,15 +39,25 @@ namespace HSSSS
         //
         private static bool isEnabled;
         private static bool isDeferred;
+        private static bool isTessellated;
         private static KeyCode hotKey;
 
         //
-        private static string[] colorAttr = { "_Color" };
-        private static string[] floatAttr = { "_Metallic", "_Smoothness", "_OcclusionStrength", "_BlendNormalMapScale", "_DetailNormalMapScale" };
-        private static string[] textureAttr = { "_MainTex", "_SpecGlossMap", "_OcclusionMap", "_BumpMap", "_BlendNormalMap", "_DetailNormalMap" };
+        private static string[] colorProps = { "_Color" };
+        private static string[] floatProps = { "_Metallic", "_Smoothness", "_OcclusionStrength", "_BlendNormalMapScale", "_DetailNormalMapScale" };
+        private static string[] textureProps = { "_MainTex", "_SpecGlossMap", "_OcclusionMap", "_BumpMap", "_BlendNormalMap", "_DetailNormalMap" };
 
         //
-        private Dictionary<Material, bool> materialsToReplace;
+        private enum materialType
+        {
+            femaleHead,
+            femaleBody,
+            femaleOver,
+            maleHead,
+            maleBody,
+        };
+
+        private Dictionary<Material, materialType> materialsToReplace;
         #endregion
 
         #region Unity Methods
@@ -68,7 +79,7 @@ namespace HSSSS
                     ForwardAssetLoader();
                 }
 
-                materialsToReplace = new Dictionary<Material, bool>();
+                materialsToReplace = new Dictionary<Material, materialType>();
             }
         }
 
@@ -103,7 +114,7 @@ namespace HSSSS
         {
             if(isEnabled)
             {
-                ReplaceMaterials(materialsToReplace);
+                ReplaceMaterials(this.materialsToReplace);
                 FixSpotLights();
 
                 if (isDeferred && Input.GetKeyDown(hotKey))
@@ -132,6 +143,8 @@ namespace HSSSS
         {
             isEnabled = ModPrefs.GetBool("HSSSS", "Enabled", true, true);
             isDeferred = ModPrefs.GetBool("HSSSS", "DeferredSkin", true, true);
+            isTessellated = ModPrefs.GetBool("HSSSS", "Tessellation", true, true);
+
             try
             {
                 string hotKeyString = ModPrefs.GetString("HSSSS", "ShortcutKey", KeyCode.ScrollLock.ToString(), true);
@@ -169,20 +182,30 @@ namespace HSSSS
         private static void DeferredAssetLoader()
         {
             skinLUT = bundle.LoadAsset<Texture2D>("DeferredLUT");
-            alloySkin = bundle.LoadAsset<Material>("SkinReplaceDeferred");
+
+            if (isTessellated)
+            {
+                skinMaterial = bundle.LoadAsset<Material>("SkinReplaceDeferredTessellation");
+                overMaterial = bundle.LoadAsset<Material>("SkinReplaceAlphaTessellation");
+            }
+
+            else
+            {
+                skinMaterial = bundle.LoadAsset<Material>("SkinReplaceDeferred");
+                overMaterial = bundle.LoadAsset<Material>("SkinReplaceAlpha");
+            }
+
             deferredTransmissionBlit = bundle.LoadAsset<Shader>("DeferredTransmissionBlit");
             deferredBlurredNormals = bundle.LoadAsset<Shader>("DeferredBlurredNormals");
             deferredSkin = bundle.LoadAsset<Shader>("Alloy Deferred Skin");
             deferredReflections = bundle.LoadAsset<Shader>("Alloy Deferred Reflections");
-
-            alloySkin.EnableKeyword("BUILTIN_THICKNESSMAP");
 
             if (null != skinLUT)
             {
                 Console.WriteLine("#### HSSSS: Deferred Skin LUT Loaded");
             }
 
-            if (null != alloySkin)
+            if (null != skinMaterial)
             {
                 Console.WriteLine("#### HSSSS: Deferred Skin Replacer Loaded");
             }
@@ -200,10 +223,10 @@ namespace HSSSS
 
         private static void ForwardAssetLoader()
         {
-            alloySkin = bundle.LoadAsset<Material>("SkinReplaceForward");
-            alloySkin.EnableKeyword("BUILTIN_THICKNESSMAP");
+            skinMaterial = bundle.LoadAsset<Material>("SkinReplaceForward");
+            overMaterial = bundle.LoadAsset<Material>("SkinReplaceAlpha");
 
-            if (null != alloySkin)
+            if (null != skinMaterial)
             {
                 Console.WriteLine("#### HSSSS: Deferred Skin Replacer Loaded");
             }
@@ -241,7 +264,7 @@ namespace HSSSS
             }
         }
 
-        private static void SearchMaterials(Dictionary<Material, bool> toReplace)
+        private static void SearchMaterials(Dictionary<Material, materialType> toReplace)
         {
             foreach (CharFemaleBody female in UnityEngine.Resources.FindObjectsOfTypeAll(typeof(CharFemaleBody)))
             {
@@ -249,15 +272,26 @@ namespace HSSSS
                 {
                     foreach (Material bodyMat in bodyObj.GetComponent<Renderer>().sharedMaterials)
                     {
-                        if (bodyMat.IsKeywordEnabled("_SKIN_EFFECT_ON"))
+                        switch (bodyMat.shader.name)
                         {
-                            try
-                            {
-                                toReplace.Add(bodyMat, true);
-                            }
-                            catch
-                            {
-                            }
+                            case "Shader Forge/PBRsp":
+                                try
+                                {
+                                    toReplace.Add(bodyMat, materialType.femaleBody);
+                                }
+                                catch
+                                {
+                                }
+                                break;
+                            case "Standard":
+                                try
+                                {
+                                    toReplace.Add(bodyMat, materialType.femaleOver);
+                                }
+                                catch
+                                {
+                                }
+                                break;
                         }
                     }
                 }
@@ -266,66 +300,111 @@ namespace HSSSS
                 {
                     foreach (Material faceMat in faceObj.GetComponent<Renderer>().sharedMaterials)
                     {
-                        if (faceMat.IsKeywordEnabled("_SKIN_EFFECT_ON"))
+                        switch (faceMat.shader.name)
                         {
-                            try
-                            {
-                                toReplace.Add(faceMat, false);
-                            }
-                            catch
-                            {
-                            }
+                            case "Shader Forge/PBRsp":
+                                try
+                                {
+                                    toReplace.Add(faceMat, materialType.femaleHead);
+                                }
+                                catch
+                                {
+                                }
+                                break;
+                            case "Standard":
+                                try
+                                {
+                                    toReplace.Add(faceMat, materialType.femaleOver);
+                                }
+                                catch
+                                {
+                                }
+                                break;
                         }
                     }
                 }
             }
         }
 
-        private static void ReplaceMaterials(Dictionary<Material, bool> toReplace)
+        private static void ReplaceMaterials(Dictionary<Material, materialType> toReplace)
         {
-            foreach(KeyValuePair<Material, bool> entry in toReplace)
+            foreach(KeyValuePair<Material, materialType> entry in toReplace)
             {
                 Console.WriteLine("#### HSSSS Replaces " + entry.Key.name);
 
-                SetMaterialProps(entry.Key);
-
-                if(entry.Value)
+                switch (entry.Value)
                 {
-                    entry.Key.SetTexture("_Thickness", bodyThickness);
-                }
+                    case materialType.femaleBody:
+                        SetSkinMaterialProps(entry.Key);
+                        entry.Key.SetTexture("_Thickness", bodyThickness);
+                        break;
 
-                else
-                {
-                    entry.Key.SetTexture("_Thickness", faceThickness);
+                    case materialType.femaleHead:
+                        SetSkinMaterialProps(entry.Key);
+                        entry.Key.SetTexture("_Thickness", faceThickness);
+                        break;
+                    case materialType.femaleOver:
+                        SetAlphaMaterialProps(entry.Key);
+                        break;
                 }
             }
 
             toReplace.Clear();
         }
 
-        private static void SetMaterialProps(Material targetMaterial)
+        private static void SetSkinMaterialProps(Material targetMaterial)
         {
             Material cacheMat = new Material(source: targetMaterial);
 
-            targetMaterial.shader = alloySkin.shader;
-            targetMaterial.CopyPropertiesFromMaterial(alloySkin);
+            targetMaterial.shader = skinMaterial.shader;
+            targetMaterial.CopyPropertiesFromMaterial(skinMaterial);
 
-            foreach (string attr in textureAttr)
+            foreach (string prop in textureProps)
             {
-                targetMaterial.SetTexture(attr, cacheMat.GetTexture(attr));
-                targetMaterial.SetTextureScale(attr, cacheMat.GetTextureScale(attr));
-                targetMaterial.SetTextureOffset(attr, cacheMat.GetTextureOffset(attr));
+                targetMaterial.SetTexture(prop, cacheMat.GetTexture(prop));
+                targetMaterial.SetTextureScale(prop, cacheMat.GetTextureScale(prop));
+                targetMaterial.SetTextureOffset(prop, cacheMat.GetTextureOffset(prop));
             }
 
-            foreach (string attr in colorAttr)
+            foreach (string prop in colorProps)
             {
-                targetMaterial.SetColor(attr, cacheMat.GetColor(attr));
+                targetMaterial.SetColor(prop, cacheMat.GetColor(prop));
             }
 
-            foreach (string attr in floatAttr)
+            foreach (string prop in floatProps)
             {
-                targetMaterial.SetFloat(attr, cacheMat.GetFloat(attr));
+                targetMaterial.SetFloat(prop, cacheMat.GetFloat(prop));
             }
+
+            targetMaterial.EnableKeyword("_BUILTIN_THICKNESSMAP");
+        }
+
+        private static void SetAlphaMaterialProps(Material targetMaterial)
+        {
+            Material cacheMat = new Material(source: targetMaterial);
+
+            targetMaterial.shader = overMaterial.shader;
+            targetMaterial.CopyPropertiesFromMaterial(overMaterial);
+
+            foreach (string prop in textureProps)
+            {
+                targetMaterial.SetTexture(prop, cacheMat.GetTexture(prop));
+                targetMaterial.SetTextureScale(prop, cacheMat.GetTextureScale(prop));
+                targetMaterial.SetTextureOffset(prop, cacheMat.GetTextureOffset(prop));
+            }
+
+            foreach (string prop in colorProps)
+            {
+                targetMaterial.SetColor(prop, cacheMat.GetColor(prop));
+            }
+
+            foreach (string prop in floatProps)
+            {
+                targetMaterial.SetFloat(prop, cacheMat.GetFloat(prop));
+            }
+
+            targetMaterial.SetFloat("_Smoothness", cacheMat.GetFloat("_Glossiness"));
+            targetMaterial.SetFloat("_Cutoff", 0.001f);
         }
 
         private static void FixSpotLights()

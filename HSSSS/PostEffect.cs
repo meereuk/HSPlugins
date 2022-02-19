@@ -1,21 +1,9 @@
-﻿// Alloy Physical Shader Framework
-// Copyright 2013-2016 RUST LLC.
-// http://www.alloy.rustltd.com/
-
-using System;
-using System.Linq;
+﻿using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
 namespace HSSSS
 {
-    [ExecuteInEditMode]
-    [RequireComponent(typeof(Camera))]
-    [AddComponentMenu("Alloy/Deferred Renderer Plus")]
     public class AlloyDeferredRendererPlus : MonoBehaviour
     {
         [Serializable]
@@ -77,7 +65,6 @@ namespace HSSSS
         private const string c_normalBufferName = "AlloyRenderBlurredNormals";
         private const string c_releaseDeferredBuffer = "AlloyReleaseDeferredPlusBuffers";
 
-
         // LUT
         public Texture2D SkinLut;
 
@@ -97,13 +84,6 @@ namespace HSSSS
         private CommandBuffer m_renderBlurredNormals;
         private CommandBuffer m_releaseDeferredPlus;
 
-#if UNITY_EDITOR
-    private Material m_sceneViewBlurredNormalsMaterial;
-    private Camera m_sceneCamera;
-    private CommandBuffer m_sceneViewBlurredNormals;
-#endif
-
-        // TODO: Debug views of the buffers? (Blurred normals, edge difference averages)
         public void Refresh()
         {
             bool scatteringEnabled = SkinSettings.Enabled;
@@ -195,10 +175,6 @@ namespace HSSSS
             if (SkinSettings.Lut == null)
             {
                 SkinSettings.Lut = SkinLut;
-
-#if UNITY_EDITOR
-            EditorUtility.SetDirty(this);
-#endif
             }
 
             if ((m_isTransmissionEnabled || m_isScatteringEnabled)
@@ -225,11 +201,6 @@ namespace HSSSS
                 {
                     GenerateNormalBlurMaterialAndCommandBuffer(blurredNormalBuffer, blurredNormalsBufferIdTemp,
                         out m_deferredBlurredNormalsMaterial, out m_renderBlurredNormals);
-
-#if UNITY_EDITOR
-                GenerateNormalBlurMaterialAndCommandBuffer(blurredNormalBuffer, blurredNormalsBufferIdTemp,
-                    out m_sceneViewBlurredNormalsMaterial, out m_sceneViewBlurredNormals);
-#endif
                 }
 
                 // Cleanup resources.
@@ -241,17 +212,9 @@ namespace HSSSS
                 {
                     m_releaseDeferredPlus.ReleaseTemporaryRT(blurredNormalsBufferIdTemp);
                 }
-
-#if UNITY_EDITOR
-            SceneView.onSceneGUIDelegate += OnSceneGUIDelegate;
-#endif
             }
 
             AddCommandBuffersToCamera(m_camera, m_renderBlurredNormals);
-
-#if UNITY_EDITOR
-        EditorUtility.SetDirty(m_camera);
-#endif
         }
 
         private void GenerateNormalBlurMaterialAndCommandBuffer(int blurredNormalBuffer, int blurredNormalsBufferIdTemp,
@@ -281,11 +244,6 @@ namespace HSSSS
             m_renderBlurredNormals = null;
             m_releaseDeferredPlus = null;
 
-#if UNITY_EDITOR
-        m_sceneViewBlurredNormals = null;
-        SceneView.onSceneGUIDelegate -= OnSceneGUIDelegate;
-#endif
-
             if (m_deferredTransmissionBlitMaterial != null)
             {
                 DestroyImmediate(m_deferredTransmissionBlitMaterial);
@@ -297,13 +255,6 @@ namespace HSSSS
                 DestroyImmediate(m_deferredBlurredNormalsMaterial);
                 m_deferredBlurredNormalsMaterial = null;
             }
-
-#if UNITY_EDITOR
-        if (m_sceneViewBlurredNormalsMaterial != null) {
-            DestroyImmediate(m_sceneViewBlurredNormalsMaterial);
-            m_sceneViewBlurredNormalsMaterial = null;
-        }
-#endif
         }
 
         private void AddCommandBuffersToCamera(Camera setCamera, CommandBuffer normalBuffer)
@@ -362,22 +313,7 @@ namespace HSSSS
 
         private void RemoveCommandBuffersFromAllCameras()
         {
-#if UNITY_EDITOR
-        if (m_sceneCamera != null) {
-            RemoveCommandBuffersFromCamera(m_sceneCamera, m_sceneViewBlurredNormals);
-        }
-#endif
-
             RemoveCommandBuffersFromCamera(m_camera, m_renderBlurredNormals);
         }
-
-
-#if UNITY_EDITOR
-    private void OnSceneGUIDelegate(SceneView sceneView) {
-        m_sceneCamera = sceneView.camera;
-        AddCommandBuffersToCamera(m_sceneCamera, m_sceneViewBlurredNormals);
-        RefreshBlurredNormalProperties(m_sceneCamera, m_sceneViewBlurredNormalsMaterial);
-    }
-#endif
     }
 }
