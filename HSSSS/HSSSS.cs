@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using IllusionPlugin;
 using UnityEngine;
-//using UnityEngine.UI;
 using UnityEngine.Rendering;
-//using Resources = HSSSS.Resources;
 
 namespace HSSSS
 {
@@ -118,6 +116,7 @@ namespace HSSSS
                     else
                     {
                         UnityEngine.Object.DestroyImmediate(this.configUI);
+                        Studio.Studio.Instance.cameraCtrl.enabled = true;
                     }
                 }
             }
@@ -361,7 +360,6 @@ namespace HSSSS
 
         public void LateUpdate()
         {
-            Studio.Studio.Instance.cameraCtrl.enabled = !this.configWindow.Contains(Event.current.mousePosition);
         }
 
         public void OnGUI()
@@ -388,6 +386,7 @@ namespace HSSSS
             };
 
             this.configWindow = GUI.Window(0, this.configWindow, this.WindowFunction, "HSSSS Configuration");
+            Studio.Studio.Instance.cameraCtrl.enabled = !this.configWindow.Contains(Event.current.mousePosition);
         }
 
         private void WindowFunction(int WindowID)
