@@ -29,8 +29,10 @@ namespace HSSSS
         // 
         private static Material skinMaterial;
         private static Material overMaterial;
-        private static Texture2D bodyThickness;
-        private static Texture2D faceThickness;
+        private static Texture2D femaleBodyThickness;
+        private static Texture2D famaleHeadThickness;
+        private static Texture2D maleBodyThickness;
+        private static Texture2D maleHeadThickness;
         private static Texture2D spotCookie;
         
         //
@@ -40,6 +42,8 @@ namespace HSSSS
         private static bool isEnabled;
         private static bool isDeferred;
         private static bool isTessellated;
+        //private static bool isOverridesDetail;
+        //private static float overrideDetail;
         private static KeyCode hotKey;
 
         //
@@ -159,8 +163,10 @@ namespace HSSSS
         private static void BaseAssetLoader()
         {
             bundle = AssetBundle.LoadFromMemory(Resources.hssssresources);
-            bodyThickness = bundle.LoadAsset<Texture2D>("bodyThickness");
-            faceThickness = bundle.LoadAsset<Texture2D>("faceThickness");
+            femaleBodyThickness = bundle.LoadAsset<Texture2D>("FemaleBodyThickness");
+            famaleHeadThickness = bundle.LoadAsset<Texture2D>("FemaleHeadThickness");
+            maleBodyThickness = bundle.LoadAsset<Texture2D>("MaleBodyThickness");
+            maleHeadThickness = bundle.LoadAsset<Texture2D>("MaleHeadThickness");
             spotCookie = bundle.LoadAsset<Texture2D>("DefaultSpotCookie");
 
             if (null != bundle)
@@ -168,7 +174,7 @@ namespace HSSSS
                 Console.WriteLine("#### HSSSS: Assetbundle Loaded");
             }
 
-            if (null != bodyThickness && null != faceThickness)
+            if (null != femaleBodyThickness && null != famaleHeadThickness)
             {
                 Console.WriteLine("#### HSSSS: Built-In Thickness Map Loaded");
             }
@@ -185,14 +191,14 @@ namespace HSSSS
 
             if (isTessellated)
             {
-                skinMaterial = bundle.LoadAsset<Material>("SkinReplaceDeferredTessellation");
-                overMaterial = bundle.LoadAsset<Material>("SkinReplaceAlphaTessellation");
+                skinMaterial = bundle.LoadAsset<Material>("DeferredTessellationSkin");
+                overMaterial = bundle.LoadAsset<Material>("TessellationSkinOverlay");
             }
 
             else
             {
-                skinMaterial = bundle.LoadAsset<Material>("SkinReplaceDeferred");
-                overMaterial = bundle.LoadAsset<Material>("SkinReplaceAlpha");
+                skinMaterial = bundle.LoadAsset<Material>("DeferredSkin");
+                overMaterial = bundle.LoadAsset<Material>("SkinOverlay");
             }
 
             deferredTransmissionBlit = bundle.LoadAsset<Shader>("DeferredTransmissionBlit");
@@ -223,8 +229,8 @@ namespace HSSSS
 
         private static void ForwardAssetLoader()
         {
-            skinMaterial = bundle.LoadAsset<Material>("SkinReplaceForward");
-            overMaterial = bundle.LoadAsset<Material>("SkinReplaceAlpha");
+            skinMaterial = bundle.LoadAsset<Material>("ForwardSkin");
+            overMaterial = bundle.LoadAsset<Material>("SkinOverlay");
 
             if (null != skinMaterial)
             {
@@ -324,6 +330,43 @@ namespace HSSSS
                     }
                 }
             }
+
+            foreach (CharMaleBody male in UnityEngine.Resources.FindObjectsOfTypeAll(typeof(CharMaleBody)))
+            {
+                foreach (GameObject bodyObj in male.chaInfo.GetTagInfo(CharReference.TagObjKey.ObjSkinBody))
+                {
+                    foreach (Material bodyMat in bodyObj.GetComponent<Renderer>().sharedMaterials)
+                    {
+                        if (bodyMat.shader.name == "Shader Forge/PBRsp")
+                        {
+                            try
+                            {
+                                toReplace.Add(bodyMat, materialType.maleBody);
+                            }
+                            catch
+                            {
+                            }
+                        }
+                    }
+                }
+
+                foreach (GameObject faceObj in male.chaInfo.GetTagInfo(CharReference.TagObjKey.ObjSkinFace))
+                {
+                    foreach (Material faceMat in faceObj.GetComponent<Renderer>().sharedMaterials)
+                    {
+                        if (faceMat.shader.name == "Shader Forge/PBRsp")
+                        {
+                            try
+                            {
+                                toReplace.Add(faceMat, materialType.maleHead);
+                            }
+                            catch
+                            {
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private static void ReplaceMaterials(Dictionary<Material, materialType> toReplace)
@@ -336,15 +379,26 @@ namespace HSSSS
                 {
                     case materialType.femaleBody:
                         SetSkinMaterialProps(entry.Key);
-                        entry.Key.SetTexture("_Thickness", bodyThickness);
+                        entry.Key.SetTexture("_Thickness", femaleBodyThickness);
                         break;
 
                     case materialType.femaleHead:
                         SetSkinMaterialProps(entry.Key);
-                        entry.Key.SetTexture("_Thickness", faceThickness);
+                        entry.Key.SetTexture("_Thickness", famaleHeadThickness);
                         break;
+
                     case materialType.femaleOver:
                         SetAlphaMaterialProps(entry.Key);
+                        break;
+
+                    case materialType.maleBody:
+                        SetSkinMaterialProps(entry.Key);
+                        entry.Key.SetTexture("_Thickness", maleBodyThickness);
+                        break;
+
+                    case materialType.maleHead:
+                        SetSkinMaterialProps(entry.Key);
+                        entry.Key.SetTexture("_Thickness", maleHeadThickness);
                         break;
                 }
             }
@@ -377,6 +431,7 @@ namespace HSSSS
             }
 
             targetMaterial.EnableKeyword("_BUILTIN_THICKNESSMAP");
+            targetMaterial.EnableKeyword("_INVERT_THICKNESS");
         }
 
         private static void SetAlphaMaterialProps(Material targetMaterial)
