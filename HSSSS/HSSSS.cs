@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using IllusionPlugin;
 using UnityEngine;
@@ -10,7 +11,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "0.20"; } }
+        public string Version { get { return "0.21"; } }
         public string[] Filter { get { return new[] { "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -27,52 +28,35 @@ namespace HSSSS
         internal static Texture2D skinLUT;
 
         // 
-        private static Material skinMaterial;
-        private static Material overMaterial;
-        private static Texture2D femaleBodyThickness;
-        private static Texture2D famaleHeadThickness;
-        private static Texture2D maleBodyThickness;
-        private static Texture2D maleHeadThickness;
-        private static Texture2D spotCookie;
+        internal static Material skinMaterial;
+        internal static Material overMaterial;
+        internal static Texture2D femaleBodyThickness;
+        internal static Texture2D famaleHeadThickness;
+        internal static Texture2D maleBodyThickness;
+        internal static Texture2D maleHeadThickness;
+        internal static Texture2D spotCookie;
         
         //
         private GameObject configUI;
+        private GameObject skinReplacer;
 
         //
         private static bool isEnabled;
-        private static bool isDeferred;
-        private static bool isTessellated;
-        //private static bool isOverridesDetail;
-        //private static float overrideDetail;
+        private static bool useDeferred;
+        private static bool useTessellation;
         private static KeyCode hotKey;
-
-        //
-        private static string[] colorProps = { "_Color" };
-        private static string[] floatProps = { "_Metallic", "_Smoothness", "_OcclusionStrength", "_BlendNormalMapScale", "_DetailNormalMapScale" };
-        private static string[] textureProps = { "_MainTex", "_SpecGlossMap", "_OcclusionMap", "_BumpMap", "_BlendNormalMap", "_DetailNormalMap" };
-
-        //
-        private enum materialType
-        {
-            femaleHead,
-            femaleBody,
-            femaleOver,
-            maleHead,
-            maleBody,
-        };
-
-        private Dictionary<Material, materialType> materialsToReplace;
         #endregion
 
         #region Unity Methods
         public void OnApplicationStart()
         {
             ConfigParser();
-            BaseAssetLoader();
-
+            
             if (isEnabled)
             {
-                if (isDeferred)
+                BaseAssetLoader();
+
+                if (useDeferred)
                 {
                     DeferredAssetLoader();
                     ReplaceInternalShader();
@@ -82,8 +66,6 @@ namespace HSSSS
                 {
                     ForwardAssetLoader();
                 }
-
-                materialsToReplace = new Dictionary<Material, materialType>();
             }
         }
 
@@ -93,21 +75,22 @@ namespace HSSSS
 
         public void OnLevelWasLoaded(int level)
         {
-            if (isEnabled && isDeferred)
+            if (level == 3)
             {
-                if (level == 3)
+                if (isEnabled)
                 {
-                    InitPostFX();
+                    if (useDeferred)
+                    {
+                        InitPostFX();
+                    }
+
+                    skinReplacer = new GameObject("HSSSS.SkinReplacer", typeof(SkinReplacer));
                 }
             }
         }
 
         public void OnUpdate()
         {
-            if(isEnabled)
-            {
-                SearchMaterials(this.materialsToReplace);
-            }
         }
 
         public void OnFixedUpdate()
@@ -118,10 +101,9 @@ namespace HSSSS
         {
             if(isEnabled)
             {
-                ReplaceMaterials(this.materialsToReplace);
                 FixSpotLights();
 
-                if (isDeferred && Input.GetKeyDown(hotKey))
+                if (useDeferred && Input.GetKeyDown(hotKey))
                 {
                     if (this.configUI == null)
                     {
@@ -146,8 +128,8 @@ namespace HSSSS
         private static void ConfigParser()
         {
             isEnabled = ModPrefs.GetBool("HSSSS", "Enabled", true, true);
-            isDeferred = ModPrefs.GetBool("HSSSS", "DeferredSkin", true, true);
-            isTessellated = ModPrefs.GetBool("HSSSS", "Tessellation", true, true);
+            useDeferred = ModPrefs.GetBool("HSSSS", "DeferredSkin", true, true);
+            useTessellation = ModPrefs.GetBool("HSSSS", "Tessellation", true, true);
 
             try
             {
@@ -189,7 +171,7 @@ namespace HSSSS
         {
             skinLUT = bundle.LoadAsset<Texture2D>("DeferredLUT");
 
-            if (isTessellated)
+            if (useTessellation)
             {
                 skinMaterial = bundle.LoadAsset<Material>("DeferredTessellationSkin");
                 overMaterial = bundle.LoadAsset<Material>("TessellationSkinOverlay");
@@ -211,7 +193,7 @@ namespace HSSSS
                 Console.WriteLine("#### HSSSS: Deferred Skin LUT Loaded");
             }
 
-            if (null != skinMaterial)
+            if (null != skinMaterial && null != overMaterial)
             {
                 Console.WriteLine("#### HSSSS: Deferred Skin Replacer Loaded");
             }
@@ -232,9 +214,9 @@ namespace HSSSS
             skinMaterial = bundle.LoadAsset<Material>("ForwardSkin");
             overMaterial = bundle.LoadAsset<Material>("SkinOverlay");
 
-            if (null != skinMaterial)
+            if (null != skinMaterial && null != overMaterial)
             {
-                Console.WriteLine("#### HSSSS: Deferred Skin Replacer Loaded");
+                Console.WriteLine("#### HSSSS: Forward Skin Replacer Loaded");
             }
         }
 
@@ -270,6 +252,54 @@ namespace HSSSS
             }
         }
 
+        private static void FixSpotLights()
+        {
+            foreach (Light light in UnityEngine.Resources.FindObjectsOfTypeAll(typeof(Light)))
+            {
+                if (light.type == LightType.Spot)
+                {
+                    if (light.cookie == null)
+                    {
+                        light.cookie = spotCookie;
+                    }
+                }
+            }
+        }
+        #endregion
+    }
+
+    public class SkinReplacer : MonoBehaviour
+    {
+        private enum materialType
+        {
+            femaleHead,
+            femaleBody,
+            femaleOver,
+            maleHead,
+            maleBody,
+        };
+
+        private Dictionary<Material, materialType> materialsToReplace;
+
+        private static string[] colorProps = { "_Color" };
+        private static string[] floatProps = { "_Metallic", "_Smoothness", "_OcclusionStrength", "_BlendNormalMapScale", "_DetailNormalMapScale" };
+        private static string[] textureProps = { "_MainTex", "_SpecGlossMap", "_OcclusionMap", "_BumpMap", "_BlendNormalMap", "_DetailNormalMap" };
+
+        public void Awake()
+        {
+            materialsToReplace = new Dictionary<Material, materialType>();
+        }
+
+        public void Start()
+        {
+            this.StartCoroutine(this.FindAndReplace());
+        }
+
+        public void OnDestroy()
+        {
+            this.StopAllCoroutines();
+        }
+
         private static void SearchMaterials(Dictionary<Material, materialType> toReplace)
         {
             foreach (CharFemaleBody female in UnityEngine.Resources.FindObjectsOfTypeAll(typeof(CharFemaleBody)))
@@ -298,6 +328,15 @@ namespace HSSSS
                                 {
                                 }
                                 break;
+                            case "HSStandard/Standard Ignore Projector":
+                                try
+                                {
+                                    toReplace.Add(bodyMat, materialType.femaleOver);
+                                }
+                                catch
+                                {
+                                }
+                                break;
                         }
                     }
                 }
@@ -318,6 +357,15 @@ namespace HSSSS
                                 }
                                 break;
                             case "Standard":
+                                try
+                                {
+                                    toReplace.Add(faceMat, materialType.femaleOver);
+                                }
+                                catch
+                                {
+                                }
+                                break;
+                            case "HSStandard/Standard Ignore Projector":
                                 try
                                 {
                                     toReplace.Add(faceMat, materialType.femaleOver);
@@ -371,7 +419,7 @@ namespace HSSSS
 
         private static void ReplaceMaterials(Dictionary<Material, materialType> toReplace)
         {
-            foreach(KeyValuePair<Material, materialType> entry in toReplace)
+            foreach (KeyValuePair<Material, materialType> entry in toReplace)
             {
                 Console.WriteLine("#### HSSSS Replaces " + entry.Key.name);
 
@@ -379,26 +427,26 @@ namespace HSSSS
                 {
                     case materialType.femaleBody:
                         SetSkinMaterialProps(entry.Key);
-                        entry.Key.SetTexture("_Thickness", femaleBodyThickness);
+                        entry.Key.SetTexture("_Thickness", HSSSS.femaleBodyThickness);
                         break;
 
                     case materialType.femaleHead:
                         SetSkinMaterialProps(entry.Key);
-                        entry.Key.SetTexture("_Thickness", famaleHeadThickness);
+                        entry.Key.SetTexture("_Thickness", HSSSS.famaleHeadThickness);
                         break;
 
                     case materialType.femaleOver:
-                        SetAlphaMaterialProps(entry.Key);
+                        SetOverMaterialProps(entry.Key);
                         break;
 
                     case materialType.maleBody:
                         SetSkinMaterialProps(entry.Key);
-                        entry.Key.SetTexture("_Thickness", maleBodyThickness);
+                        entry.Key.SetTexture("_Thickness", HSSSS.maleBodyThickness);
                         break;
 
                     case materialType.maleHead:
                         SetSkinMaterialProps(entry.Key);
-                        entry.Key.SetTexture("_Thickness", maleHeadThickness);
+                        entry.Key.SetTexture("_Thickness", HSSSS.maleHeadThickness);
                         break;
                 }
             }
@@ -410,8 +458,8 @@ namespace HSSSS
         {
             Material cacheMat = new Material(source: targetMaterial);
 
-            targetMaterial.shader = skinMaterial.shader;
-            targetMaterial.CopyPropertiesFromMaterial(skinMaterial);
+            targetMaterial.shader = HSSSS.skinMaterial.shader;
+            targetMaterial.CopyPropertiesFromMaterial(HSSSS.skinMaterial);
 
             foreach (string prop in textureProps)
             {
@@ -434,12 +482,12 @@ namespace HSSSS
             targetMaterial.EnableKeyword("_INVERT_THICKNESS");
         }
 
-        private static void SetAlphaMaterialProps(Material targetMaterial)
+        private static void SetOverMaterialProps(Material targetMaterial)
         {
             Material cacheMat = new Material(source: targetMaterial);
 
-            targetMaterial.shader = overMaterial.shader;
-            targetMaterial.CopyPropertiesFromMaterial(overMaterial);
+            targetMaterial.shader = HSSSS.overMaterial.shader;
+            targetMaterial.CopyPropertiesFromMaterial(HSSSS.overMaterial);
 
             foreach (string prop in textureProps)
             {
@@ -462,20 +510,16 @@ namespace HSSSS
             targetMaterial.SetFloat("_Cutoff", 0.001f);
         }
 
-        private static void FixSpotLights()
+        private IEnumerator FindAndReplace()
         {
-            foreach (Light light in UnityEngine.Resources.FindObjectsOfTypeAll(typeof(Light)))
+            while (true)
             {
-                if (light.type == LightType.Spot)
-                {
-                    if (light.cookie == null)
-                    {
-                        light.cookie = spotCookie;
-                    }
-                }
+                SearchMaterials(materialsToReplace);
+                yield return null;
+                ReplaceMaterials(materialsToReplace);
+                yield return null;
             }
         }
-        #endregion
     }
 
     public class ConfigUI : MonoBehaviour

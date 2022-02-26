@@ -553,5 +553,30 @@ namespace ToolBox.Extensions
 			if (value != newValue && onChanged != null)
 				onChanged(newValue);
 		}
+
+		public static void HorizontalSliderWithValue(string label, float value, float left, float right, string valueFormat = "", Action<float> onChanged = null)
+		{
+			GUILayout.BeginHorizontal(new GUILayoutOption[0]);
+			GUILayout.Label(label, new GUILayoutOption[]
+			{
+				GUILayout.ExpandWidth(false)
+			});
+			float num = GUILayout.HorizontalSlider(value, left, right, new GUILayoutOption[0]);
+			string text = num.ToString(valueFormat);
+			string text2 = GUILayout.TextField(text, 5, new GUILayoutOption[]
+			{
+				GUILayout.Width(50f)
+			});
+			float num2;
+			if (text2 != text && float.TryParse(text2, out num2))
+			{
+				num = num2;
+			}
+			GUILayout.EndHorizontal();
+			if (onChanged != null && !Mathf.Approximately(value, num))
+			{
+				onChanged(num);
+			}
+		}
 	}
 }
