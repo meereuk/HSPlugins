@@ -26,7 +26,10 @@ namespace RendererEditor
             new ShaderProperty() {name = "_TintColor", type = Type.Color},
             new ShaderProperty() {name = "_EmisColor", type = Type.Color},
             new ShaderProperty() {name = "_FuzzColor", type = Type.Color},
+            //
             new ShaderProperty() {name = "_TransColor", type = Type.Color},
+            new ShaderProperty() {name = "_HighlightTint0", type = Type.Color},
+            new ShaderProperty() {name = "_HighlightTint1", type = Type.Color},
             //Textures
             new ShaderProperty() {name = "_MainTex", type = Type.Texture},
             new ShaderProperty() {name = "_Albedo2", type = Type.Texture},
@@ -69,7 +72,10 @@ namespace RendererEditor
             new ShaderProperty() {name = "_SplatMap", type = Type.Texture},
             new ShaderProperty() {name = "_Overlay", type = Type.Texture},
             new ShaderProperty() {name = "_RefractTex", type = Type.Texture},
+            //
             new ShaderProperty() {name = "_DispTex", type = Type.Texture},
+            new ShaderProperty() {name = "_NoiseMap", type = Type.Texture},
+            new ShaderProperty() {name = "_ShiftMap", type = Type.Texture},
             //Float
             new ShaderProperty() {name = "_Metallic", floatRange = new Vector2(0, 1), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_Smoothness", floatRange = new Vector2(0, 1), hasFloatRange = true, type = Type.Float},
@@ -129,6 +135,7 @@ namespace RendererEditor
             new ShaderProperty() {name = "_Shrink", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_LiquidHeight", floatRange = new Vector2(-1f, 1f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_RefractionStrength", floatRange = new Vector2(-1f, 1f), hasFloatRange = true, type = Type.Float},
+            //
             new ShaderProperty() {name = "_Metal", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_Roughness", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_SssBias", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
@@ -141,6 +148,11 @@ namespace RendererEditor
             new ShaderProperty() {name = "_Displacement", floatRange = new Vector2(0, 30f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_Phong", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_EdgeLength", floatRange = new Vector2(2f, 50f), hasFloatRange = true, type = Type.Float},
+            new ShaderProperty() {name = "_AnisoAngle", floatRange = new Vector2(0, 180f), hasFloatRange = true, type = Type.Float},
+            new ShaderProperty() {name = "_HighlightWidth0", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
+            new ShaderProperty() {name = "_HighlightShift0", floatRange = new Vector2(-180f, 180f), hasFloatRange = true, type = Type.Float},
+            new ShaderProperty() {name = "_HighlightWidth1", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
+            new ShaderProperty() {name = "_HighlightShift1", floatRange = new Vector2(-180f, 180f), hasFloatRange = true, type = Type.Float},
             //Bools
             new ShaderProperty() {name = "_HairEffect", type = Type.Boolean},
             new ShaderProperty() {name = "_GlossUseAlpha", type = Type.Boolean},

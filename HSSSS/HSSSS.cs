@@ -11,7 +11,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "0.21"; } }
+        public string Version { get { return "0.2.2"; } }
         public string[] Filter { get { return new[] { "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -44,6 +44,7 @@ namespace HSSSS
         private static bool isEnabled;
         private static bool useDeferred;
         private static bool useTessellation;
+        private static bool useWetSpecGloss;
         private static KeyCode hotKey;
         #endregion
 
@@ -84,7 +85,7 @@ namespace HSSSS
                         InitPostFX();
                     }
 
-                    skinReplacer = new GameObject("HSSSS.SkinReplacer", typeof(SkinReplacer));
+                    this.skinReplacer = new GameObject("HSSSS.SkinReplacer", typeof(SkinReplacer));
                 }
             }
         }
@@ -130,6 +131,7 @@ namespace HSSSS
             isEnabled = ModPrefs.GetBool("HSSSS", "Enabled", true, true);
             useDeferred = ModPrefs.GetBool("HSSSS", "DeferredSkin", true, true);
             useTessellation = ModPrefs.GetBool("HSSSS", "Tessellation", true, true);
+            useWetSpecGloss = ModPrefs.GetBool("HSSSS", "WetSpecGloss", false, true);
 
             try
             {
@@ -188,6 +190,11 @@ namespace HSSSS
             deferredSkin = bundle.LoadAsset<Shader>("Alloy Deferred Skin");
             deferredReflections = bundle.LoadAsset<Shader>("Alloy Deferred Reflections");
 
+            if (useWetSpecGloss)
+            {
+                skinMaterial.EnableKeyword("_WET_SPECGLOSS");
+            }
+
             if (null != skinLUT)
             {
                 Console.WriteLine("#### HSSSS: Deferred Skin LUT Loaded");
@@ -213,6 +220,11 @@ namespace HSSSS
         {
             skinMaterial = bundle.LoadAsset<Material>("ForwardSkin");
             overMaterial = bundle.LoadAsset<Material>("SkinOverlay");
+
+            if (useWetSpecGloss)
+            {
+                skinMaterial.EnableKeyword("_WET_SPECGLOSS");
+            }
 
             if (null != skinMaterial && null != overMaterial)
             {
@@ -298,6 +310,64 @@ namespace HSSSS
         public void OnDestroy()
         {
             this.StopAllCoroutines();
+        }
+
+        private static void SearchSkinMaterials(Dictionary<Material, materialType> toReplace)
+        {
+            foreach (CharBody charBody in UnityEngine.Resources.FindObjectsOfTypeAll(typeof(CharBody)))
+            {
+                Material bodyMat = charBody.customMatBody;
+                Material faceMat = charBody.customMatFace;
+                byte sex = charBody.chaInfo.Sex;
+
+                if ("Shader Forge/PBRsp" == bodyMat.shader.name)
+                {
+                    if (0 == sex)
+                    {
+                        try
+                        {
+                            toReplace.Add(bodyMat, materialType.maleBody);
+                        }
+                        catch
+                        {
+                        }
+                    }
+                    else if (1 == sex)
+                    {
+                        try
+                        {
+                            toReplace.Add(bodyMat, materialType.femaleBody);
+                        }
+                        catch
+                        {
+                        }
+                    }
+                }
+
+                if ("Shader Forge/PBRsp" == faceMat.shader.name)
+                {
+                    if (1 == sex)
+                    {
+                        try
+                        {
+                            toReplace.Add(faceMat, materialType.maleHead);
+                        }
+                        catch
+                        {
+                        }
+                    }
+                    else if (1 == sex)
+                    {
+                        try
+                        {
+                            toReplace.Add(faceMat, materialType.femaleHead);
+                        }
+                        catch
+                        {
+                        }
+                    }
+                }
+            }
         }
 
         private static void SearchMaterials(Dictionary<Material, materialType> toReplace)
@@ -477,9 +547,6 @@ namespace HSSSS
             {
                 targetMaterial.SetFloat(prop, cacheMat.GetFloat(prop));
             }
-
-            targetMaterial.EnableKeyword("_BUILTIN_THICKNESSMAP");
-            targetMaterial.EnableKeyword("_INVERT_THICKNESS");
         }
 
         private static void SetOverMaterialProps(Material targetMaterial)
