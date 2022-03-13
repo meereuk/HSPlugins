@@ -43,7 +43,7 @@ namespace HSSSS
             Weight = 1.0f,
             Bias = 0.5f,
             Scale = 1.0f,
-            BumpBlur = 1.0f,
+            BumpBlur = 0.5f,
             BlurWidth = 0.1f,
             BlurDepthRange = 1.0f,
             ColorBleedAoWeights = new Vector3(0.40f, 0.15f, 0.13f),

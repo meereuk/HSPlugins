@@ -30,6 +30,7 @@ namespace RendererEditor
             new ShaderProperty() {name = "_TransColor", type = Type.Color},
             new ShaderProperty() {name = "_HighlightTint0", type = Type.Color},
             new ShaderProperty() {name = "_HighlightTint1", type = Type.Color},
+            new ShaderProperty() {name = "_RimColor", type = Type.Color},
             //Textures
             new ShaderProperty() {name = "_MainTex", type = Type.Texture},
             new ShaderProperty() {name = "_Albedo2", type = Type.Texture},
@@ -87,7 +88,7 @@ namespace RendererEditor
             new ShaderProperty() {name = "_DetailNormalMapScale_4", floatRange = new Vector2(0, 1), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_Cutoff", floatRange = new Vector2(0, 1), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_Occlusion", floatRange = new Vector2(0, 1), hasFloatRange = true, type = Type.Float},
-            new ShaderProperty() {name = "_RimPower", floatRange = new Vector2(0, 1), hasFloatRange = true, type = Type.Float},
+            //new ShaderProperty() {name = "_RimPower", floatRange = new Vector2(0, 1), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_Refraction", floatRange = new Vector2(0, 9), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_EffectContrast", floatRange = new Vector2(0, 9), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_Effect2Power", floatRange = new Vector2(0, 9), hasFloatRange = true, type = Type.Float},
@@ -135,6 +136,10 @@ namespace RendererEditor
             new ShaderProperty() {name = "_Shrink", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_LiquidHeight", floatRange = new Vector2(-1f, 1f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_RefractionStrength", floatRange = new Vector2(-1f, 1f), hasFloatRange = true, type = Type.Float},
+            //
+            new ShaderProperty() {name = "_RimWeight", floatRange = new Vector2(0, 1), hasFloatRange = true, type = Type.Float},
+            new ShaderProperty() {name = "_RimBias", floatRange = new Vector2(0, 1), hasFloatRange = true, type = Type.Float},
+            new ShaderProperty() {name = "_RimPower", floatRange = new Vector2(0, 20), hasFloatRange = true, type = Type.Float},
             //
             new ShaderProperty() {name = "_Metal", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_Roughness", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
