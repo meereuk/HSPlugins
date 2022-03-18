@@ -53,6 +53,7 @@ namespace HSSSS
         private GameObject configUI;
         private GameObject skinReplacer;
 
+        internal static bool isStudio;
         internal static bool isEnabled;
         internal static bool useDeferred;
         internal static bool useTessellation;
@@ -60,11 +61,15 @@ namespace HSSSS
         internal static bool fixAlphaShadow;
         internal static KeyCode hotKey;
 
+        internal static string prodName;
+
         #endregion
 
         #region Unity Methods
         public void OnApplicationStart()
         {
+            isStudio = "StudioNEO" == Application.productName;
+
             pluginName = this.Name;
             pluginVersion = this.Version;
 
@@ -94,11 +99,14 @@ namespace HSSSS
                     ForwardAssetLoader();
                 }
 
-                HarmonyInstance harmony = HarmonyInstance.Create("com.kkul.hssss");
-                harmony.Patch(
-                    AccessTools.Method(typeof(OCILight), "Update"), null,
-                    new HarmonyMethod(typeof(HSSSS), nameof(SpotLightPatcher))
-                    );
+                if (isStudio)
+                {
+                    HarmonyInstance harmony = HarmonyInstance.Create("com.kkul.hssss");
+                    harmony.Patch(
+                        AccessTools.Method(typeof(OCILight), "Update"), null,
+                        new HarmonyMethod(typeof(HSSSS), nameof(SpotLightPatcher))
+                        );
+                }
             }
         }
 
@@ -108,7 +116,7 @@ namespace HSSSS
 
         public void OnLevelWasLoaded(int level)
         {
-            if (level == 3)
+            if (isStudio && level == 3)
             {
                 if (isEnabled)
                 {
@@ -149,7 +157,6 @@ namespace HSSSS
         {
             if(isEnabled)
             {
-                //FixSpotLights();
                 if (useDeferred && Input.GetKeyDown(hotKey))
                 {
                     if (this.configUI == null)
@@ -313,7 +320,18 @@ namespace HSSSS
 
         private static void PostFxInitializer()
         {
-            GameObject mainCamera = GameObject.Find("StudioScene/Camera/Main Camera");
+            GameObject mainCamera = null;
+
+            if (isStudio)
+            {
+                mainCamera = GameObject.Find("StudioScene/Camera/Main Camera");
+            }
+
+            else
+            {
+                mainCamera = Camera.main.gameObject;
+            }
+
             if (null != mainCamera)
             {
                 SSS = mainCamera.gameObject.AddComponent<AlloyDeferredRendererPlus>();
