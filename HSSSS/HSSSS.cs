@@ -3,11 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Xml;
 using System.Xml.Linq;
+using Studio;
 using IllusionPlugin;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Harmony;
+
 
 namespace HSSSS
 {
@@ -15,63 +17,56 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "0.3.0"; } }
+        public string Version { get { return "0.4.0"; } }
         public string[] Filter { get { return new[] { "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
         #region Global Variables
-        //
-        private static string _name;
-        private static string _version;
+        private static string pluginName;
+        private static string pluginVersion;
+        private static string pluginLocation;
+        private static string configLocation;
+        private static string configPath;
 
-        // 
-        private static AssetBundle bundle;
+        private static AssetBundle assetBundle;
         private static Shader deferredSkin;
         private static Shader deferredReflections;
 
-        //
         internal static AlloyDeferredRendererPlus SSS;
         internal static Shader deferredTransmissionBlit;
         internal static Shader deferredBlurredNormals;
         internal static Texture2D skinLUT;
 
-        // 
-        internal static Material skinMaterial;
-        internal static Material overlayMaterial;
-        internal static Material eyeBrowMaterial;
-        internal static Material eyeLashMaterial;
-        internal static Material eyeAlphaMaterial;
-        internal static Material eyePupilMaterial;
-        internal static Material eyeWhiteMaterial;
-        internal static Texture2D femaleBodyThickness;
-        internal static Texture2D famaleHeadThickness;
-        internal static Texture2D maleBodyThickness;
-        internal static Texture2D maleHeadThickness;
-        internal static Texture2D spotCookie;
+        public static Material skinMaterial;
+        public static Material overlayMaterial;
+        public static Material eyeBrowMaterial;
+        public static Material eyeLashMaterial;
+        public static Material eyeAlphaMaterial;
+        public static Material eyePupilMaterial;
+        public static Material eyeWhiteMaterial;
+        public static Texture2D femaleBodyThickness;
+        public static Texture2D famaleHeadThickness;
+        public static Texture2D maleBodyThickness;
+        public static Texture2D maleHeadThickness;
+        public static Texture2D spotCookie;
         
-        //
         private GameObject configUI;
         private GameObject skinReplacer;
 
-        //
-        private static bool isEnabled;
-        private static bool useDeferred;
-        private static bool useTessellation;
-        private static bool useWetSpecGloss;
+        internal static bool isEnabled;
+        internal static bool useDeferred;
+        internal static bool useTessellation;
+        internal static bool useWetSpecGloss;
         internal static bool fixAlphaShadow;
         internal static KeyCode hotKey;
 
-        //
-        private static string pluginLocation;
-        private static string configLocation;
-        private static string configPath;
         #endregion
 
         #region Unity Methods
         public void OnApplicationStart()
         {
-            _name = this.Name;
-            _version = this.Version;
+            pluginName = this.Name;
+            pluginVersion = this.Version;
 
             pluginLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             configLocation = Path.Combine(pluginLocation, this.Name);
@@ -91,13 +86,19 @@ namespace HSSSS
                 if (useDeferred)
                 {
                     DeferredAssetLoader();
-                    ReplaceInternalShader();
+                    InternalShaderReplacer();
                 }
 
                 else
                 {
                     ForwardAssetLoader();
                 }
+
+                HarmonyInstance harmony = HarmonyInstance.Create("com.kkul.hssss");
+                harmony.Patch(
+                    AccessTools.Method(typeof(OCILight), "Update"), null,
+                    new HarmonyMethod(typeof(HSSSS), nameof(SpotLightPatcher))
+                    );
             }
         }
 
@@ -113,7 +114,7 @@ namespace HSSSS
                 {
                     if (useDeferred)
                     {
-                        InitPostFX();
+                        PostFxInitializer();
                         
                         if (!LoadConfig())
                         {
@@ -148,8 +149,7 @@ namespace HSSSS
         {
             if(isEnabled)
             {
-                FixSpotLights();
-
+                //FixSpotLights();
                 if (useDeferred && Input.GetKeyDown(hotKey))
                 {
                     if (this.configUI == null)
@@ -193,14 +193,14 @@ namespace HSSSS
 
         private static void BaseAssetLoader()
         {
-            bundle = AssetBundle.LoadFromMemory(Resources.hssssresources);
-            femaleBodyThickness = bundle.LoadAsset<Texture2D>("FemaleBodyThickness");
-            famaleHeadThickness = bundle.LoadAsset<Texture2D>("FemaleHeadThickness");
-            maleBodyThickness = bundle.LoadAsset<Texture2D>("MaleBodyThickness");
-            maleHeadThickness = bundle.LoadAsset<Texture2D>("MaleHeadThickness");
-            spotCookie = bundle.LoadAsset<Texture2D>("DefaultSpotCookie");
+            assetBundle = AssetBundle.LoadFromMemory(Resources.hssssresources);
+            femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
+            famaleHeadThickness = assetBundle.LoadAsset<Texture2D>("FemaleHeadThickness");
+            maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
+            maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
+            spotCookie = assetBundle.LoadAsset<Texture2D>("DefaultSpotCookie");
 
-            if (null != bundle)
+            if (null != assetBundle)
             {
                 Console.WriteLine("#### HSSSS: Assetbundle Loaded");
             }
@@ -217,11 +217,11 @@ namespace HSSSS
 
             if (fixAlphaShadow)
             {
-                eyeBrowMaterial = bundle.LoadAsset<Material>("EyeBrow");
-                eyeLashMaterial = bundle.LoadAsset<Material>("EyeLash");
-                eyeAlphaMaterial = bundle.LoadAsset<Material>("EyeAlpha");
-                eyePupilMaterial = bundle.LoadAsset<Material>("EyePupil");
-                eyeWhiteMaterial = bundle.LoadAsset<Material>("EyeWhite");
+                eyeBrowMaterial = assetBundle.LoadAsset<Material>("EyeBrow");
+                eyeLashMaterial = assetBundle.LoadAsset<Material>("EyeLash");
+                eyeAlphaMaterial = assetBundle.LoadAsset<Material>("EyeAlpha");
+                eyePupilMaterial = assetBundle.LoadAsset<Material>("EyePupil");
+                eyeWhiteMaterial = assetBundle.LoadAsset<Material>("EyeWhite");
 
                 if (null != eyeBrowMaterial && null != eyeLashMaterial && null != eyeAlphaMaterial && null != eyePupilMaterial && null != eyeWhiteMaterial)
                 {
@@ -232,24 +232,24 @@ namespace HSSSS
 
         private static void DeferredAssetLoader()
         {
-            skinLUT = bundle.LoadAsset<Texture2D>("DeferredLUT");
+            skinLUT = assetBundle.LoadAsset<Texture2D>("DeferredLUT");
 
             if (useTessellation)
             {
-                skinMaterial = bundle.LoadAsset<Material>("SkinDeferredTessellation");
-                overlayMaterial = bundle.LoadAsset<Material>("OverlayTessellation");
+                skinMaterial = assetBundle.LoadAsset<Material>("SkinDeferredTessellation");
+                overlayMaterial = assetBundle.LoadAsset<Material>("OverlayTessellation");
             }
 
             else
             {
-                skinMaterial = bundle.LoadAsset<Material>("SkinDeferred");
-                overlayMaterial = bundle.LoadAsset<Material>("Overlay");
+                skinMaterial = assetBundle.LoadAsset<Material>("SkinDeferred");
+                overlayMaterial = assetBundle.LoadAsset<Material>("Overlay");
             }
 
-            deferredTransmissionBlit = bundle.LoadAsset<Shader>("DeferredTransmissionBlit");
-            deferredBlurredNormals = bundle.LoadAsset<Shader>("DeferredBlurredNormals");
-            deferredSkin = bundle.LoadAsset<Shader>("Alloy Deferred Skin");
-            deferredReflections = bundle.LoadAsset<Shader>("Alloy Deferred Reflections");
+            deferredTransmissionBlit = assetBundle.LoadAsset<Shader>("DeferredTransmissionBlit");
+            deferredBlurredNormals = assetBundle.LoadAsset<Shader>("DeferredBlurredNormals");
+            deferredSkin = assetBundle.LoadAsset<Shader>("Alloy Deferred Skin");
+            deferredReflections = assetBundle.LoadAsset<Shader>("Alloy Deferred Reflections");
 
             if (useWetSpecGloss)
             {
@@ -279,8 +279,8 @@ namespace HSSSS
 
         private static void ForwardAssetLoader()
         {
-            skinMaterial = bundle.LoadAsset<Material>("SkinForward");
-            overlayMaterial = bundle.LoadAsset<Material>("Overlay");
+            skinMaterial = assetBundle.LoadAsset<Material>("SkinForward");
+            overlayMaterial = assetBundle.LoadAsset<Material>("Overlay");
 
             if (useWetSpecGloss)
             {
@@ -293,7 +293,7 @@ namespace HSSSS
             }
         }
 
-        private static void ReplaceInternalShader()
+        private static void InternalShaderReplacer()
         {
             GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredShading, BuiltinShaderMode.UseCustom);
             GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredReflections, BuiltinShaderMode.UseCustom);
@@ -311,7 +311,7 @@ namespace HSSSS
             }
         }
 
-        private static void InitPostFX()
+        private static void PostFxInitializer()
         {
             GameObject mainCamera = GameObject.Find("StudioScene/Camera/Main Camera");
             if (null != mainCamera)
@@ -325,16 +325,13 @@ namespace HSSSS
             }
         }
 
-        private static void FixSpotLights()
+        private static void SpotLightPatcher(OCILight __instance)
         {
-            foreach (Light light in UnityEngine.Resources.FindObjectsOfTypeAll(typeof(Light)))
+            if (LightType.Spot == __instance.lightType)
             {
-                if (light.type == LightType.Spot)
+                if (null == __instance.light.cookie)
                 {
-                    if (light.cookie == null)
-                    {
-                        light.cookie = spotCookie;
-                    }
+                    __instance.light.cookie = (Texture) spotCookie;
                 }
             }
         }
@@ -385,7 +382,7 @@ namespace HSSSS
         {
             XDocument config = new XDocument();
 
-            XElement root = new XElement(_name, new XAttribute("version", _version));
+            XElement root = new XElement(pluginName, new XAttribute("version", pluginVersion));
             XElement scattering = new XElement("SkinScattering",
                 new XAttribute("enabled", SSS.SkinSettings.Enabled),
                 new XElement("Weight", SSS.SkinSettings.Weight),
@@ -435,15 +432,18 @@ namespace HSSSS
     {
         private enum materialType
         {
-            skinOverlay,
             femaleHead,
             femaleBody,
+            femaleBlush,
+            femaleJuice,
+            femaleNipple,
             maleHead,
             maleBody,
             eyePupil,
             eyeShade,
             eyeWhite,
             eyeReflex,
+            eyeTears,
             eyeBrow,
             eyeLash,
         };
@@ -495,126 +495,15 @@ namespace HSSSS
             this.StopAllCoroutines();
         }
 
-        private void GetObjects()
+        private void GetObjectFromRef(materialType key, GameObject obj)
         {
-            foreach (CharBody body in UnityEngine.Resources.FindObjectsOfTypeAll(typeof(CharBody)))
-            {
-                CharInfo info = body.chaInfo;
-
-                // Body Iteration
-                foreach (GameObject bodyObj in info.GetTagInfo(CharReference.TagObjKey.ObjSkinBody))
-                {
-                    foreach (Material bodyMat in bodyObj.GetComponent<Renderer>().sharedMaterials)
-                    {
-                        // Skin Materials
-                        if (bodyMat.shader.name.Contains("PBRsp"))
-                        {
-                            if (0 == info.Sex)
-                            {
-                                this.materialsToReplace[bodyMat] = materialType.maleBody;
-                            }
-
-                            else if (1 == info.Sex)
-                            {
-                                this.materialsToReplace[bodyMat] = materialType.femaleBody;
-                            }
-                        }
-
-                        // Overlay Materials
-                        else if (!bodyMat.shader.name.Contains("HSSSS"))
-                        {
-                            this.materialsToReplace[bodyMat] = materialType.skinOverlay;
-                        }
-                    }
-                }
-
-                // Head Iteration
-                foreach (GameObject faceObj in info.GetTagInfo(CharReference.TagObjKey.ObjSkinFace))
-                {
-                    foreach (Material faceMat in faceObj.GetComponent<Renderer>().sharedMaterials)
-                    {
-                        // Skin Materials
-                        if (faceMat.shader.name.Contains("PBRsp"))
-                        {
-                            if (0 == info.Sex)
-                            {
-                                this.materialsToReplace[faceMat] = materialType.maleHead;
-                            }
-
-                            else if (1 == info.Sex)
-                            {
-                                this.materialsToReplace[faceMat] = materialType.femaleHead;
-                            }
-                        }
-
-                        // Overlay Materials
-                        else if (!faceMat.shader.name.Contains("HSSSS"))
-                        {
-                            this.materialsToReplace[faceMat] = materialType.skinOverlay;
-                        }
-                    }
-                }
-
-                if (HSSSS.fixAlphaShadow)
-                {
-                    this.GetObjectByTag(materialType.skinOverlay, info.GetTagInfo(CharReference.TagObjKey.ObjNip));
-                    this.GetObjectByTag(materialType.eyePupil, info.GetTagInfo(CharReference.TagObjKey.ObjEyeL));
-                    this.GetObjectByTag(materialType.eyePupil, info.GetTagInfo(CharReference.TagObjKey.ObjEyeR));
-                    this.GetObjectByTag(materialType.eyeReflex, info.GetTagInfo(CharReference.TagObjKey.ObjEyeHi));
-                    this.GetObjectByTag(materialType.eyeBrow, info.GetTagInfo(CharReference.TagObjKey.ObjEyebrow));
-                    this.GetObjectByTag(materialType.eyeLash, info.GetTagInfo(CharReference.TagObjKey.ObjEyelashes));
-
-                    this.GetEyeShade(body.objHead);
-                }
-            }
-        }
-
-        private void GetEyeShade(GameObject objHead)
-        {
-            if (null != objHead)
-            {
-                GameObject objShade = null;
-
-                if (null != objHead.transform.Find("cf_N_head/cf_O_eyekage"))
-                {
-                    objShade = objHead.transform.Find("cf_N_head/cf_O_eyekage").gameObject;
-                }
-
-                else if (null != objHead.transform.Find("cf_N_head/cf_O_eyekage1"))
-                {
-                    objShade = objHead.transform.Find("cf_N_head/cf_O_eyekage1").gameObject;
-                }
-
-                if (null != objShade)
-                {
-                    Renderer renderer = objShade.GetComponent<Renderer>();
-                    Material matShade = renderer.sharedMaterial;
-
-                    if (!matShade.shader.name.Contains("HSSSS"))
-                    {
-                        this.materialsToReplace[matShade] = materialType.eyeShade;
-                    }
-
-                    if (!renderer.receiveShadows)
-                    {
-                        renderer.receiveShadows = true;
-                    }
-                }
-            }
-        }
-
-        private void GetObjectByTag(materialType key, List<GameObject> objList)
-        {
-            foreach (GameObject obj in objList)
+            if (null != obj)
             {
                 Renderer renderer = obj.GetComponent<Renderer>();
 
                 foreach (Material mat in renderer.sharedMaterials)
                 {
-                    if (!mat.shader.name.Contains("HSSSS"))
-                    {
-                        this.materialsToReplace[mat] = key;
-                    }
+                    this.MaterialInspector(mat, key);
                 }
 
                 if (!renderer.receiveShadows)
@@ -624,71 +513,33 @@ namespace HSSSS
             }
         }
 
-        private void ReplaceMaterials()
+        private void GetObjectFromTag(materialType key, List<GameObject> objList)
         {
-            foreach (KeyValuePair<Material, materialType> entry in this.materialsToReplace)
+            foreach (GameObject obj in objList)
             {
-                Console.WriteLine("#### HSSSS Replaces " + entry.Key.name);
+                Renderer renderer = obj.GetComponent<Renderer>();
 
-                switch (entry.Value)
+                foreach (Material mat in renderer.sharedMaterials)
                 {
-                    case materialType.femaleBody:
-                        this.SetMaterialProps(HSSSS.skinMaterial, entry.Key, entry.Value);
-                        entry.Key.SetTexture("_Thickness", HSSSS.femaleBodyThickness);
-                        break;
+                    this.MaterialInspector(mat, key);
+                }
 
-                    case materialType.femaleHead:
-                        this.SetMaterialProps(HSSSS.skinMaterial, entry.Key, entry.Value);
-                        entry.Key.SetTexture("_Thickness", HSSSS.famaleHeadThickness);
-                        break;
-
-                    case materialType.maleBody:
-                        this.SetMaterialProps(HSSSS.skinMaterial, entry.Key, entry.Value);
-                        entry.Key.SetTexture("_Thickness", HSSSS.maleBodyThickness);
-                        break;
-
-                    case materialType.maleHead:
-                        this.SetMaterialProps(HSSSS.skinMaterial, entry.Key, entry.Value);
-                        entry.Key.SetTexture("_Thickness", HSSSS.maleHeadThickness);
-                        break;
-
-                    case materialType.skinOverlay:
-                        this.SetMaterialProps(HSSSS.overlayMaterial, entry.Key, entry.Value);
-                        entry.Key.renderQueue = 2000;
-                        break;
-
-                    case materialType.eyePupil:
-                        this.SetMaterialProps(HSSSS.eyePupilMaterial, entry.Key, entry.Value);
-                        entry.Key.renderQueue = 2000;
-                        break;
-
-                    case materialType.eyeShade:
-                        this.SetMaterialProps(HSSSS.eyeAlphaMaterial, entry.Key, entry.Value);
-                        entry.Key.renderQueue = 2001;
-                        break;
-
-                    case materialType.eyeReflex:
-                        this.SetMaterialProps(HSSSS.eyeAlphaMaterial, entry.Key, entry.Value);
-                        entry.Key.renderQueue = 2002;
-                        break;
-
-                    case materialType.eyeWhite:
-                        this.SetMaterialProps(HSSSS.eyeWhiteMaterial, entry.Key, entry.Value);
-                        break;
-
-                    case materialType.eyeBrow:
-                        this.SetMaterialProps(HSSSS.eyeBrowMaterial, entry.Key, entry.Value);
-                        entry.Key.renderQueue = 2001;
-                        break;
-
-                    case materialType.eyeLash:
-                        this.SetMaterialProps(HSSSS.eyeLashMaterial, entry.Key, entry.Value);
-                        entry.Key.renderQueue = 2000;
-                        break;
+                if (!renderer.receiveShadows)
+                {
+                    renderer.receiveShadows = true;
                 }
             }
+        }
 
-            this.materialsToReplace.Clear();
+        private void MaterialInspector(Material mat, materialType type)
+        {
+            if (mat != null)
+            {
+                if (!mat.shader.name.Contains("HSSSS"))
+                {
+                    this.materialsToReplace[mat] = type;
+                }
+            }
         }
 
         private void SetMaterialProps(Material sourceMaterial, Material targetMaterial, materialType key)
@@ -725,14 +576,209 @@ namespace HSSSS
             }
         }
 
+        private IEnumerator SearchMaterials()
+        {
+            var characterManager = Singleton<Manager.Character>.Instance;
+
+            Dictionary<string, Material> juiceDict = characterManager.dictSiruMaterial;
+            SortedDictionary<int, CharFemale> femaleDict = characterManager.dictFemale;
+            SortedDictionary<int, CharMale> maleDict = characterManager.dictMale;
+
+            // Juices
+            foreach (KeyValuePair<string, Material> entry in juiceDict)
+            {
+                this.MaterialInspector(entry.Value, materialType.femaleJuice);
+
+                yield return null;
+            }
+
+            // Female Materials
+            foreach (KeyValuePair<int, CharFemale> entry in femaleDict)
+            {
+                CharFemaleBody femaleBody = entry.Value.femaleBody;
+
+                this.MaterialInspector(femaleBody.customMatBody, materialType.femaleBody);
+                this.MaterialInspector(femaleBody.customMatFace, materialType.femaleHead);
+
+                List<GameObject> tagInfo = entry.Value.GetTagInfo(CharReference.TagObjKey.ObjSkinFace);
+
+                if (0 != tagInfo.Count)
+                {
+                    Renderer faceRend = tagInfo[0].GetComponent<Renderer>();
+
+                    if (1 < faceRend.sharedMaterials.Length)
+                    {
+                        this.MaterialInspector(faceRend.sharedMaterials[1], materialType.femaleBlush);
+                    }
+                }
+
+                if (HSSSS.fixAlphaShadow)
+                {
+                    this.GetObjectFromTag(materialType.femaleNipple, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjNip));
+                    this.GetObjectFromTag(materialType.eyeWhite, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyeW));
+                    this.GetObjectFromTag(materialType.eyePupil, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyeL));
+                    this.GetObjectFromTag(materialType.eyePupil, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyeR));
+                    this.GetObjectFromTag(materialType.eyeReflex, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyeHi));
+                    this.GetObjectFromTag(materialType.eyeBrow, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyebrow));
+                    this.GetObjectFromTag(materialType.eyeLash, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyelashes));
+                    this.GetObjectFromRef(materialType.eyeTears, entry.Value.GetReferenceInfo(CharReference.RefObjKey.S_TEARS_01));
+                    this.GetObjectFromRef(materialType.eyeTears, entry.Value.GetReferenceInfo(CharReference.RefObjKey.S_TEARS_02));
+                    this.GetObjectFromRef(materialType.eyeTears, entry.Value.GetReferenceInfo(CharReference.RefObjKey.S_TEARS_03));
+
+                    GameObject objHead = femaleBody.objHead;
+
+                    if (objHead != null)
+                    {
+                        GameObject objShade = null;
+
+                        if (null != objHead.transform.Find("cf_N_head/cf_O_eyekage"))
+                        {
+                            objShade = objHead.transform.Find("cf_N_head/cf_O_eyekage").gameObject;
+                        }
+
+                        else if (null != objHead.transform.Find("cf_N_head/cf_O_eyekage1"))
+                        {
+                            objShade = objHead.transform.Find("cf_N_head/cf_O_eyekage1").gameObject;
+                        }
+
+                        if (null != objShade)
+                        {
+                            Renderer renderer = objShade.GetComponent<Renderer>();
+                            Material matShade = renderer.sharedMaterial;
+
+                            this.MaterialInspector(matShade, materialType.eyeShade);
+
+                            if (!renderer.receiveShadows)
+                            {
+                                renderer.receiveShadows = true;
+                            }
+                        }
+                    }
+                }
+
+                yield return null;
+            }
+
+            // Male Materials
+            foreach (KeyValuePair<int, CharMale> entry in maleDict)
+            {
+                CharMaleBody maleBody = entry.Value.maleBody;
+
+                this.MaterialInspector(maleBody.customMatBody, materialType.maleBody);
+                this.MaterialInspector(maleBody.customMatFace, materialType.maleHead);
+
+                if (HSSSS.fixAlphaShadow)
+                {
+                    this.GetObjectFromTag(materialType.eyeWhite, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyeW));
+                    this.GetObjectFromTag(materialType.eyePupil, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyeL));
+                    this.GetObjectFromTag(materialType.eyePupil, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyeR));
+                    this.GetObjectFromTag(materialType.eyeReflex, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyeHi));
+                    this.GetObjectFromTag(materialType.eyeBrow, entry.Value.GetTagInfo(CharReference.TagObjKey.ObjEyebrow));
+                }
+
+                yield return null;
+            }
+        }
+
+        private IEnumerator ReplaceMaterials()
+        {
+            foreach (KeyValuePair<Material, materialType> entry in this.materialsToReplace)
+            {
+                Console.WriteLine("#### HSSSS Replaces " + entry.Key.name);
+
+                switch (entry.Value)
+                {
+                    case materialType.femaleBody:
+                        this.SetMaterialProps(HSSSS.skinMaterial, entry.Key, entry.Value);
+                        entry.Key.SetTexture("_Thickness", HSSSS.femaleBodyThickness);
+                        break;
+
+                    case materialType.femaleHead:
+                        this.SetMaterialProps(HSSSS.skinMaterial, entry.Key, entry.Value);
+                        entry.Key.SetTexture("_Thickness", HSSSS.famaleHeadThickness);
+                        break;
+
+                    case materialType.femaleBlush:
+                        this.SetMaterialProps(HSSSS.overlayMaterial, entry.Key, entry.Value);
+                        entry.Key.EnableKeyword("_METALLIC_OFF");
+                        entry.Key.renderQueue = 2000;
+                        break;
+
+                    case materialType.femaleJuice:
+                        this.SetMaterialProps(HSSSS.overlayMaterial, entry.Key, entry.Value);
+                        entry.Key.SetFloat("_Metallic", 0.65f);
+                        entry.Key.renderQueue = 2000;
+                        break;
+
+                    case materialType.femaleNipple:
+                        this.SetMaterialProps(HSSSS.overlayMaterial, entry.Key, entry.Value);
+                        entry.Key.renderQueue = 2000;
+                        break;
+
+                    case materialType.maleBody:
+                        this.SetMaterialProps(HSSSS.skinMaterial, entry.Key, entry.Value);
+                        entry.Key.SetTexture("_Thickness", HSSSS.maleBodyThickness);
+                        break;
+
+                    case materialType.maleHead:
+                        this.SetMaterialProps(HSSSS.skinMaterial, entry.Key, entry.Value);
+                        entry.Key.SetTexture("_Thickness", HSSSS.maleHeadThickness);
+                        break;
+
+                    case materialType.eyePupil:
+                        this.SetMaterialProps(HSSSS.eyePupilMaterial, entry.Key, entry.Value);
+                        entry.Key.EnableKeyword("_METALLIC_OFF");
+                        entry.Key.renderQueue = 2000;
+                        break;
+
+                    case materialType.eyeShade:
+                        this.SetMaterialProps(HSSSS.eyeAlphaMaterial, entry.Key, entry.Value);
+                        entry.Key.EnableKeyword("_METALLIC_OFF");
+                        entry.Key.renderQueue = 2001;
+                        break;
+
+                    case materialType.eyeReflex:
+                        this.SetMaterialProps(HSSSS.eyeAlphaMaterial, entry.Key, entry.Value);
+                        entry.Key.EnableKeyword("_METALLIC_OFF");
+                        entry.Key.renderQueue = 2002;
+                        break;
+
+                    case materialType.eyeWhite:
+                        this.SetMaterialProps(HSSSS.eyeWhiteMaterial, entry.Key, entry.Value);
+                        entry.Key.EnableKeyword("_METALLIC_OFF");
+                        break;
+
+                    case materialType.eyeBrow:
+                        this.SetMaterialProps(HSSSS.eyeBrowMaterial, entry.Key, entry.Value);
+                        entry.Key.EnableKeyword("_METALLIC_OFF");
+                        entry.Key.renderQueue = 2001;
+                        break;
+
+                    case materialType.eyeLash:
+                        this.SetMaterialProps(HSSSS.eyeLashMaterial, entry.Key, entry.Value);
+                        entry.Key.EnableKeyword("_METALLIC_OFF");
+                        entry.Key.renderQueue = 2000;
+                        break;
+
+                    case materialType.eyeTears:
+                        this.SetMaterialProps(HSSSS.eyeAlphaMaterial, entry.Key, entry.Value);
+                        entry.Key.SetFloat("_Metallic", 0.80f);
+                        entry.Key.renderQueue = 2003;
+                        break;
+                }
+
+                yield return null;
+            }
+
+            this.materialsToReplace.Clear();
+        }
+
         private IEnumerator FindAndReplace()
         {
             while (true)
             {
-                this.GetObjects();
-                yield return null;
-                this.ReplaceMaterials();
-                yield return null;
+                yield return this.StartCoroutine(this.SearchMaterials());
+                yield return this.StartCoroutine(this.ReplaceMaterials());
             }
         }
     }
@@ -746,6 +792,8 @@ namespace HSSSS
         private GUIStyle sliderStyle;
         private GUIStyle thumbStyle;
         private GUIStyle buttonStyle;
+
+        private int lightAlpha = 1;
         
         public void Awake()
         {
@@ -790,7 +838,7 @@ namespace HSSSS
 
         private void WindowFunction(int WindowID)
         {
-            GUILayout.Space(16.0f);
+            GUILayout.Space(12.0f);
 
             GUILayout.Label("Skin Scattering Weight", this.labelStyle);
             HSSSS.SSS.SkinSettings.Weight = this.SliderControls(HSSSS.SSS.SkinSettings.Weight, 0.0f, 1.0f);
@@ -816,7 +864,7 @@ namespace HSSSS
             GUILayout.Label("Transmission Absorption", this.labelStyle);
             HSSSS.SSS.SkinSettings.TransmissionAbsorption = this.RGBControls(HSSSS.SSS.SkinSettings.TransmissionAbsorption);
 
-            GUILayout.Space(16.0f);
+            GUILayout.Space(12.0f);
 
             GUILayout.Label("Transmission Weight", this.labelStyle);
             HSSSS.SSS.TransmissionSettings.Weight = this.SliderControls(HSSSS.SSS.TransmissionSettings.Weight, 0.0f, 1.0f);
@@ -830,14 +878,30 @@ namespace HSSSS
             GUILayout.Label("Transmission Falloff", this.labelStyle);
             HSSSS.SSS.TransmissionSettings.Falloff = this.SliderControls(HSSSS.SSS.TransmissionSettings.Falloff, 1.0f, 20.0f);
 
-            GUILayout.Space(16.0f);
+            GUILayout.Space(12.0f);
+
+            GUILayout.BeginHorizontal();
+
+            if (int.TryParse(GUILayout.TextField(this.lightAlpha.ToString(), this.fieldStyle), out int alpha))
+            {
+                this.lightAlpha = alpha;
+            }
+
+            if (GUILayout.Button("Fix Spotlight Alpha", this.buttonStyle))
+            {
+                this.SetSpotLightAlpha();
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(12.0f);
 
             if (GUILayout.Button("Reset Configuration", this.buttonStyle))
             {
                 HSSSS.LoadConfig();
             }
 
-            GUILayout.Space(16.0f);
+            GUILayout.Space(12.0f);
 
             if (GUILayout.Button("Save Configuration", this.buttonStyle))
             {
@@ -893,6 +957,26 @@ namespace HSSSS
             GUILayout.EndHorizontal();
 
             return rgbValue;
+        }
+
+        private void SetSpotLightAlpha()
+        {
+            Dictionary<int, ObjectCtrlInfo> ociDict = Singleton<Studio.Studio>.Instance.dicObjectCtrl;
+
+            foreach(KeyValuePair<int, ObjectCtrlInfo> entry in ociDict)
+            {
+                OCILight light = entry.Value as OCILight;
+
+                if (null != light)
+                {
+                    if (LightType.Spot == light.lightType)
+                    {
+                        Color lightColor = light.lightInfo.color;
+                        lightColor.a = (float)this.lightAlpha * 0.01f;
+                        light.SetColor(lightColor);
+                    }
+                }
+            }
         }
     }
 }
