@@ -17,17 +17,19 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "0.5.0"; } }
+        public string Version { get { return "0.5.1"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
         #region Global Variables
+        // info
         private static string pluginName;
         private static string pluginVersion;
         private static string pluginLocation;
         private static string configLocation;
         private static string configPath;
 
+        // assets and resources
         private static AssetBundle assetBundle;
         private static Shader deferredSkin;
         private static Shader deferredReflections;
@@ -48,10 +50,9 @@ namespace HSSSS
         public static Texture2D femaleHeadThickness;
         public static Texture2D maleBodyThickness;
         public static Texture2D maleHeadThickness;
-        public static Texture2D spotCookie;
-        
-        private GameObject configUI;
+        public static Texture2D spotCookie;      
 
+        // modprefs.ini options
         private static bool isStudio;
         private static bool isEnabled;
         private static bool useDeferred;
@@ -59,6 +60,9 @@ namespace HSSSS
         private static bool useWetSpecGloss;
         private static bool fixAlphaShadow;
         private static KeyCode hotKey;
+
+        // ui window
+        private GameObject configUI;
         #endregion
 
         #region Unity Methods
@@ -98,42 +102,32 @@ namespace HSSSS
                 HarmonyInstance harmony = HarmonyInstance.Create("com.kkul.hssss");
 
                 harmony.Patch(
-                        AccessTools.Method(typeof(CharFemaleCustom), "CreateBodyTexture"), null,
-                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.FemaleBodyReplacer))
-                        );
-
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharFemaleCustom), "CreateFaceTexture"), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.FemaleFaceReplacer))
+                    AccessTools.Method(typeof(CharCustom), nameof(CharCustom.SetBodyBaseMaterial)), null,
+                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.BodyReplacer))
                     );
 
                 harmony.Patch(
-                    AccessTools.Method(typeof(CharMaleCustom), "CreateBodyTexture"), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.MaleBodyReplacer))
+                    AccessTools.Method(typeof(CharCustom), nameof(CharCustom.SetFaceBaseMaterial)), null,
+                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.FaceReplacer))
                     );
 
                 harmony.Patch(
-                    AccessTools.Method(typeof(CharMaleCustom), "CreateFaceTexture"), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.MaleFaceReplacer))
-                    );
-
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharCustom), "ChangeMaterial"), null,
+                    AccessTools.Method(typeof(CharCustom), nameof(CharCustom.ChangeMaterial)), null,
                     new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.CommonPartsReplacer))
                     );
 
                 harmony.Patch(
-                    AccessTools.Method(typeof(Manager.Character), "Awake"), null,
+                    AccessTools.Method(typeof(Manager.Character), nameof(Manager.Character.Awake)), null,
                     new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.JuicesReplacer))
-                    );
-
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharFemaleBody), "Reload"), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.BlushReplacer))
                     );
 
                 if (isStudio)
                 {
+                    harmony.Patch(
+                        AccessTools.Method(typeof(CharFemaleBody), nameof(CharFemaleBody.Reload)), null,
+                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.MiscReplacer))
+                        );
+
                     harmony.Patch(
                         AccessTools.Method(typeof(OCILight), "Update"), null,
                         new HarmonyMethod(typeof(HSSSS), nameof(SpotLightPatcher))
@@ -208,12 +202,28 @@ namespace HSSSS
         #region Custom Methods
         private void ConfigParser()
         {
+            // enable & disable plugin
             isEnabled = ModPrefs.GetBool("HSSSS", "Enabled", true, true);
+            // deferred & foward option
             useDeferred = ModPrefs.GetBool("HSSSS", "DeferredSkin", true, true);
+            // tesellation skin shader (deferred only)
             useTessellation = ModPrefs.GetBool("HSSSS", "Tessellation", false, true);
+            // semi-pbr wetness option for meta/nyaacho wet specgloss
             useWetSpecGloss = ModPrefs.GetBool("HSSSS", "WetSpecGloss", false, true);
+            // additional replacement option for some transparent materials
             fixAlphaShadow = ModPrefs.GetBool("HSSSS", "FixShadow", false, true);
 
+            /*
+            // whether to use custom thickness map instead of the built-in texture
+            useCustomMap = ModPrefs.GetBool("HSSSS", "CustomTexture", false, true);
+            // custom texture location
+            femaleBodyPath = Path.Combine(pluginLocation, ModPrefs.GetString("HSSSS", "FemaleBodyMap", "HSSSS/FemaleBodyThickness.png", true));
+            femaleHeadPath = Path.Combine(pluginLocation, ModPrefs.GetString("HSSSS", "FemaleHeadMap", "HSSSS/FemaleHeadThickness.png", true));
+            maleBodyPath = Path.Combine(pluginLocation, ModPrefs.GetString("HSSSS", "MaleBodyMap", "HSSSS/MaleBodyThickness.png", true));
+            maleHeadPath = Path.Combine(pluginLocation, ModPrefs.GetString("HSSSS", "MaleHeadMap", "HSSSS/MaleHeadThickness.png", true));
+            */
+
+            // shortcut for the ui window (deferred only)
             try
             {
                 string hotKeyString = ModPrefs.GetString("HSSSS", "ShortcutKey", KeyCode.ScrollLock.ToString(), true);
@@ -227,28 +237,38 @@ namespace HSSSS
 
         private void BaseAssetLoader()
         {
+            // hssssresources.unity3d
             assetBundle = AssetBundle.LoadFromMemory(Resources.hssssresources);
+            // built-in thickness textures
             femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
             femaleHeadThickness = assetBundle.LoadAsset<Texture2D>("FemaleHeadThickness");
             maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
             maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
+            // spotlight cookie
             spotCookie = assetBundle.LoadAsset<Texture2D>("DefaultSpotCookie");
 
-            if (null != assetBundle)
+            //
+            if (null == assetBundle)
             {
-                Console.WriteLine("#### HSSSS: Assetbundle Loaded");
+                Console.WriteLine("#### HSSSS: Failed to Load Internal AssetBundle");
             }
 
-            if (null != femaleBodyThickness && null != femaleHeadThickness)
+            if (null == femaleBodyThickness || null == femaleHeadThickness)
             {
-                Console.WriteLine("#### HSSSS: Built-In Thickness Map Loaded");
+                Console.WriteLine("#### HSSSS: Failed to Load Female Thickness Textures");
             }
 
-            if (null != spotCookie)
+            if (null == maleBodyThickness || null == maleHeadThickness)
             {
-                Console.WriteLine("#### HSSSS: Spotlight Cookie Loaded");
+                Console.WriteLine("#### HSSSS: Failed to Load Male Thickness Textures");
             }
 
+            if (null == spotCookie)
+            {
+                Console.WriteLine("#### HSSSS: Failed to Load Spotlight Cookie");
+            }
+
+            // materials for additional replacement
             if (fixAlphaShadow)
             {
                 eyeBrowMaterial = assetBundle.LoadAsset<Material>("EyeBrow");
@@ -257,73 +277,104 @@ namespace HSSSS
                 eyePupilMaterial = assetBundle.LoadAsset<Material>("EyePupil");
                 eyeWhiteMaterial = assetBundle.LoadAsset<Material>("EyeWhite");
 
-                if (null != eyeBrowMaterial && null != eyeLashMaterial && null != eyeAlphaMaterial && null != eyePupilMaterial && null != eyeWhiteMaterial)
+                //
+                if (null == eyeBrowMaterial)
                 {
-                    Console.WriteLine("#### HSSSS: FixShadow Materials Loaded");
+                    Console.WriteLine("#### HSSSS: Failed to Load Eyebrow Material");
+                }
+
+                if (null == eyeLashMaterial)
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Load Eyelash Material");
+                }
+
+                if (null == eyePupilMaterial)
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Load Eyepuil Material");
+                }
+
+                if (null == eyeWhiteMaterial)
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Load Eyewhite Material");
+                }
+
+                if (null == eyeAlphaMaterial)
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Load Eye Overlay Material");
                 }
             }
         }
 
         private void DeferredAssetLoader()
         {
+            // skin-lookup table for skin scattering
             skinLUT = assetBundle.LoadAsset<Texture2D>("DeferredLUT");
 
+            // tesellation materials
             if (useTessellation)
             {
                 skinMaterial = assetBundle.LoadAsset<Material>("SkinDeferredTessellation");
                 overlayMaterial = assetBundle.LoadAsset<Material>("OverlayTessellation");
             }
 
+            // non-tesellation materials
             else
             {
                 skinMaterial = assetBundle.LoadAsset<Material>("SkinDeferred");
                 overlayMaterial = assetBundle.LoadAsset<Material>("Overlay");
             }
 
+            // post fx shaders
             deferredTransmissionBlit = assetBundle.LoadAsset<Shader>("DeferredTransmissionBlit");
             deferredBlurredNormals = assetBundle.LoadAsset<Shader>("DeferredBlurredNormals");
+            // internal deferred & reflection shaders
             deferredSkin = assetBundle.LoadAsset<Shader>("Alloy Deferred Skin");
             deferredReflections = assetBundle.LoadAsset<Shader>("Alloy Deferred Reflections");
 
+            // semi-pbr wetness option
             if (useWetSpecGloss)
             {
                 skinMaterial.EnableKeyword("_WET_SPECGLOSS");
             }
 
-            if (null != skinLUT)
+            //
+            if (null == skinLUT)
             {
-                Console.WriteLine("#### HSSSS: Deferred Skin LUT Loaded");
+                Console.WriteLine("#### HSSSS: Failed to Load Deferred Skin LUT");
             }
 
-            if (null != skinMaterial && null != overlayMaterial)
+            if (null == skinMaterial || null == overlayMaterial)
             {
-                Console.WriteLine("#### HSSSS: Deferred Skin Replacer Loaded");
+                Console.WriteLine("#### HSSSS: Failed to Load Skin Material");
             }
 
-            if (null != deferredTransmissionBlit && null != deferredBlurredNormals)
+            if (null == deferredTransmissionBlit || null == deferredBlurredNormals)
             {
-                Console.WriteLine("#### HSSSS: Deferred PostFX Shader Loaded");
+                Console.WriteLine("#### HSSSS: Failed to Load PostFX Shaders");
             }
 
-            if (null != deferredSkin && null != deferredReflections)
+            if (null == deferredSkin || null == deferredReflections)
             {
-                Console.WriteLine("#### HSSSS: Deferred Internal Shader Loaded");
+                Console.WriteLine("#### HSSSS: Failed to Load Deferred Internal Shaders");
             }
         }
 
         private void ForwardAssetLoader()
         {
+            // forward skin materials
             skinMaterial = assetBundle.LoadAsset<Material>("SkinForward");
             overlayMaterial = assetBundle.LoadAsset<Material>("Overlay");
 
+            // semi-pbr wetness option
             if (useWetSpecGloss)
             {
                 skinMaterial.EnableKeyword("_WET_SPECGLOSS");
             }
 
-            if (null != skinMaterial && null != overlayMaterial)
+            //
+            if (null == skinMaterial || null == overlayMaterial)
             {
-                Console.WriteLine("#### HSSSS: Forward Skin Replacer Loaded");
+                Console.WriteLine("#### HSSSS: Failed to Load Skin Material");
             }
         }
 
@@ -334,14 +385,14 @@ namespace HSSSS
             GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredShading, deferredSkin);
             GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredReflections, deferredReflections);
 
-            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredShading) == deferredSkin)
+            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredShading) != deferredSkin)
             {
-                Console.WriteLine("#### HSSSS: Internal Deferred Shading Replaced");
+                Console.WriteLine("#### HSSSS: Failed to Replace Internal Deferred Shader");
             }
 
-            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredReflections) == deferredReflections)
+            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredReflections) != deferredReflections)
             {
-                Console.WriteLine("#### HSSSS: Internal Deferred Reflection Replaced");
+                Console.WriteLine("#### HSSSS: Failed to Replace Internal Reflection Shader");
             }
         }
 
@@ -353,9 +404,9 @@ namespace HSSSS
             {
                 SSS = mainCamera.gameObject.AddComponent<AlloyDeferredRendererPlus>();
 
-                if (null != SSS)
+                if (null == SSS)
                 {
-                    Console.WriteLine("#### HSSSS: PostFX Initialized");
+                    Console.WriteLine("#### HSSSS: Failed to Initialize Post FX");
                 }
             }
         }
@@ -392,6 +443,8 @@ namespace HSSSS
                 SSS.TransmissionSettings.BumpDistortion = float.Parse(transmission.Element("Distortion").Value);
                 SSS.TransmissionSettings.ShadowWeight = float.Parse(transmission.Element("ShadowWeight").Value);
                 SSS.TransmissionSettings.Falloff = float.Parse(transmission.Element("Falloff").Value);
+
+                SSS.Refresh();
 
                 return true;
             }
@@ -449,7 +502,9 @@ namespace HSSSS
                 return false;
             }
         }
+        #endregion
 
+        #region Harmony Patches
         private static void SpotLightPatcher(OCILight __instance)
         {
             if (LightType.Spot == __instance.lightType)
@@ -460,8 +515,6 @@ namespace HSSSS
                 }
             }
         }
-
-        #endregion
 
         private class SkinReplacer
         {
@@ -585,7 +638,7 @@ namespace HSSSS
                 }
             }
 
-            public static void FemaleBodyReplacer(CharInfo ___chaInfo)
+            public static void BodyReplacer(CharInfo ___chaInfo)
             {
                 Material bodyMat = ___chaInfo.chaBody.customMatBody;
 
@@ -594,13 +647,23 @@ namespace HSSSS
                     if (!bodyMat.shader.name.Contains("HSSSS"))
                     {
                         ShaderReplacer(skinMaterial, bodyMat);
-                        bodyMat.SetTexture("_Thickness", femaleBodyThickness);
+
+                        if (___chaInfo.Sex == 0)
+                        {
+                            bodyMat.SetTexture("_Thickness", maleBodyThickness);
+                        }
+
+                        else if (___chaInfo.Sex == 1)
+                        {
+                            bodyMat.SetTexture("_Thickness", femaleBodyThickness);
+                        }
+                        
                         Console.WriteLine("#### HSSSS Replaced " + bodyMat);
                     }
                 }
             }
 
-            public static void FemaleFaceReplacer(CharInfo ___chaInfo)
+            public static void FaceReplacer(CharInfo ___chaInfo)
             {
                 Material faceMat = ___chaInfo.chaBody.customMatFace;
 
@@ -609,14 +672,111 @@ namespace HSSSS
                     if (!faceMat.shader.name.Contains("HSSSS"))
                     {
                         ShaderReplacer(skinMaterial, faceMat);
-                        faceMat.SetTexture("_Thickness", femaleHeadThickness);
-                        Console.WriteLine("#### HSSSS Replaced " + faceMat.name);
+
+                        if (___chaInfo.Sex == 0)
+                        {
+                            faceMat.SetTexture("_Thickness", maleHeadThickness);
+                        }
+
+                        else if (___chaInfo.Sex == 1)
+                        {
+                            faceMat.SetTexture("_Thickness", femaleHeadThickness);
+                        }
+
+                        Console.WriteLine("#### HSSSS Replaced " + faceMat);
+                    }
+                }
+            }
+
+            public static void CommonPartsReplacer(CharInfo ___chaInfo, CharReference.TagObjKey key)
+            {
+                if (fixAlphaShadow)
+                {
+                    foreach (GameObject obj in ___chaInfo.GetTagInfo(key))
+                    {
+                        if (obj != null)
+                        {
+                            foreach (Material mat in obj.GetComponent<Renderer>().materials)
+                            {
+                                if (mat != null)
+                                {
+                                    if (!mat.shader.name.Contains("HSSSS"))
+                                    {
+                                        ObjectParser(mat, key);
+                                        Console.WriteLine("#### HSSSS Replaced " + mat.name);
+                                    }
+                                }
+                            }
+
+                            if (!obj.GetComponent<Renderer>().receiveShadows)
+                            {
+                                obj.GetComponent<Renderer>().receiveShadows = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            public static void JuicesReplacer(Manager.Character __instance)
+            {
+                Dictionary<string, Material> juices = __instance.dictSiruMaterial;
+
+                foreach (KeyValuePair<string, Material> entry in juices)
+                {
+                    Material juiceMat = entry.Value;
+
+                    if (juiceMat != null)
+                    {
+                        if (!juiceMat.shader.name.Contains("HSSSS"))
+                        {
+                            ShaderReplacer(overlayMaterial, juiceMat);
+                            juiceMat.SetFloat("_Metallic", 0.65f);
+                            juiceMat.renderQueue = 2002;
+                            Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
+                        }
+                    }
+                }
+            }
+
+            public static void MiscReplacer(CharFemaleBody __instance)
+            {
+                if (null != __instance.matHohoAka)
+                {
+                    if (!__instance.matHohoAka.shader.name.Contains("HSSSS"))
+                    {
+                        ShaderReplacer(overlayMaterial, __instance.matHohoAka);
+                        __instance.matHohoAka.EnableKeyword("_METALLIC_OFF");
+                        __instance.matHohoAka.renderQueue = 2001;
+                        Console.WriteLine("#### HSSSS Replaced " + __instance.matHohoAka.name);
+                    }
+                }
+
+                List<GameObject> faceObjs = __instance.chaInfo.GetTagInfo(CharReference.TagObjKey.ObjSkinFace);
+
+                if (0 != faceObjs.Count)
+                {
+                    Renderer renderer = faceObjs[0].GetComponent<Renderer>();
+
+                    if (1 < renderer.materials.Length)
+                    {
+                        Material blushMat = renderer.materials[1];
+
+                        if (null != blushMat)
+                        {
+                            if (!blushMat.shader.name.Contains("HSSSS"))
+                            {
+                                ShaderReplacer(overlayMaterial, blushMat);
+                                blushMat.EnableKeyword("_METALLIC_OFF");
+                                blushMat.renderQueue = 2001;
+                                Console.WriteLine("#### HSSSS Replaced " + blushMat.name);
+                            }
+                        }
                     }
                 }
 
                 if (fixAlphaShadow)
                 {
-                    GameObject objHead = ___chaInfo.chaBody.objHead;
+                    GameObject objHead = __instance.objHead;
 
                     if (objHead != null)
                     {
@@ -685,124 +845,8 @@ namespace HSSSS
                     }
                 }
             }
-
-            public static void MaleBodyReplacer(CharInfo ___chaInfo)
-            {
-                Material mat = ___chaInfo.chaBody.customMatBody;
-
-                if (mat != null)
-                {
-                    if (!mat.shader.name.Contains("HSSSS"))
-                    {
-                        ShaderReplacer(skinMaterial, mat);
-                        mat.SetTexture("_Thickness", maleBodyThickness);
-                        Console.WriteLine("#### HSSSS Replaced " + mat);
-                    }
-                }
-            }
-
-            public static void MaleFaceReplacer(CharInfo ___chaInfo)
-            {
-                Material mat = ___chaInfo.chaBody.customMatFace;
-
-                if (mat != null)
-                {
-                    if (!mat.shader.name.Contains("HSSSS"))
-                    {
-                        ShaderReplacer(skinMaterial, mat);
-                        mat.SetTexture("_Thickness", maleHeadThickness);
-                        Console.WriteLine("#### HSSSS Replaced " + mat);
-                    }
-                }
-            }
-
-            public static void CommonPartsReplacer(CharInfo ___chaInfo, CharReference.TagObjKey key)
-            {
-                if (fixAlphaShadow)
-                {
-                    foreach (GameObject obj in ___chaInfo.GetTagInfo(key))
-                    {
-                        if (obj != null)
-                        {
-                            foreach (Material mat in obj.GetComponent<Renderer>().materials)
-                            {
-                                if (mat != null)
-                                {
-                                    if (!mat.shader.name.Contains("HSSSS"))
-                                    {
-                                        ObjectParser(mat, key);
-                                        Console.WriteLine("#### HSSSS Replaced " + mat.name);
-                                    }
-                                }
-                            }
-
-                            if (!obj.GetComponent<Renderer>().receiveShadows)
-                            {
-                                obj.GetComponent<Renderer>().receiveShadows = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            public static void JuicesReplacer(Manager.Character __instance)
-            {
-                Dictionary<string, Material> juices = __instance.dictSiruMaterial;
-
-                foreach (KeyValuePair<string, Material> entry in juices)
-                {
-                    Material juiceMat = entry.Value;
-
-                    if (juiceMat != null)
-                    {
-                        if (!juiceMat.shader.name.Contains("HSSSS"))
-                        {
-                            ShaderReplacer(overlayMaterial, juiceMat);
-                            juiceMat.SetFloat("_Metallic", 0.65f);
-                            juiceMat.renderQueue = 2002;
-                            Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
-                        }
-                    }
-                }
-            }
-
-            public static void BlushReplacer(CharFemaleBody __instance)
-            {
-                if (null != __instance.matHohoAka)
-                {
-                    if (!__instance.matHohoAka.shader.name.Contains("HSSSS"))
-                    {
-                        ShaderReplacer(overlayMaterial, __instance.matHohoAka);
-                        __instance.matHohoAka.EnableKeyword("_METALLIC_OFF");
-                        __instance.matHohoAka.renderQueue = 2001;
-                        Console.WriteLine("#### HSSSS Replaced " + __instance.matHohoAka.name);
-                    }
-                }
-
-                List<GameObject> faceObjs = __instance.chaInfo.GetTagInfo(CharReference.TagObjKey.ObjSkinFace);
-
-                if (0 != faceObjs.Count)
-                {
-                    Renderer renderer = faceObjs[0].GetComponent<Renderer>();
-
-                    if (1 < renderer.materials.Length)
-                    {
-                        Material blushMat = renderer.materials[1];
-
-                        if (null != blushMat)
-                        {
-                            if (!blushMat.shader.name.Contains("HSSSS"))
-                            {
-                                ShaderReplacer(overlayMaterial, blushMat);
-                                blushMat.EnableKeyword("_METALLIC_OFF");
-                                blushMat.renderQueue = 2001;
-                                Console.WriteLine("#### HSSSS Replaced " + blushMat.name);
-                            }
-                        }
-                    }
-                }
-            }
         }
+        #endregion
     }
 
     public class ConfigUI : MonoBehaviour
@@ -908,14 +952,30 @@ namespace HSSSS
 
             if (GUILayout.Button("Reset Configuration", this.buttonStyle))
             {
-                HSSSS.LoadConfig();
+                if (HSSSS.LoadConfig())
+                {
+                    Console.WriteLine("#### HSSSS: Loaded Configurations");
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Load Configuration");
+                }
             }
 
             GUILayout.Space(8.0f);
 
             if (GUILayout.Button("Save Configuration", this.buttonStyle))
             {
-                HSSSS.SaveConfig();
+                if (HSSSS.SaveConfig())
+                {
+                    Console.WriteLine("#### HSSSS: Saved Configurations");
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Save Configurations");
+                }
             }
 
             GUILayout.Space(8.0f);
