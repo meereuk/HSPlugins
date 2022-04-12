@@ -17,7 +17,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "0.5.1"; } }
+        public string Version { get { return "0.5.9"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -59,6 +59,14 @@ namespace HSSSS
         private static bool useTessellation;
         private static bool useWetSpecGloss;
         private static bool fixAlphaShadow;
+
+        private static bool useCustomThickness;
+
+        private static string femaleBodyCustom;
+        private static string femaleHeadCustom;
+        private static string maleBodyCustom;
+        private static string maleHeadCustom;
+
         private static KeyCode hotKey;
 
         // ui window
@@ -212,17 +220,13 @@ namespace HSSSS
             useWetSpecGloss = ModPrefs.GetBool("HSSSS", "WetSpecGloss", false, true);
             // additional replacement option for some transparent materials
             fixAlphaShadow = ModPrefs.GetBool("HSSSS", "FixShadow", false, true);
-
-            /*
             // whether to use custom thickness map instead of the built-in texture
-            useCustomMap = ModPrefs.GetBool("HSSSS", "CustomTexture", false, true);
+            useCustomThickness = ModPrefs.GetBool("HSSSS", "CustomThickness", false, true);
             // custom texture location
-            femaleBodyPath = Path.Combine(pluginLocation, ModPrefs.GetString("HSSSS", "FemaleBodyMap", "HSSSS/FemaleBodyThickness.png", true));
-            femaleHeadPath = Path.Combine(pluginLocation, ModPrefs.GetString("HSSSS", "FemaleHeadMap", "HSSSS/FemaleHeadThickness.png", true));
-            maleBodyPath = Path.Combine(pluginLocation, ModPrefs.GetString("HSSSS", "MaleBodyMap", "HSSSS/MaleBodyThickness.png", true));
-            maleHeadPath = Path.Combine(pluginLocation, ModPrefs.GetString("HSSSS", "MaleHeadMap", "HSSSS/MaleHeadThickness.png", true));
-            */
-
+            femaleBodyCustom = ModPrefs.GetString("HSSSS", "FemaleBody", "HSSSS/FemaleBody.png", true);
+            femaleHeadCustom = ModPrefs.GetString("HSSSS", "FemaleHead", "HSSSS/FemaleHead.png", true);
+            maleBodyCustom = ModPrefs.GetString("HSSSS", "MaleBody", "HSSSS/MaleBody.png", true);
+            maleHeadCustom = ModPrefs.GetString("HSSSS", "MaleHead", "HSSSS/MaleHead.png", true);
             // shortcut for the ui window (deferred only)
             try
             {
@@ -240,10 +244,75 @@ namespace HSSSS
             // hssssresources.unity3d
             assetBundle = AssetBundle.LoadFromMemory(Resources.hssssresources);
             // built-in thickness textures
-            femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
-            femaleHeadThickness = assetBundle.LoadAsset<Texture2D>("FemaleHeadThickness");
-            maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
-            maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
+            if (useCustomThickness)
+            {
+                femaleBodyCustom = Path.Combine(pluginLocation, femaleBodyCustom);
+                femaleHeadCustom = Path.Combine(pluginLocation, femaleHeadCustom);
+                maleBodyCustom = Path.Combine(pluginLocation, maleBodyCustom);
+                maleHeadCustom = Path.Combine(pluginLocation, maleHeadCustom);
+
+                femaleBodyThickness = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
+                femaleHeadThickness = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
+                maleBodyThickness = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
+                maleHeadThickness = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
+
+                // female custom body
+                if (femaleBodyThickness.LoadImage(File.ReadAllBytes(femaleBodyCustom)))
+                {
+                    femaleBodyThickness.Apply();
+                }
+
+                else
+                {
+                    Console.Write("#### HSSSS: Could not load " + femaleBodyCustom);
+                    femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
+                }
+
+                // female custom head
+                if (femaleHeadThickness.LoadImage(File.ReadAllBytes(femaleHeadCustom)))
+                {
+                    femaleHeadThickness.Apply();
+                }
+
+                else
+                {
+                    Console.Write("#### HSSSS: Could not load " + femaleHeadCustom);
+                    femaleHeadThickness = assetBundle.LoadAsset<Texture2D>("FemaleHeadThickness");
+                }
+
+                // male custom body
+                if (maleBodyThickness.LoadImage(File.ReadAllBytes(maleBodyCustom)))
+                {
+                    maleBodyThickness.Apply();
+                }
+
+                else
+                {
+                    Console.Write("#### HSSSS: Could not load " + maleBodyCustom);
+                    maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
+                }
+
+                // male custom head
+                if (maleHeadThickness.LoadImage(File.ReadAllBytes(maleHeadCustom)))
+                {
+                    maleHeadThickness.Apply();
+                }
+
+                else
+                {
+                    Console.Write("#### HSSSS: Could not load " + maleHeadCustom);
+                    maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
+                }
+            }
+
+            else
+            {
+                femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
+                femaleHeadThickness = assetBundle.LoadAsset<Texture2D>("FemaleHeadThickness");
+                maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
+                maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
+            }
+            
             // spotlight cookie
             spotCookie = assetBundle.LoadAsset<Texture2D>("DefaultSpotCookie");
 
@@ -851,6 +920,9 @@ namespace HSSSS
 
     public class ConfigUI : MonoBehaviour
     {
+        private static Vector2 windowPosition = new Vector2( 250.0f, 0.000f );
+
+
         private Rect configWindow;
 
         private GUIStyle labelStyle;
@@ -863,7 +935,7 @@ namespace HSSSS
         
         public void Awake()
         {
-            this.configWindow = new Rect(250.0f, 0.000f, 500.0f, 850.0f);
+            this.configWindow = new Rect(windowPosition.x, windowPosition.y, 500.0f, 850.0f);
         }
 
         public void LateUpdate()
@@ -1011,6 +1083,8 @@ namespace HSSSS
             GUI.DragWindow();
 
             HSSSS.SSS.Refresh();
+
+            windowPosition = this.configWindow.position;
         }
 
         private float SliderControls(float sliderValue, float minValue, float maxValue)
