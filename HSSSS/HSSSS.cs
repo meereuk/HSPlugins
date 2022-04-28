@@ -17,7 +17,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "0.5.9"; } }
+        public string Version { get { return "0.8.1"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -37,7 +37,9 @@ namespace HSSSS
         internal static AlloyDeferredRendererPlus SSS = null;
         internal static Shader deferredTransmissionBlit;
         internal static Shader deferredBlurredNormals;
+        internal static Shader shadowMapSampler;
         internal static Texture2D skinLUT;
+        internal static Texture2D jitter2D;
 
         public static Material skinMaterial;
         public static Material overlayMaterial;
@@ -59,7 +61,7 @@ namespace HSSSS
         private static bool useTessellation;
         private static bool useWetSpecGloss;
         private static bool fixAlphaShadow;
-
+        private static bool useSoftShadow;
         private static bool useCustomThickness;
 
         private static string femaleBodyCustom;
@@ -67,9 +69,10 @@ namespace HSSSS
         private static string maleBodyCustom;
         private static string maleHeadCustom;
 
-        private static KeyCode hotKey;
+        private static KeyCode[] hotKey;
 
         // ui window
+        internal static GUISkin skinUI;
         private GameObject configUI;
         #endregion
 
@@ -140,6 +143,14 @@ namespace HSSSS
                         AccessTools.Method(typeof(OCILight), "Update"), null,
                         new HarmonyMethod(typeof(HSSSS), nameof(SpotLightPatcher))
                         );
+
+                    if (useSoftShadow)
+                    {
+                        harmony.Patch(
+                            AccessTools.Method(typeof(OCILight), nameof(OCILight.SetEnable)), null,
+                            new HarmonyMethod(typeof(HSSSS), nameof(ShadowMapPatcher))
+                            );
+                    }
                 }
             }
         }
@@ -186,7 +197,7 @@ namespace HSSSS
         {
             if(isEnabled && useDeferred)
             {
-                if (isStudio && Input.GetKeyDown(hotKey))
+                if (isStudio && this.GetHotKeyPressed())
                 {
                     if (this.configUI == null)
                     {
@@ -220,6 +231,8 @@ namespace HSSSS
             useWetSpecGloss = ModPrefs.GetBool("HSSSS", "WetSpecGloss", false, true);
             // additional replacement option for some transparent materials
             fixAlphaShadow = ModPrefs.GetBool("HSSSS", "FixShadow", false, true);
+            // extensive PCF soft shadows for spotlight/pointlight
+            useSoftShadow = ModPrefs.GetBool("HSSSS", "SoftShadow", false, true);
             // whether to use custom thickness map instead of the built-in texture
             useCustomThickness = ModPrefs.GetBool("HSSSS", "CustomThickness", false, true);
             // custom texture location
@@ -230,12 +243,35 @@ namespace HSSSS
             // shortcut for the ui window (deferred only)
             try
             {
-                string hotKeyString = ModPrefs.GetString("HSSSS", "ShortcutKey", KeyCode.ScrollLock.ToString(), true);
-                hotKey = (KeyCode)Enum.Parse(typeof(KeyCode), hotKeyString, true);
+                string[] hotKeyString = ModPrefs.GetString("HSSSS", "ShortcutKey", KeyCode.ScrollLock.ToString(), true).Split('+');
+
+                hotKey = new KeyCode[hotKeyString.Length];
+
+                for (int i = 0; i < hotKeyString.Length; i++)
+                {
+                    switch (hotKeyString[i])
+                    {
+                        case "Shift":
+                            hotKey[i] = KeyCode.LeftShift;
+                            break;
+
+                        case "Ctrl":
+                            hotKey[i] = KeyCode.LeftControl;
+                            break;
+
+                        case "Alt":
+                            hotKey[i] = KeyCode.LeftAlt;
+                            break;
+
+                        default:
+                            hotKey[i] = (KeyCode)Enum.Parse(typeof(KeyCode), hotKeyString[i], true);
+                            break;
+                    }
+                }
             }
             catch (Exception)
             {
-                hotKey = KeyCode.ScrollLock;
+                hotKey = new KeyCode[] { KeyCode.ScrollLock };
             }
         }
 
@@ -312,6 +348,9 @@ namespace HSSSS
                 maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
                 maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
             }
+
+            // jitter texture
+            jitter2D = assetBundle.LoadAsset<Texture2D>("Jitter2D");
             
             // spotlight cookie
             spotCookie = assetBundle.LoadAsset<Texture2D>("DefaultSpotCookie");
@@ -330,6 +369,11 @@ namespace HSSSS
             if (null == maleBodyThickness || null == maleHeadThickness)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Male Thickness Textures");
+            }
+
+            if (null == jitter2D)
+            {
+                Console.WriteLine("#### HSSSS: Failed to Load Jitter Texture");
             }
 
             if (null == spotCookie)
@@ -394,17 +438,33 @@ namespace HSSSS
             }
 
             // post fx shaders
-            deferredTransmissionBlit = assetBundle.LoadAsset<Shader>("DeferredTransmissionBlit");
-            deferredBlurredNormals = assetBundle.LoadAsset<Shader>("DeferredBlurredNormals");
+            deferredTransmissionBlit = assetBundle.LoadAsset<Shader>("TransmissionBlit");
+            deferredBlurredNormals = assetBundle.LoadAsset<Shader>("BlurredNormals");
+
             // internal deferred & reflection shaders
-            deferredSkin = assetBundle.LoadAsset<Shader>("Alloy Deferred Skin");
-            deferredReflections = assetBundle.LoadAsset<Shader>("Alloy Deferred Reflections");
+            // additional pcf filters for spot/point lights
+            if (useSoftShadow)
+            {
+                deferredSkin = assetBundle.LoadAsset<Shader>("InternalDeferredShadingSoftShadow");
+                deferredReflections = assetBundle.LoadAsset<Shader>("InternalDeferredReflectionsSoftShadow");
+                shadowMapSampler = assetBundle.LoadAsset<Shader>("VSMShadowSampler");
+            }
+
+            // default soft shadows
+            else
+            {
+                deferredSkin = assetBundle.LoadAsset<Shader>("InternalDeferredShading");
+                deferredReflections = assetBundle.LoadAsset<Shader>("InternalDeferredReflections");
+            }
 
             // semi-pbr wetness option
             if (useWetSpecGloss)
             {
                 skinMaterial.EnableKeyword("_WET_SPECGLOSS");
             }
+
+            // configuration window skin
+            skinUI = assetBundle.LoadAsset<GUISkin>("GUISkin");
 
             //
             if (null == skinLUT)
@@ -425,6 +485,11 @@ namespace HSSSS
             if (null == deferredSkin || null == deferredReflections)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Deferred Internal Shaders");
+            }
+
+            if (null == skinUI)
+            {
+                Console.WriteLine("#### HSSSS: Failed to Load UI Skin");
             }
         }
 
@@ -478,6 +543,20 @@ namespace HSSSS
                     Console.WriteLine("#### HSSSS: Failed to Initialize Post FX");
                 }
             }
+        }
+
+        private bool GetHotKeyPressed()
+        {
+            bool isPressed = true;
+
+            for (int i = 0; i < hotKey.Length - 1; i ++)
+            {
+                isPressed = isPressed && Input.GetKey(hotKey[i]); 
+            }
+
+            isPressed = isPressed && Input.GetKeyDown(hotKey[hotKey.Length - 1]);
+
+            return isPressed;
         }
 
         internal static bool LoadConfig()
@@ -581,6 +660,19 @@ namespace HSSSS
                 if (null == __instance.light.cookie)
                 {
                     __instance.light.cookie = spotCookie;
+                }
+            }
+        }
+
+        private static void ShadowMapPatcher(OCILight __instance)
+        {
+            if (__instance.light != null)
+            {
+                if (__instance.light.gameObject.GetComponent<VarianceShadowMap>() == null)
+                {
+                    var vsm = __instance.light.gameObject.AddComponent<VarianceShadowMap>();
+                    Console.WriteLine("########## AHHHHHHHH LIGHT PATCHING..... #########");
+                    Console.WriteLine(vsm.ToString());
                 }
             }
         }
@@ -920,22 +1012,27 @@ namespace HSSSS
 
     public class ConfigUI : MonoBehaviour
     {
-        private static Vector2 windowPosition = new Vector2( 250.0f, 0.000f );
-
+        private static Vector2 windowPosition = new Vector2(250.0f, 0.000f);
+        private static Vector2 windowSize = new Vector2(768.0f, 640.0f);
 
         private Rect configWindow;
+        private float lightAlpha;
 
-        private GUIStyle labelStyle;
-        private GUIStyle fieldStyle;
-        private GUIStyle sliderStyle;
-        private GUIStyle thumbStyle;
-        private GUIStyle buttonStyle;
+        private enum UIState
+        {
+            skinScattering,
+            skinTransmission,
+            lightShadow,
+            presets
+        };
 
-        private int lightAlpha = 1;
+        private UIState state;
         
         public void Awake()
         {
-            this.configWindow = new Rect(windowPosition.x, windowPosition.y, 500.0f, 850.0f);
+            this.configWindow = new Rect(windowPosition, windowSize);
+            this.state = UIState.skinScattering;
+            this.lightAlpha = 1.0f;
         }
 
         public void LateUpdate()
@@ -944,85 +1041,103 @@ namespace HSSSS
 
         public void OnGUI()
         {
-            this.labelStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 16
-            };
+            GUI.skin = HSSSS.skinUI;
 
-            this.fieldStyle = new GUIStyle(GUI.skin.textField)
-            {
-                fontSize = 16
-            };
-
-            this.sliderStyle = new GUIStyle(GUI.skin.horizontalSlider)
-            {
-                fixedHeight = 16
-            };
-
-            this.thumbStyle = new GUIStyle(GUI.skin.horizontalScrollbarThumb)
-            {
-                fixedWidth = 16,
-                fixedHeight = 16
-            };
-
-            this.buttonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 16
-            };
-
-            this.configWindow = GUI.Window(0, this.configWindow, this.WindowFunction, "HSSSS Configuration");
+            this.configWindow = GUILayout.Window(0, this.configWindow, this.WindowFunction, "HSSSS Configurations");
             Studio.Studio.Instance.cameraCtrl.enabled = !this.configWindow.Contains(Event.current.mousePosition);
         }
 
         private void WindowFunction(int WindowID)
         {
-            GUILayout.Space(8.0f);
+            GUILayout.Space(32.0f);
 
-            #region Skin Scattering
-            GUILayout.Label("Skin Scattering Weight", this.labelStyle);
+            this.TabsControl();
+
+            GUILayout.Space(16.0f);
+
+            switch (this.state)
+            {
+                case UIState.skinScattering:
+                    this.ScatteringSettings();
+                    break;
+
+                case UIState.skinTransmission:
+                    this.TransmissionSettings();
+                    break;
+
+                case UIState.lightShadow:
+                    this.LightShadowSettings();
+                    break;
+
+                case UIState.presets:
+                    this.PresetsControls();
+                    break;
+            }
+
+            GUI.DragWindow();
+            HSSSS.SSS.Refresh();
+
+            windowPosition = this.configWindow.position;
+        }
+
+        private void TabsControl()
+        {
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
+
+            if (GUILayout.Button("Scattering"))
+            {
+                state = UIState.skinScattering;
+                this.configWindow.size = new Vector2(768.0f, 640.0f);
+            }
+
+            if (GUILayout.Button("Transmission"))
+            {
+                state = UIState.skinTransmission;
+                this.configWindow.size = new Vector2(768.0f, 512.0f);
+            }
+
+            if (GUILayout.Button("Lights & Shadows"))
+            {
+                state = UIState.lightShadow;
+                this.configWindow.size = new Vector2(768.0f, 208.0f);
+            }
+
+            if (GUILayout.Button("Presets"))
+            {
+                state = UIState.presets;
+                this.configWindow.size = new Vector2(768.0f, 416.0f);
+            }
+
+            GUILayout.EndHorizontal();
+        }
+
+        private void ScatteringSettings()
+        {
+            GUILayout.Label("Skin Scattering Weight");
             HSSSS.SSS.SkinSettings.Weight = this.SliderControls(HSSSS.SSS.SkinSettings.Weight, 0.0f, 1.0f);
 
-            GUILayout.Label("Skin Scattering Scale", this.labelStyle);
+            GUILayout.Label("Skin Scattering Scale");
             HSSSS.SSS.SkinSettings.Scale = this.SliderControls(HSSSS.SSS.SkinSettings.Scale, 0.0f, 1.0f);
 
-            GUILayout.Label("Skin Scattering Bias", this.labelStyle);
+            GUILayout.Label("Skin Scattering Bias");
             HSSSS.SSS.SkinSettings.Bias = this.SliderControls(HSSSS.SSS.SkinSettings.Bias, 0.0f, 1.0f);
 
-            GUILayout.Label("Skin Scattering Bump Blur", this.labelStyle);
+            GUILayout.Label("Skin Scattering Bump Blur");
             HSSSS.SSS.SkinSettings.BumpBlur = this.SliderControls(HSSSS.SSS.SkinSettings.BumpBlur, 0.0f, 1.0f);
 
-            GUILayout.Label("Skin Scattering Blur Width", this.labelStyle);
+            GUILayout.Label("Skin Scattering Blur Width");
             HSSSS.SSS.SkinSettings.BlurWidth = this.SliderControls(HSSSS.SSS.SkinSettings.BlurWidth, 0.0f, 1.0f);
 
-            GUILayout.Label("Skin Scattering Blur Depth Range", this.labelStyle);
+            GUILayout.Label("Skin Scattering Blur Depth Range");
             HSSSS.SSS.SkinSettings.BlurDepthRange = this.SliderControls(HSSSS.SSS.SkinSettings.BlurDepthRange, 0.0f, 20.0f);
 
-            GUILayout.Label("Skin Scattering Occlusion Color Bleeding", this.labelStyle);
+            GUILayout.Label("Skin Scattering Occlusion Color Bleeding");
             HSSSS.SSS.SkinSettings.ColorBleedAoWeights = this.RGBControls(HSSSS.SSS.SkinSettings.ColorBleedAoWeights);
 
-            GUILayout.Label("Transmission Absorption", this.labelStyle);
-            HSSSS.SSS.SkinSettings.TransmissionAbsorption = this.RGBControls(HSSSS.SSS.SkinSettings.TransmissionAbsorption);
-            #endregion
+            GUILayout.Label("Save/Load Preset");
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
-            GUILayout.Space(8.0f);
-
-            #region Transmission
-            GUILayout.Label("Transmission Weight", this.labelStyle);
-            HSSSS.SSS.TransmissionSettings.Weight = this.SliderControls(HSSSS.SSS.TransmissionSettings.Weight, 0.0f, 1.0f);
-
-            GUILayout.Label("Transmission Distortion", this.labelStyle);
-            HSSSS.SSS.TransmissionSettings.BumpDistortion = this.SliderControls(HSSSS.SSS.TransmissionSettings.BumpDistortion, 0.0f, 1.0f);
-
-            GUILayout.Label("Transmission Shadow Weight", this.labelStyle);
-            HSSSS.SSS.TransmissionSettings.ShadowWeight = this.SliderControls(HSSSS.SSS.TransmissionSettings.ShadowWeight, 0.0f, 1.0f);
-
-            GUILayout.Label("Transmission Falloff", this.labelStyle);
-            HSSSS.SSS.TransmissionSettings.Falloff = this.SliderControls(HSSSS.SSS.TransmissionSettings.Falloff, 1.0f, 20.0f);
-            #endregion
-
-            GUILayout.Space(8.0f);
-
-            if (GUILayout.Button("Reset Configuration", this.buttonStyle))
+            if (GUILayout.Button("Load Preset"))
             {
                 if (HSSSS.LoadConfig())
                 {
@@ -1035,9 +1150,7 @@ namespace HSSSS
                 }
             }
 
-            GUILayout.Space(8.0f);
-
-            if (GUILayout.Button("Save Configuration", this.buttonStyle))
+            if (GUILayout.Button("Save Preset"))
             {
                 if (HSSSS.SaveConfig())
                 {
@@ -1050,50 +1163,134 @@ namespace HSSSS
                 }
             }
 
-            GUILayout.Space(8.0f);
+            GUILayout.EndHorizontal();
+        }
 
-            #region Fix Lights Alpha
-            GUILayout.Label("Light Alpha", this.labelStyle);
+        private void TransmissionSettings()
+        {
+            GUILayout.Label("Transmission Weight");
+            HSSSS.SSS.TransmissionSettings.Weight = this.SliderControls(HSSSS.SSS.TransmissionSettings.Weight, 0.0f, 1.0f);
 
-            GUILayout.BeginHorizontal();
+            GUILayout.Label("Transmission Distortion");
+            HSSSS.SSS.TransmissionSettings.BumpDistortion = this.SliderControls(HSSSS.SSS.TransmissionSettings.BumpDistortion, 0.0f, 1.0f);
 
-            if (int.TryParse(GUILayout.TextField(this.lightAlpha.ToString(), this.fieldStyle), out int alpha))
+            GUILayout.Label("Transmission Shadow Weight");
+            HSSSS.SSS.TransmissionSettings.ShadowWeight = this.SliderControls(HSSSS.SSS.TransmissionSettings.ShadowWeight, 0.0f, 1.0f);
+
+            GUILayout.Label("Transmission Falloff");
+            HSSSS.SSS.TransmissionSettings.Falloff = this.SliderControls(HSSSS.SSS.TransmissionSettings.Falloff, 1.0f, 20.0f);
+
+            GUILayout.Label("Transmission Absorption");
+            HSSSS.SSS.SkinSettings.TransmissionAbsorption = this.RGBControls(HSSSS.SSS.SkinSettings.TransmissionAbsorption);
+
+            GUILayout.Label("Save/Load Preset");
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
+
+            if (GUILayout.Button("Load Preset"))
+            {
+                if (HSSSS.LoadConfig())
+                {
+                    Console.WriteLine("#### HSSSS: Loaded Configurations");
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Load Configuration");
+                }
+            }
+
+            if (GUILayout.Button("Save Preset"))
+            {
+                if (HSSSS.SaveConfig())
+                {
+                    Console.WriteLine("#### HSSSS: Saved Configurations");
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Save Configurations");
+                }
+            }
+
+            GUILayout.EndHorizontal();
+        }
+
+        private void LightShadowSettings()
+        {
+            GUILayout.Label("Light Alpha");
+
+            this.lightAlpha = this.SliderControls(this.lightAlpha, 0.0f, 100.0f);
+
+            GUILayout.Space(16.0f);
+
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
+
+            /*
+            if (int.TryParse(GUILayout.TextField(this.lightAlpha.ToString(), GUILayout.Width(64.0f)), out int alpha))
             {
                 this.lightAlpha = alpha;
             }
+            */
 
-            if (GUILayout.Button("Directional", this.buttonStyle))
+            if (GUILayout.Button("Directional"))
             {
                 this.SetLightAlpha(LightType.Directional);
             }
 
-            if (GUILayout.Button("Spot", this.buttonStyle))
+            if (GUILayout.Button("Spot"))
             {
                 this.SetLightAlpha(LightType.Spot);
             }
 
-            if (GUILayout.Button("Point", this.buttonStyle))
+            if (GUILayout.Button("Point"))
             {
                 this.SetLightAlpha(LightType.Point);
             }
 
             GUILayout.EndHorizontal();
-            #endregion
+        }
 
-            GUI.DragWindow();
+        private void PresetsControls()
+        {
+            /*
+            if (GUILayout.Button("Load Preset", GUILayout.Height(32.0f)))
+            {
+                if (HSSSS.LoadConfig())
+                {
+                    Console.WriteLine("#### HSSSS: Loaded Configurations");
+                }
 
-            HSSSS.SSS.Refresh();
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Load Configuration");
+                }
+            }
 
-            windowPosition = this.configWindow.position;
+            if (GUILayout.Button("Save Preset", GUILayout.Height(32.0f)))
+            {
+                if (HSSSS.SaveConfig())
+                {
+                    Console.WriteLine("#### HSSSS: Saved Configurations");
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Save Configurations");
+                }
+            }
+            */
+            GUILayout.Space(128.0f);
+            GUILayout.Label("Not Implemented Yet; I'm working on it!");
+            GUILayout.Space(128.0f);
         }
 
         private float SliderControls(float sliderValue, float minValue, float maxValue)
         {
-            GUILayout.BeginHorizontal();
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
-            sliderValue = GUILayout.HorizontalSlider(sliderValue, minValue, maxValue, this.sliderStyle, this.thumbStyle);
+            sliderValue = GUILayout.HorizontalSlider(sliderValue, minValue, maxValue);
 
-            if (float.TryParse(GUILayout.TextField(sliderValue.ToString("0.00"), this.fieldStyle, GUILayout.Width(64.0f)), out float fieldValue))
+            if (float.TryParse(GUILayout.TextField(sliderValue.ToString("0.00"), GUILayout.Width(64.0f)), out float fieldValue))
             {
                 sliderValue = fieldValue;
             }
@@ -1105,25 +1302,25 @@ namespace HSSSS
 
         private Vector3 RGBControls(Vector3 rgbValue)
         {
-            GUILayout.BeginHorizontal();
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
-            GUILayout.Label("R", labelStyle);
+            GUILayout.Label("Red");
             
-            if (float.TryParse(GUILayout.TextField(rgbValue.x.ToString("0.00"), this.fieldStyle), out float r))
+            if (float.TryParse(GUILayout.TextField(rgbValue.x.ToString("0.00"), GUILayout.Width(96.0f)), out float r))
             {
                 rgbValue.x = r;
             }
 
-            GUILayout.Label("G", labelStyle);
+            GUILayout.Label("Green");
 
-            if (float.TryParse(GUILayout.TextField(rgbValue.y.ToString("0.00"), this.fieldStyle), out float g))
+            if (float.TryParse(GUILayout.TextField(rgbValue.y.ToString("0.00"), GUILayout.Width(96.0f)), out float g))
             {
                 rgbValue.y = g;
             }
 
-            GUILayout.Label("B", labelStyle);
+            GUILayout.Label("Blue");
 
-            if (float.TryParse(GUILayout.TextField(rgbValue.z.ToString("0.00"), this.fieldStyle), out float b))
+            if (float.TryParse(GUILayout.TextField(rgbValue.z.ToString("0.00"), GUILayout.Width(96.0f)), out float b))
             {
                 rgbValue.z = b;
             }

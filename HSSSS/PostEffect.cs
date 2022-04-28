@@ -11,7 +11,8 @@ namespace HSSSS
         {
             public bool Enabled;
             public float Weight;
-            public Texture2D Lut;
+            public Texture2D SkinLut;
+            public Texture2D Jitter2D;
 
             public float Bias;
             public float Scale;
@@ -67,6 +68,7 @@ namespace HSSSS
 
         // LUT
         public Texture2D SkinLut;
+        public Texture2D Jitter2D;
 
         // Shaders
         public Shader DeferredTransmissionBlit;
@@ -108,6 +110,7 @@ namespace HSSSS
             this.DeferredTransmissionBlit = HSSSS.deferredTransmissionBlit;
             this.DeferredBlurredNormals = HSSSS.deferredBlurredNormals;
             this.SkinLut = HSSSS.skinLUT;
+            this.Jitter2D = HSSSS.jitter2D;
         }
 
         private void Reset()
@@ -144,7 +147,7 @@ namespace HSSSS
                 {
                     RefreshBlurredNormalProperties(m_camera, m_deferredBlurredNormalsMaterial);
 
-                    Shader.SetGlobalTexture("_DeferredSkinLut", SkinSettings.Lut);
+                    Shader.SetGlobalTexture("_DeferredSkinLut", SkinSettings.SkinLut);
                     Shader.SetGlobalVector("_DeferredSkinParams",
                         new Vector4(SkinSettings.Weight, SkinSettings.Bias, SkinSettings.Scale, SkinSettings.BumpBlur));
                     Shader.SetGlobalVector("_DeferredSkinColorBleedAoWeights", SkinSettings.ColorBleedAoWeights);
@@ -164,6 +167,7 @@ namespace HSSSS
             float normalBlurWidth = SkinSettings.BlurWidth * distanceToProjectionWindow;
             float normalBlurDepthRange = SkinSettings.BlurDepthRange * distanceToProjectionWindow * c_blurDepthRangeMultiplier;
 
+            blurMaterial.SetTexture("_SkinJitter", SkinSettings.Jitter2D);
             blurMaterial.SetVector("_DeferredBlurredNormalsParams", new Vector2(normalBlurWidth, normalBlurDepthRange));
         }
 
@@ -172,9 +176,14 @@ namespace HSSSS
             m_isScatteringEnabled = SkinSettings.Enabled;
             m_isTransmissionEnabled = TransmissionSettings.Enabled || m_isScatteringEnabled;
 
-            if (SkinSettings.Lut == null)
+            if (SkinSettings.SkinLut == null)
             {
-                SkinSettings.Lut = SkinLut;
+                SkinSettings.SkinLut = SkinLut;
+            }
+
+            if (SkinSettings.Jitter2D == null)
+            {
+                SkinSettings.Jitter2D = Jitter2D;
             }
 
             if ((m_isTransmissionEnabled || m_isScatteringEnabled)
