@@ -17,7 +17,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "0.8.1"; } }
+        public string Version { get { return "0.8.2"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -150,6 +150,10 @@ namespace HSSSS
                             AccessTools.Method(typeof(OCILight), nameof(OCILight.SetEnable)), null,
                             new HarmonyMethod(typeof(HSSSS), nameof(ShadowMapPatcher))
                             );
+
+                        Shader.SetGlobalFloat("_DirLightPenumbra", 1.0f);
+                        Shader.SetGlobalFloat("_SpotLightPenumbra", 1.0f);
+                        Shader.SetGlobalFloat("_PointLightPenumbra", 1.0f);
                     }
                 }
             }
@@ -668,11 +672,9 @@ namespace HSSSS
         {
             if (__instance.light != null)
             {
-                if (__instance.light.gameObject.GetComponent<VarianceShadowMap>() == null)
+                if (__instance.light.gameObject.GetComponent<ShadowMapDispatcher>() == null)
                 {
-                    var vsm = __instance.light.gameObject.AddComponent<VarianceShadowMap>();
-                    Console.WriteLine("########## AHHHHHHHH LIGHT PATCHING..... #########");
-                    Console.WriteLine(vsm.ToString());
+                    __instance.light.gameObject.AddComponent<ShadowMapDispatcher>();
                 }
             }
         }
@@ -1016,7 +1018,9 @@ namespace HSSSS
         private static Vector2 windowSize = new Vector2(768.0f, 640.0f);
 
         private Rect configWindow;
-        private float lightAlpha;
+
+        private static float lightAlpha = 1.0f;
+        private static Vector3 penumbraScale = new Vector3(1.0f, 1.0f, 1.0f);
 
         private enum UIState
         {
@@ -1032,7 +1036,6 @@ namespace HSSSS
         {
             this.configWindow = new Rect(windowPosition, windowSize);
             this.state = UIState.skinScattering;
-            this.lightAlpha = 1.0f;
         }
 
         public void LateUpdate()
@@ -1099,7 +1102,7 @@ namespace HSSSS
             if (GUILayout.Button("Lights & Shadows"))
             {
                 state = UIState.lightShadow;
-                this.configWindow.size = new Vector2(768.0f, 208.0f);
+                this.configWindow.size = new Vector2(768.0f, 400.0f);
             }
 
             if (GUILayout.Button("Presets"))
@@ -1219,18 +1222,11 @@ namespace HSSSS
         {
             GUILayout.Label("Light Alpha");
 
-            this.lightAlpha = this.SliderControls(this.lightAlpha, 0.0f, 100.0f);
+            lightAlpha = this.SliderControls(lightAlpha, 0.0f, 100.0f);
 
             GUILayout.Space(16.0f);
 
             GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
-
-            /*
-            if (int.TryParse(GUILayout.TextField(this.lightAlpha.ToString(), GUILayout.Width(64.0f)), out int alpha))
-            {
-                this.lightAlpha = alpha;
-            }
-            */
 
             if (GUILayout.Button("Directional"))
             {
@@ -1248,37 +1244,23 @@ namespace HSSSS
             }
 
             GUILayout.EndHorizontal();
+
+            GUILayout.Label("Penumbra Scale (Directional Lights)");
+            penumbraScale.x = this.SliderControls(penumbraScale.x, 0.0f, 10.0f);
+
+            GUILayout.Label("Penumbra Scale (Spot Lights)");
+            penumbraScale.y = this.SliderControls(penumbraScale.y, 0.0f, 10.0f);
+
+            GUILayout.Label("Penumbra Scale (Point Lights");
+            penumbraScale.z = this.SliderControls(penumbraScale.z, 0.0f, 10.0f);
+
+            Shader.SetGlobalFloat("_DirLightPenumbra", penumbraScale.x);
+            Shader.SetGlobalFloat("_SpotLightPenumbra", penumbraScale.y);
+            Shader.SetGlobalFloat("_PointLightPenumbra", penumbraScale.z);
         }
 
         private void PresetsControls()
         {
-            /*
-            if (GUILayout.Button("Load Preset", GUILayout.Height(32.0f)))
-            {
-                if (HSSSS.LoadConfig())
-                {
-                    Console.WriteLine("#### HSSSS: Loaded Configurations");
-                }
-
-                else
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Load Configuration");
-                }
-            }
-
-            if (GUILayout.Button("Save Preset", GUILayout.Height(32.0f)))
-            {
-                if (HSSSS.SaveConfig())
-                {
-                    Console.WriteLine("#### HSSSS: Saved Configurations");
-                }
-
-                else
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Save Configurations");
-                }
-            }
-            */
             GUILayout.Space(128.0f);
             GUILayout.Label("Not Implemented Yet; I'm working on it!");
             GUILayout.Space(128.0f);
@@ -1343,7 +1325,7 @@ namespace HSSSS
                     if (type == light.lightType)
                     {
                         Color lightColor = light.lightInfo.color;
-                        lightColor.a = (float)this.lightAlpha * 0.01f;
+                        lightColor.a = (float)lightAlpha * 0.01f;
                         light.SetColor(lightColor);
                     }
                 }

@@ -3,6 +3,55 @@ using UnityEngine.Rendering;
 
 namespace HSSSS
 {
+    public class ShadowMapDispatcher : MonoBehaviour
+    {
+        private Light mLight;
+        private CommandBuffer buffer;
+
+        private void Awake()
+        {
+            this.mLight = GetComponent<Light>();
+        }
+
+        private void Reset()
+        {
+            if (this.mLight)
+            {
+                this.mLight.RemoveAllCommandBuffers();
+                this.InitializeCommandBuffer();
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (this.mLight)
+            {
+                this.InitializeCommandBuffer();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (this.mLight)
+            {
+                this.mLight.RemoveAllCommandBuffers();
+            }
+        }
+
+        private void InitializeCommandBuffer()
+        {
+            if (this.mLight.type == LightType.Directional)
+            {
+                RenderTargetIdentifier sourceID = BuiltinRenderTextureType.CurrentActive;
+
+                this.buffer = new CommandBuffer();
+                this.buffer.SetGlobalTexture("_CustomShadowMap", sourceID);
+
+                this.mLight.AddCommandBuffer(LightEvent.AfterShadowMap, this.buffer);
+            }
+        }
+    }
+
     public class VarianceShadowMap : MonoBehaviour
     {
         private Light mLight;
