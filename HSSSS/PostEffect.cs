@@ -1,101 +1,46 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace HSSSS
 {
-    public class AlloyDeferredRendererPlus : MonoBehaviour
+    public class DeferredRenderer : MonoBehaviour
     {
-        [Serializable]
-        public struct SkinSettingsData
-        {
-            public bool Enabled;
-            public float Weight;
-            public Texture2D SkinLut;
-            public Texture2D Jitter2D;
-
-            public float Bias;
-            public float Scale;
-            public float BumpBlur;
-
-            public Vector3 ColorBleedAoWeights;
-            public Vector3 TransmissionAbsorption;
-
-            public float BlurWidth;
-            public float BlurDepthRange;
-        }
-
-        [Serializable]
-        public struct TransmissionSettingsData
-        {
-            public bool Enabled;
-
-            public float Weight;
-            public float ShadowWeight;
-
-            public float BumpDistortion;
-
-            public float Falloff;
-        }
-
-        public SkinSettingsData SkinSettings = new SkinSettingsData()
-        {
-            Enabled = true,
-            Weight = 1.0f,
-            Bias = 0.5f,
-            Scale = 1.0f,
-            BumpBlur = 0.5f,
-            BlurWidth = 0.1f,
-            BlurDepthRange = 1.0f,
-            ColorBleedAoWeights = new Vector3(0.40f, 0.15f, 0.13f),
-            TransmissionAbsorption = new Vector3(-8.0f, -40.0f, -64.0f)
-        };
-
-        public TransmissionSettingsData TransmissionSettings = new TransmissionSettingsData
-        {
-            Enabled = true,
-            Weight = 1.0f,
-            Falloff = 1.0f,
-            BumpDistortion = 0.2f,
-            ShadowWeight = 0.8f
-        };
-
-        // Arbitrary range multiplier.
         private const float c_blurDepthRangeMultiplier = 25.0f;
         private const string c_copyTransmissionBufferName = "AlloyCopyTransmission";
         private const string c_normalBufferName = "AlloyRenderBlurredNormals";
         private const string c_releaseDeferredBuffer = "AlloyReleaseDeferredPlusBuffers";
 
-        // LUT
-        public Texture2D SkinLut;
-        public Texture2D Jitter2D;
-
-        // Shaders
         public Shader DeferredTransmissionBlit;
         public Shader DeferredBlurredNormals;
 
-        // Private
         private Material m_deferredTransmissionBlitMaterial;
         private Material m_deferredBlurredNormalsMaterial;
-
-        private Camera m_camera;
-        private bool m_isTransmissionEnabled;
-        private bool m_isScatteringEnabled;
 
         private CommandBuffer m_copyTransmission;
         private CommandBuffer m_renderBlurredNormals;
         private CommandBuffer m_releaseDeferredPlus;
 
+        private Texture2D skinLut;
+        private Texture2D shadowLut;
+        private Texture2D skinJitter;
+
+        private Camera m_camera;
+
+        private SkinSettings skinSettings;
+
+        private bool transmissionEnabled;
+        private bool scatteringEnabled;
+
         public void Refresh()
         {
-            bool scatteringEnabled = SkinSettings.Enabled;
-            bool transmissionEnabled = TransmissionSettings.Enabled || scatteringEnabled;
+            bool scatteringEnabled = skinSettings.sssEnabled;
+            bool transmissionEnabled = skinSettings.transEnabled || skinSettings.sssEnabled;
 
-            if (m_isTransmissionEnabled != transmissionEnabled
-                || m_isScatteringEnabled != scatteringEnabled)
+            if (this.transmissionEnabled != transmissionEnabled
+                || this.scatteringEnabled != scatteringEnabled)
             {
-                m_isScatteringEnabled = scatteringEnabled;
-                m_isTransmissionEnabled = transmissionEnabled;
+                this.scatteringEnabled = scatteringEnabled;
+                this.transmissionEnabled = transmissionEnabled;
 
                 DestroyCommandBuffers();
                 InitializeBuffers();
@@ -104,13 +49,18 @@ namespace HSSSS
             RefreshProperties();
         }
 
+        public void ForceRefresh()
+        {
+            DestroyCommandBuffers();
+            InitializeBuffers();
+        }
+
         private void Awake()
         {
-            m_camera = GetComponent<Camera>();
-            this.DeferredTransmissionBlit = HSSSS.deferredTransmissionBlit;
+            this.m_camera = GetComponent<Camera>();
             this.DeferredBlurredNormals = HSSSS.deferredBlurredNormals;
-            this.SkinLut = HSSSS.skinLUT;
-            this.Jitter2D = HSSSS.jitter2D;
+            this.DeferredTransmissionBlit = HSSSS.deferredTransmissionBlit;
+            this.skinSettings = new SkinSettings();
         }
 
         private void Reset()
@@ -125,7 +75,7 @@ namespace HSSSS
 
         private void OnDisable()
         {
-            RemoveCommandBuffersFromAllCameras();
+            RemoveCommandBuffers();
         }
 
         private void OnDestroy()
@@ -136,22 +86,28 @@ namespace HSSSS
         //per camera properties
         private void RefreshProperties()
         {
-            if (m_isTransmissionEnabled || m_isScatteringEnabled)
+            GetLookupTextures();
+
+            if (transmissionEnabled || scatteringEnabled)
             {
-                float transmissionWeight = m_isTransmissionEnabled ? Mathf.GammaToLinearSpace(TransmissionSettings.Weight) : 0.0f;
+                float transmissionWeight = transmissionEnabled ? Mathf.GammaToLinearSpace(skinSettings.transWeight) : 0.0f;
 
                 Shader.SetGlobalVector("_DeferredTransmissionParams",
-                    new Vector4(transmissionWeight, TransmissionSettings.Falloff, TransmissionSettings.BumpDistortion, TransmissionSettings.ShadowWeight));
+                    new Vector4(transmissionWeight, skinSettings.transFalloff, skinSettings.transDistortion, skinSettings.transShadowWeight));
 
-                if (m_isScatteringEnabled)
+                if (scatteringEnabled)
                 {
                     RefreshBlurredNormalProperties(m_camera, m_deferredBlurredNormalsMaterial);
 
-                    Shader.SetGlobalTexture("_DeferredSkinLut", SkinSettings.SkinLut);
+                    Shader.SetGlobalTexture("_DeferredSkinLut", skinLut);
+                    Shader.SetGlobalTexture("_DeferredShadowLut", shadowLut);
+
                     Shader.SetGlobalVector("_DeferredSkinParams",
-                        new Vector4(SkinSettings.Weight, SkinSettings.Bias, SkinSettings.Scale, SkinSettings.BumpBlur));
-                    Shader.SetGlobalVector("_DeferredSkinColorBleedAoWeights", SkinSettings.ColorBleedAoWeights);
-                    Shader.SetGlobalVector("_DeferredSkinTransmissionAbsorption", SkinSettings.TransmissionAbsorption);
+                        new Vector4(skinSettings.sssWeight, skinSettings.skinLutBias, skinSettings.skinLutScale, skinSettings.normalBlurWeight));
+                    Shader.SetGlobalVector("_DeferredSkinColorBleedAoWeights", skinSettings.colorBleedWeights);
+                    Shader.SetGlobalVector("_DeferredSkinTransmissionAbsorption", skinSettings.transAbsorption);
+
+                    Shader.SetGlobalVector("_DeferredShadowParams", new Vector2(skinSettings.shadowLutBias, skinSettings.shadowLutScale));
                 }
             }
         }
@@ -164,29 +120,20 @@ namespace HSSSS
             }
 
             float distanceToProjectionWindow = 1.0f / Mathf.Tan(0.5f * Mathf.Deg2Rad * camera.fieldOfView);
-            float normalBlurWidth = SkinSettings.BlurWidth * distanceToProjectionWindow;
-            float normalBlurDepthRange = SkinSettings.BlurDepthRange * distanceToProjectionWindow * c_blurDepthRangeMultiplier;
 
-            blurMaterial.SetTexture("_SkinJitter", SkinSettings.Jitter2D);
-            blurMaterial.SetVector("_DeferredBlurredNormalsParams", new Vector2(normalBlurWidth, normalBlurDepthRange));
+            float blurWidth = skinSettings.normalBlurRadius * distanceToProjectionWindow;
+            float blurDepthRange = skinSettings.normalBlurDepthRange * distanceToProjectionWindow * c_blurDepthRangeMultiplier;
+
+            blurMaterial.SetTexture("_SkinJitter", skinJitter);
+            blurMaterial.SetVector("_DeferredBlurredNormalsParams", new Vector2(blurWidth, blurDepthRange));
         }
 
         private void InitializeBuffers()
         {
-            m_isScatteringEnabled = SkinSettings.Enabled;
-            m_isTransmissionEnabled = TransmissionSettings.Enabled || m_isScatteringEnabled;
+            scatteringEnabled = skinSettings.sssEnabled;
+            transmissionEnabled = skinSettings.transEnabled || scatteringEnabled;
 
-            if (SkinSettings.SkinLut == null)
-            {
-                SkinSettings.SkinLut = SkinLut;
-            }
-
-            if (SkinSettings.Jitter2D == null)
-            {
-                SkinSettings.Jitter2D = Jitter2D;
-            }
-
-            if ((m_isTransmissionEnabled || m_isScatteringEnabled)
+            if ((transmissionEnabled || scatteringEnabled)
                 && m_camera != null
                 && DeferredTransmissionBlit != null
                 && m_copyTransmission == null
@@ -206,7 +153,7 @@ namespace HSSSS
                 m_copyTransmission.Blit(BuiltinRenderTextureType.CameraTarget, opacityBufferId, m_deferredTransmissionBlitMaterial);
 
                 // Blurred normals for skin
-                if (m_isScatteringEnabled)
+                if (scatteringEnabled)
                 {
                     GenerateNormalBlurMaterialAndCommandBuffer(blurredNormalBuffer, blurredNormalsBufferIdTemp,
                         out m_deferredBlurredNormalsMaterial, out m_renderBlurredNormals);
@@ -217,7 +164,7 @@ namespace HSSSS
                 m_releaseDeferredPlus.name = c_releaseDeferredBuffer;
                 m_releaseDeferredPlus.ReleaseTemporaryRT(opacityBufferId);
 
-                if (m_isScatteringEnabled)
+                if (scatteringEnabled)
                 {
                     m_releaseDeferredPlus.ReleaseTemporaryRT(blurredNormalsBufferIdTemp);
                 }
@@ -241,28 +188,10 @@ namespace HSSSS
             blurCommandBuffer.Blit(BuiltinRenderTextureType.GBuffer2, blurredNormalsBufferIdTemp, blurMaterial, 0);
             blurCommandBuffer.Blit(blurredNormalsBufferIdTemp, blurredNormalBuffer, blurMaterial, 1);
 
-            blurCommandBuffer.Blit(blurredNormalBuffer, blurredNormalsBufferIdTemp, blurMaterial, 0);
-            blurCommandBuffer.Blit(blurredNormalsBufferIdTemp, blurredNormalBuffer, blurMaterial, 1);
-        }
-
-        private void DestroyCommandBuffers()
-        {
-            RemoveCommandBuffersFromAllCameras();
-
-            m_copyTransmission = null;
-            m_renderBlurredNormals = null;
-            m_releaseDeferredPlus = null;
-
-            if (m_deferredTransmissionBlitMaterial != null)
+            for(int i = 1; i < skinSettings.normalBlurIter; i++)
             {
-                DestroyImmediate(m_deferredTransmissionBlitMaterial);
-                m_deferredTransmissionBlitMaterial = null;
-            }
-
-            if (m_deferredBlurredNormalsMaterial != null)
-            {
-                DestroyImmediate(m_deferredBlurredNormalsMaterial);
-                m_deferredBlurredNormalsMaterial = null;
+                blurCommandBuffer.Blit(blurredNormalBuffer, blurredNormalsBufferIdTemp, blurMaterial, 0);
+                blurCommandBuffer.Blit(blurredNormalsBufferIdTemp, blurredNormalBuffer, blurMaterial, 1);
             }
         }
 
@@ -302,27 +231,80 @@ namespace HSSSS
             return false;
         }
 
-        private void RemoveCommandBuffersFromCamera(Camera camera, CommandBuffer normalBuffer)
+        private void RemoveCommandBuffers()
         {
             if (m_copyTransmission != null)
             {
-                camera.RemoveCommandBuffer(CameraEvent.AfterGBuffer, m_copyTransmission);
+                m_camera.RemoveCommandBuffer(CameraEvent.AfterGBuffer, m_copyTransmission);
             }
 
-            if (normalBuffer != null)
+            if (m_renderBlurredNormals != null)
             {
-                camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, normalBuffer);
+                m_camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, m_renderBlurredNormals);
             }
 
             if (m_releaseDeferredPlus != null)
             {
-                camera.RemoveCommandBuffer(CameraEvent.AfterLighting, m_releaseDeferredPlus);
+                m_camera.RemoveCommandBuffer(CameraEvent.AfterLighting, m_releaseDeferredPlus);
             }
         }
 
-        private void RemoveCommandBuffersFromAllCameras()
+        private void DestroyCommandBuffers()
         {
-            RemoveCommandBuffersFromCamera(m_camera, m_renderBlurredNormals);
+            RemoveCommandBuffers();
+
+            m_copyTransmission = null;
+            m_renderBlurredNormals = null;
+            m_releaseDeferredPlus = null;
+
+            if (m_deferredTransmissionBlitMaterial != null)
+            {
+                DestroyImmediate(m_deferredTransmissionBlitMaterial);
+                m_deferredTransmissionBlitMaterial = null;
+            }
+
+            if (m_deferredBlurredNormalsMaterial != null)
+            {
+                DestroyImmediate(m_deferredBlurredNormalsMaterial);
+                m_deferredBlurredNormalsMaterial = null;
+            }
+        }
+
+        public void GetLookupTextures()
+        {
+            this.skinJitter = HSSSS.skinJitter;
+
+            switch (this.skinSettings.lutProfile)
+            {
+                case LUTProfile.penner:
+                    this.skinLut = HSSSS.defaultSkinLUT;
+                    Shader.DisableKeyword("_FACEWORKS_TYPE1");
+                    Shader.DisableKeyword("_FACEWORKS_TYPE2");
+                    break;
+
+                case LUTProfile.nvidia1:
+                    this.skinLut = HSSSS.faceWorksSkinLUT;
+                    Shader.DisableKeyword("_FACEWORKS_TYPE2");
+                    Shader.EnableKeyword("_FACEWORKS_TYPE1");
+                    break;
+
+                case LUTProfile.nvidia2:
+                    this.skinLut = HSSSS.faceWorksSkinLUT;
+                    this.shadowLut = HSSSS.faceWorksShadowLUT;
+                    Shader.DisableKeyword("_FACEWORKS_TYPE1");
+                    Shader.EnableKeyword("_FACEWORKS_TYPE2");
+                    break;
+            }
+        }
+
+        public void ImportSettings()
+        {
+            this.skinSettings = HSSSS.skinSettings;
+        }
+
+        public void ExportSettings()
+        {
+            HSSSS.skinSettings = this.skinSettings;
         }
     }
 }

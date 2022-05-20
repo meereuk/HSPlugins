@@ -1,46 +1,116 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Xml.Linq;
-using Studio;
-using IllusionPlugin;
+using System.Reflection;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Studio;
 using Harmony;
-
+using IllusionPlugin;
 
 namespace HSSSS
 {
+    public enum LUTProfile
+    {
+        penner = 0,
+        nvidia1 = 1,
+        nvidia2 = 2
+    };
+
+    public struct SkinSettings
+    {
+        public bool sssEnabled;
+        public bool transEnabled;
+
+        public LUTProfile lutProfile;
+
+        public float sssWeight;
+
+        public float skinLutBias;
+        public float skinLutScale;
+        public float shadowLutBias;
+        public float shadowLutScale;
+
+        public float normalBlurWeight;
+        public float normalBlurRadius;
+        public float normalBlurDepthRange;
+
+        public int normalBlurIter;
+
+        public Vector3 colorBleedWeights;
+        public Vector3 transAbsorption;
+
+        public float transWeight;
+        public float transShadowWeight;
+        public float transDistortion;
+        public float transFalloff;
+    }
+
     public class HSSSS : IEnhancedPlugin
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "0.8.2"; } }
+        public string Version { get { return "0.9.0"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
         #region Global Variables
         // info
-        private static string pluginName;
-        private static string pluginVersion;
-        private static string pluginLocation;
-        private static string configLocation;
-        private static string configPath;
+        public static string pluginName;
+        public static string pluginVersion;
+        public static string pluginLocation;
+        public static string configLocation;
+        public static string configPath;
 
-        // assets and resources
+        // assetbundle file
         private static AssetBundle assetBundle;
-        private static Shader deferredSkin;
+
+        // internal deferred shaders
+        private static Shader deferredShading;
         private static Shader deferredReflections;
 
-        internal static AlloyDeferredRendererPlus SSS = null;
+        // camera effects
+        internal static DeferredRenderer SSS = null;
+        internal static SkinSettings skinSettings = new SkinSettings()
+        {
+            sssEnabled = true,
+            transEnabled = true,
+
+            lutProfile = LUTProfile.penner,
+
+            sssWeight = 1.0f,
+
+            skinLutBias = 0.0f,
+            skinLutScale = 0.5f,
+
+            shadowLutBias = 0.0f,
+            shadowLutScale = 1.0f,
+
+            normalBlurWeight = 1.0f,
+            normalBlurRadius = 0.2f,
+            normalBlurDepthRange = 1.0f,
+
+            normalBlurIter = 1,
+
+            colorBleedWeights = new Vector3(0.40f, 0.15f, 0.20f),
+            transAbsorption = new Vector3(-8.00f, -48.0f, -64.0f),
+
+            transWeight = 1.0f,
+            transShadowWeight = 0.5f,
+            transDistortion = 0.5f,
+            transFalloff = 2.0f
+        };
+
         internal static Shader deferredTransmissionBlit;
         internal static Shader deferredBlurredNormals;
-        internal static Shader shadowMapSampler;
-        internal static Texture2D skinLUT;
-        internal static Texture2D jitter2D;
 
+        internal static Texture2D defaultSkinLUT;
+        internal static Texture2D faceWorksSkinLUT;
+        internal static Texture2D faceWorksShadowLUT;
+        internal static Texture2D skinJitter;
+
+        // skin and body materials
         public static Material skinMaterial;
         public static Material overlayMaterial;
         public static Material eyeBrowMaterial;
@@ -48,11 +118,15 @@ namespace HSSSS
         public static Material eyeAlphaMaterial;
         public static Material eyePupilMaterial;
         public static Material eyeWhiteMaterial;
+
+        // thickness textures
         public static Texture2D femaleBodyThickness;
         public static Texture2D femaleHeadThickness;
         public static Texture2D maleBodyThickness;
         public static Texture2D maleHeadThickness;
-        public static Texture2D spotCookie;      
+
+        // light cookie (spot)
+        public static Texture2D spotCookie;
 
         // modprefs.ini options
         private static bool isStudio;
@@ -72,8 +146,8 @@ namespace HSSSS
         private static KeyCode[] hotKey;
 
         // ui window
-        internal static GUISkin skinUI;
-        private GameObject configUI;
+        internal static GUISkin windowSkin;
+        internal GameObject windowObj;
         #endregion
 
         #region Unity Methods
@@ -93,7 +167,7 @@ namespace HSSSS
                 Directory.CreateDirectory(configLocation);
             }
 
-            this.ConfigParser();
+            this.IPAConfigParser();
 
             if (isEnabled)
             {
@@ -110,6 +184,7 @@ namespace HSSSS
                     this.ForwardAssetLoader();
                 }
 
+                #region Harmony
                 HarmonyInstance harmony = HarmonyInstance.Create("com.kkul.hssss");
 
                 harmony.Patch(
@@ -151,11 +226,14 @@ namespace HSSSS
                             new HarmonyMethod(typeof(HSSSS), nameof(ShadowMapPatcher))
                             );
 
+                        Shader.EnableKeyword("_PCF_TAPS_64");
+
                         Shader.SetGlobalFloat("_DirLightPenumbra", 1.0f);
                         Shader.SetGlobalFloat("_SpotLightPenumbra", 1.0f);
                         Shader.SetGlobalFloat("_PointLightPenumbra", 1.0f);
                     }
                 }
+                #endregion
             }
         }
 
@@ -167,23 +245,34 @@ namespace HSSSS
         {
             if (isStudio && level == 3)
             {
-                if (isEnabled && useDeferred)
+                if (isEnabled)
                 {
-                    this.PostFxInitializer();
-
-                    if (!LoadConfig())
+                    if (useDeferred)
                     {
-                        Console.WriteLine("#### HSSSS: Could not load config.xml; writing a new one...");
+                        this.PostFxInitializer();
 
-                        if (SaveConfig())
+                        SSS.ImportSettings();
+
+                        if (!LoadConfig())
                         {
-                            Console.WriteLine("#### HSSSS: Successfully wrote a new configuration file");
+                            Console.WriteLine("#### HSSSS: Could not load config.xml; writing a new one...");
+
+                            if (SaveConfig())
+                            {
+                                Console.WriteLine("#### HSSSS: Successfully wrote a new configuration file");
+                            }
+                        }
+
+                        else
+                        {
+                            SSS.Refresh();
+                            Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
                         }
                     }
 
                     else
                     {
-                        Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
+                        Shader.SetGlobalTexture("_SssBrdfTex", defaultSkinLUT);
                     }
                 }
             }
@@ -203,14 +292,14 @@ namespace HSSSS
             {
                 if (isStudio && this.GetHotKeyPressed())
                 {
-                    if (this.configUI == null)
+                    if (this.windowObj == null)
                     {
-                        this.configUI = new GameObject("HSSSS.ConfigUI", typeof(ConfigUI));
+                        this.windowObj = new GameObject("HSSSS.ConfigWindow", typeof(ConfigWindow));
                     }
 
                     else
                     {
-                        UnityEngine.Object.DestroyImmediate(this.configUI);
+                        UnityEngine.Object.DestroyImmediate(this.windowObj);
                         Studio.Studio.Instance.cameraCtrl.enabled = true;
                     }
                 }
@@ -223,7 +312,7 @@ namespace HSSSS
         #endregion
 
         #region Custom Methods
-        private void ConfigParser()
+        private void IPAConfigParser()
         {
             // enable & disable plugin
             isEnabled = ModPrefs.GetBool("HSSSS", "Enabled", true, true);
@@ -283,6 +372,7 @@ namespace HSSSS
         {
             // hssssresources.unity3d
             assetBundle = AssetBundle.LoadFromMemory(Resources.hssssresources);
+
             // built-in thickness textures
             if (useCustomThickness)
             {
@@ -353,13 +443,18 @@ namespace HSSSS
                 maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
             }
 
+            // sss lookup textures
+            defaultSkinLUT = assetBundle.LoadAsset<Texture2D>("DefaultSkinLUT");
+            faceWorksSkinLUT = assetBundle.LoadAsset<Texture2D>("FaceWorksSkinLUT");
+            faceWorksShadowLUT = assetBundle.LoadAsset<Texture2D>("FaceWorksShadowLUT");
+
             // jitter texture
-            jitter2D = assetBundle.LoadAsset<Texture2D>("Jitter2D");
+            skinJitter = assetBundle.LoadAsset<Texture2D>("SkinJitter");
             
             // spotlight cookie
             spotCookie = assetBundle.LoadAsset<Texture2D>("DefaultSpotCookie");
 
-            //
+            #region Errors
             if (null == assetBundle)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Internal AssetBundle");
@@ -375,7 +470,12 @@ namespace HSSSS
                 Console.WriteLine("#### HSSSS: Failed to Load Male Thickness Textures");
             }
 
-            if (null == jitter2D)
+            if (null == defaultSkinLUT || null == faceWorksSkinLUT || null == faceWorksShadowLUT)
+            {
+                Console.WriteLine("#### HSSSS: Failed to Load Skin Lookup Textures");
+            }
+
+            if (null == skinJitter)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Jitter Texture");
             }
@@ -384,6 +484,7 @@ namespace HSSSS
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Spotlight Cookie");
             }
+            #endregion
 
             // materials for additional replacement
             if (fixAlphaShadow)
@@ -391,10 +492,11 @@ namespace HSSSS
                 eyeBrowMaterial = assetBundle.LoadAsset<Material>("EyeBrow");
                 eyeLashMaterial = assetBundle.LoadAsset<Material>("EyeLash");
                 eyeAlphaMaterial = assetBundle.LoadAsset<Material>("EyeAlpha");
-                eyePupilMaterial = assetBundle.LoadAsset<Material>("EyePupil");
+                //eyePupilMaterial = assetBundle.LoadAsset<Material>("EyePupil");
+                eyePupilMaterial = assetBundle.LoadAsset<Material>("EyePOM");
                 eyeWhiteMaterial = assetBundle.LoadAsset<Material>("EyeWhite");
 
-                //
+                #region Errors
                 if (null == eyeBrowMaterial)
                 {
                     Console.WriteLine("#### HSSSS: Failed to Load Eyebrow Material");
@@ -419,14 +521,12 @@ namespace HSSSS
                 {
                     Console.WriteLine("#### HSSSS: Failed to Load Eye Overlay Material");
                 }
+                #endregion
             }
         }
 
         private void DeferredAssetLoader()
         {
-            // skin-lookup table for skin scattering
-            skinLUT = assetBundle.LoadAsset<Texture2D>("DeferredLUT");
-
             // tesellation materials
             if (useTessellation)
             {
@@ -447,19 +547,8 @@ namespace HSSSS
 
             // internal deferred & reflection shaders
             // additional pcf filters for spot/point lights
-            if (useSoftShadow)
-            {
-                deferredSkin = assetBundle.LoadAsset<Shader>("InternalDeferredShadingSoftShadow");
-                deferredReflections = assetBundle.LoadAsset<Shader>("InternalDeferredReflectionsSoftShadow");
-                shadowMapSampler = assetBundle.LoadAsset<Shader>("VSMShadowSampler");
-            }
-
-            // default soft shadows
-            else
-            {
-                deferredSkin = assetBundle.LoadAsset<Shader>("InternalDeferredShading");
-                deferredReflections = assetBundle.LoadAsset<Shader>("InternalDeferredReflections");
-            }
+            deferredShading = assetBundle.LoadAsset<Shader>("InternalDeferredShading");
+            deferredReflections = assetBundle.LoadAsset<Shader>("InternalDeferredReflections");
 
             // semi-pbr wetness option
             if (useWetSpecGloss)
@@ -468,14 +557,9 @@ namespace HSSSS
             }
 
             // configuration window skin
-            skinUI = assetBundle.LoadAsset<GUISkin>("GUISkin");
+            windowSkin = assetBundle.LoadAsset<GUISkin>("GUISkin");
 
-            //
-            if (null == skinLUT)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Deferred Skin LUT");
-            }
-
+            #region Errors
             if (null == skinMaterial || null == overlayMaterial)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Skin Material");
@@ -486,15 +570,16 @@ namespace HSSSS
                 Console.WriteLine("#### HSSSS: Failed to Load PostFX Shaders");
             }
 
-            if (null == deferredSkin || null == deferredReflections)
+            if (null == deferredShading || null == deferredReflections)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Deferred Internal Shaders");
             }
 
-            if (null == skinUI)
+            if (null == windowSkin)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load UI Skin");
             }
+            #endregion
         }
 
         private void ForwardAssetLoader()
@@ -509,21 +594,22 @@ namespace HSSSS
                 skinMaterial.EnableKeyword("_WET_SPECGLOSS");
             }
 
-            //
+            #region Errors
             if (null == skinMaterial || null == overlayMaterial)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Skin Material");
             }
+            #endregion
         }
 
         private void InternalShaderReplacer()
         {
             GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredShading, BuiltinShaderMode.UseCustom);
             GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredReflections, BuiltinShaderMode.UseCustom);
-            GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredShading, deferredSkin);
+            GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredShading, deferredShading);
             GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredReflections, deferredReflections);
 
-            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredShading) != deferredSkin)
+            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredShading) != deferredShading)
             {
                 Console.WriteLine("#### HSSSS: Failed to Replace Internal Deferred Shader");
             }
@@ -540,7 +626,7 @@ namespace HSSSS
 
             if (null != mainCamera)
             {
-                SSS = mainCamera.gameObject.AddComponent<AlloyDeferredRendererPlus>();
+                SSS = mainCamera.gameObject.AddComponent<DeferredRenderer>();
 
                 if (null == SSS)
                 {
@@ -573,30 +659,39 @@ namespace HSSSS
                 XElement scattering = root.Element("SkinScattering");
                 XElement transmission = root.Element("Transmission");
                 
-                SSS.SkinSettings.Enabled = bool.Parse(scattering.Attribute("enabled").Value);
-                SSS.SkinSettings.Weight = float.Parse(scattering.Element("Weight").Value);
-                SSS.SkinSettings.Scale = float.Parse(scattering.Element("Scale").Value);
-                SSS.SkinSettings.Bias = float.Parse(scattering.Element("Bias").Value);
-                SSS.SkinSettings.BumpBlur = float.Parse(scattering.Element("BumpBlur").Value);
-                SSS.SkinSettings.BlurWidth = float.Parse(scattering.Element("BlurWidth").Value);
-                SSS.SkinSettings.BlurDepthRange = float.Parse(scattering.Element("BlurDepth").Value);
+                skinSettings.sssEnabled = bool.Parse(scattering.Attribute("Enabled").Value);
 
-                SSS.SkinSettings.ColorBleedAoWeights.x = float.Parse(scattering.Element("BleedingColor").Element("Red").Value);
-                SSS.SkinSettings.ColorBleedAoWeights.y = float.Parse(scattering.Element("BleedingColor").Element("Green").Value);
-                SSS.SkinSettings.ColorBleedAoWeights.z = float.Parse(scattering.Element("BleedingColor").Element("Blue").Value);
+                skinSettings.sssWeight = float.Parse(scattering.Element("Weight").Value);
 
-                SSS.SkinSettings.TransmissionAbsorption.x = float.Parse(scattering.Element("AbsorptionColor").Element("Red").Value);
-                SSS.SkinSettings.TransmissionAbsorption.y = float.Parse(scattering.Element("AbsorptionColor").Element("Green").Value);
-                SSS.SkinSettings.TransmissionAbsorption.z = float.Parse(scattering.Element("AbsorptionColor").Element("Blue").Value);
+                skinSettings.lutProfile = (LUTProfile)Enum.Parse(typeof(LUTProfile), scattering.Element("BRDF").Value);
+
+                skinSettings.skinLutScale = float.Parse(scattering.Element("Diffusion").Element("Scale").Value);
+                skinSettings.skinLutBias = float.Parse(scattering.Element("Diffusion").Element("Bias").Value);
+
+                skinSettings.shadowLutScale = float.Parse(scattering.Element("Shadow").Element("Scale").Value);
+                skinSettings.shadowLutBias = float.Parse(scattering.Element("Shadow").Element("Bias").Value);
+
+                skinSettings.normalBlurWeight = float.Parse(scattering.Element("NormalBlur").Element("Weight").Value);
+                skinSettings.normalBlurRadius = float.Parse(scattering.Element("NormalBlur").Element("Radius").Value);
+                skinSettings.normalBlurDepthRange = float.Parse(scattering.Element("NormalBlur").Element("CorrectionDepth").Value);
+                skinSettings.normalBlurIter = int.Parse(scattering.Element("NormalBlur").Element("Iterations").Value);
+
+                skinSettings.colorBleedWeights.x = float.Parse(scattering.Element("AOBleeding").Element("Red").Value);
+                skinSettings.colorBleedWeights.y = float.Parse(scattering.Element("AOBleeding").Element("Green").Value);
+                skinSettings.colorBleedWeights.z = float.Parse(scattering.Element("AOBleeding").Element("Blue").Value);
+
+                skinSettings.transAbsorption.x = float.Parse(scattering.Element("Absorption").Element("Red").Value);
+                skinSettings.transAbsorption.y = float.Parse(scattering.Element("Absorption").Element("Green").Value);
+                skinSettings.transAbsorption.z = float.Parse(scattering.Element("Absorption").Element("Blue").Value);
                 
-                SSS.TransmissionSettings.Enabled = bool.Parse(transmission.Attribute("enabled").Value);
+                skinSettings.transEnabled = bool.Parse(transmission.Attribute("Enabled").Value);
+                skinSettings.transWeight = float.Parse(transmission.Element("Weight").Value);
+                skinSettings.transDistortion = float.Parse(transmission.Element("NormalDistortion").Value);
+                skinSettings.transShadowWeight = float.Parse(transmission.Element("ShadowWeight").Value);
+                skinSettings.transFalloff = float.Parse(transmission.Element("Falloff").Value);
 
-                SSS.TransmissionSettings.Weight = float.Parse(transmission.Element("Weight").Value);
-                SSS.TransmissionSettings.BumpDistortion = float.Parse(transmission.Element("Distortion").Value);
-                SSS.TransmissionSettings.ShadowWeight = float.Parse(transmission.Element("ShadowWeight").Value);
-                SSS.TransmissionSettings.Falloff = float.Parse(transmission.Element("Falloff").Value);
-
-                SSS.Refresh();
+                SSS.ImportSettings();
+                SSS.ForceRefresh();
 
                 return true;
             }
@@ -609,34 +704,46 @@ namespace HSSSS
 
         internal static bool SaveConfig()
         {
+            SSS.ExportSettings();
+
             XDocument config = new XDocument();
 
             XElement root = new XElement(pluginName, new XAttribute("version", pluginVersion));
             XElement scattering = new XElement("SkinScattering",
-                new XAttribute("enabled", SSS.SkinSettings.Enabled),
-                new XElement("Weight", SSS.SkinSettings.Weight),
-                new XElement("Scale", SSS.SkinSettings.Scale),
-                new XElement("Bias", SSS.SkinSettings.Bias),
-                new XElement("BumpBlur", SSS.SkinSettings.BumpBlur),
-                new XElement("BlurWidth", SSS.SkinSettings.BlurWidth),
-                new XElement("BlurDepth", SSS.SkinSettings.BlurDepthRange),
-                new XElement("BleedingColor",
-                    new XElement("Red", SSS.SkinSettings.ColorBleedAoWeights.x),
-                    new XElement("Green", SSS.SkinSettings.ColorBleedAoWeights.y),
-                    new XElement("Blue", SSS.SkinSettings.ColorBleedAoWeights.z)
+                new XAttribute("Enabled", skinSettings.sssEnabled),
+                new XElement("Weight", skinSettings.sssWeight),
+                new XElement("BRDF", skinSettings.lutProfile),
+                new XElement("Diffusion",
+                    new XElement("Scale", skinSettings.skinLutScale),
+                    new XElement("Bias", skinSettings.skinLutBias)
+                ),
+                new XElement("Shadow",
+                    new XElement("Scale", skinSettings.shadowLutScale),
+                    new XElement("Bias", skinSettings.shadowLutBias)
+                ),
+                new XElement("NormalBlur",
+                    new XElement("Weight", skinSettings.normalBlurWeight),
+                    new XElement("Radius", skinSettings.normalBlurRadius),
+                    new XElement("CorrectionDepth", skinSettings.normalBlurDepthRange),
+                    new XElement("Iterations", skinSettings.normalBlurIter)
+                ),
+                new XElement("AOBleeding",
+                    new XElement("Red", skinSettings.colorBleedWeights.x),
+                    new XElement("Green", skinSettings.colorBleedWeights.y),
+                    new XElement("Blue", skinSettings.colorBleedWeights.z)
                     ),
-                new XElement("AbsorptionColor",
-                    new XElement("Red", SSS.SkinSettings.TransmissionAbsorption.x),
-                    new XElement("Green", SSS.SkinSettings.TransmissionAbsorption.y),
-                    new XElement("Blue", SSS.SkinSettings.TransmissionAbsorption.z)
+                new XElement("Absorption",
+                    new XElement("Red", skinSettings.transAbsorption.x),
+                    new XElement("Green", skinSettings.transAbsorption.y),
+                    new XElement("Blue", skinSettings.transAbsorption.z)
                     )
                 );
             XElement transmission = new XElement("Transmission",
-                new XAttribute("enabled", SSS.TransmissionSettings.Enabled),
-                new XElement("Weight", SSS.TransmissionSettings.Weight),
-                new XElement("Distortion", SSS.TransmissionSettings.BumpDistortion),
-                new XElement("ShadowWeight", SSS.TransmissionSettings.ShadowWeight),
-                new XElement("Falloff", SSS.TransmissionSettings.Falloff)
+                new XAttribute("Enabled", skinSettings.transEnabled),
+                new XElement("Weight", skinSettings.transWeight),
+                new XElement("NormalDistortion", skinSettings.transDistortion),
+                new XElement("ShadowWeight", skinSettings.transShadowWeight),
+                new XElement("Falloff", skinSettings.transFalloff)
                 );
 
             config.Add(root);
@@ -746,13 +853,13 @@ namespace HSSSS
 
                     case CharReference.TagObjKey.ObjEyeL:
                         ShaderReplacer(eyePupilMaterial, mat);
-                        mat.EnableKeyword("_METALLIC_OFF");
+                        //mat.EnableKeyword("_METALLIC_OFF");
                         mat.renderQueue = 2001;
                         break;
 
                     case CharReference.TagObjKey.ObjEyeR:
                         ShaderReplacer(eyePupilMaterial, mat);
-                        mat.EnableKeyword("_METALLIC_OFF");
+                        //mat.EnableKeyword("_METALLIC_OFF");
                         mat.renderQueue = 2001;
                         break;
 
@@ -863,7 +970,7 @@ namespace HSSSS
                             {
                                 if (mat != null)
                                 {
-                                    if (!mat.shader.name.Contains("HSSSS"))
+                                    if (!mat.shader.name.Contains("HSSSS") && !mat.shader.name.Contains("Alloy"))
                                     {
                                         ObjectParser(mat, key);
                                         Console.WriteLine("#### HSSSS Replaced " + mat.name);
@@ -1012,15 +1119,14 @@ namespace HSSSS
         #endregion
     }
 
-    public class ConfigUI : MonoBehaviour
+    public class ConfigWindow : MonoBehaviour
     {
         private static Vector2 windowPosition = new Vector2(250.0f, 0.000f);
-        private static Vector2 windowSize = new Vector2(768.0f, 640.0f);
+        private static Vector2 windowSize = new Vector2(768.0f, 128.0f);
+        private static Vector3 penumbraScale = new Vector3(1.0f, 1.0f, 1.0f);
 
         private Rect configWindow;
-
-        private static float lightAlpha = 1.0f;
-        private static Vector3 penumbraScale = new Vector3(1.0f, 1.0f, 1.0f);
+        private SkinSettings skinSettings;
 
         private enum UIState
         {
@@ -1036,15 +1142,12 @@ namespace HSSSS
         {
             this.configWindow = new Rect(windowPosition, windowSize);
             this.state = UIState.skinScattering;
-        }
-
-        public void LateUpdate()
-        {
+            this.skinSettings = HSSSS.skinSettings;
         }
 
         public void OnGUI()
         {
-            GUI.skin = HSSSS.skinUI;
+            GUI.skin = HSSSS.windowSkin;
 
             this.configWindow = GUILayout.Window(0, this.configWindow, this.WindowFunction, "HSSSS Configurations");
             Studio.Studio.Instance.cameraCtrl.enabled = !this.configWindow.Contains(Event.current.mousePosition);
@@ -1077,10 +1180,22 @@ namespace HSSSS
                     break;
             }
 
+
+            GUILayout.Space(16.0f);
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("Version " + HSSSS.pluginVersion);
+            GUILayout.EndHorizontal();
+
+            this.UpdateSettings();
             GUI.DragWindow();
-            HSSSS.SSS.Refresh();
 
             windowPosition = this.configWindow.position;
+        }
+
+        private void UpdateWindowSize()
+        {
+            this.configWindow.size = new Vector2(768.0f, 256.0f);
         }
 
         private void TabsControl()
@@ -1090,25 +1205,25 @@ namespace HSSSS
             if (GUILayout.Button("Scattering"))
             {
                 state = UIState.skinScattering;
-                this.configWindow.size = new Vector2(768.0f, 640.0f);
+                this.UpdateWindowSize();
             }
 
             if (GUILayout.Button("Transmission"))
             {
                 state = UIState.skinTransmission;
-                this.configWindow.size = new Vector2(768.0f, 512.0f);
+                this.UpdateWindowSize();
             }
 
             if (GUILayout.Button("Lights & Shadows"))
             {
                 state = UIState.lightShadow;
-                this.configWindow.size = new Vector2(768.0f, 400.0f);
+                this.UpdateWindowSize();
             }
 
             if (GUILayout.Button("Presets"))
             {
                 state = UIState.presets;
-                this.configWindow.size = new Vector2(768.0f, 416.0f);
+                this.UpdateWindowSize();
             }
 
             GUILayout.EndHorizontal();
@@ -1117,26 +1232,80 @@ namespace HSSSS
         private void ScatteringSettings()
         {
             GUILayout.Label("Skin Scattering Weight");
-            HSSSS.SSS.SkinSettings.Weight = this.SliderControls(HSSSS.SSS.SkinSettings.Weight, 0.0f, 1.0f);
+            skinSettings.sssWeight = this.SliderControls(skinSettings.sssWeight, 0.0f, 1.0f);
 
-            GUILayout.Label("Skin Scattering Scale");
-            HSSSS.SSS.SkinSettings.Scale = this.SliderControls(HSSSS.SSS.SkinSettings.Scale, 0.0f, 1.0f);
+            GUILayout.Space(16.0f);
 
-            GUILayout.Label("Skin Scattering Bias");
-            HSSSS.SSS.SkinSettings.Bias = this.SliderControls(HSSSS.SSS.SkinSettings.Bias, 0.0f, 1.0f);
+            // profiles
+            GUILayout.Label("Pre-integrated BRDF");
 
-            GUILayout.Label("Skin Scattering Bump Blur");
-            HSSSS.SSS.SkinSettings.BumpBlur = this.SliderControls(HSSSS.SSS.SkinSettings.BumpBlur, 0.0f, 1.0f);
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
-            GUILayout.Label("Skin Scattering Blur Width");
-            HSSSS.SSS.SkinSettings.BlurWidth = this.SliderControls(HSSSS.SSS.SkinSettings.BlurWidth, 0.0f, 1.0f);
+            if (GUILayout.Button("Penner (Default)"))
+            {
+                skinSettings.lutProfile = LUTProfile.penner;
+                this.UpdateWindowSize();
+            }
 
-            GUILayout.Label("Skin Scattering Blur Depth Range");
-            HSSSS.SSS.SkinSettings.BlurDepthRange = this.SliderControls(HSSSS.SSS.SkinSettings.BlurDepthRange, 0.0f, 20.0f);
+            if (GUILayout.Button("Faceworks Type 1"))
+            {
+                skinSettings.lutProfile = LUTProfile.nvidia1;
+                this.UpdateWindowSize();
+            }
 
-            GUILayout.Label("Skin Scattering Occlusion Color Bleeding");
-            HSSSS.SSS.SkinSettings.ColorBleedAoWeights = this.RGBControls(HSSSS.SSS.SkinSettings.ColorBleedAoWeights);
+            if (GUILayout.Button("Faceworks Type 2"))
+            {
+                skinSettings.lutProfile = LUTProfile.nvidia2;
+                this.UpdateWindowSize();
+            }
 
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(16.0f);
+
+            // skin diffusion brdf
+            GUILayout.Label("Skin BRDF Lookup Scale");
+            skinSettings.skinLutScale = this.SliderControls(skinSettings.skinLutScale, 0.0f, 1.0f);
+
+            GUILayout.Label("Skin BRDF Lookup Bias");
+            skinSettings.skinLutBias = this.SliderControls(skinSettings.skinLutBias, 0.0f, 1.0f);
+
+            GUILayout.Space(16.0f);
+
+            // shadow penumbra brdf
+            if (skinSettings.lutProfile == LUTProfile.nvidia2)
+            {
+                GUILayout.Label("Shadow BRDF Lookup Scale");
+                skinSettings.shadowLutScale = this.SliderControls(skinSettings.shadowLutScale, 0.0f, 1.0f);
+
+                GUILayout.Label("Shadow BRDF Lookup Bias");
+                skinSettings.shadowLutBias = this.SliderControls(skinSettings.shadowLutBias, 0.0f, 1.0f);
+            }
+
+            GUILayout.Space(16.0f);
+
+            // normal blurs
+            GUILayout.Label("Normal Blur Weight");
+            skinSettings.normalBlurWeight = this.SliderControls(skinSettings.normalBlurWeight, 0.0f, 1.0f);
+
+            GUILayout.Label("Normal Blur Radius");
+            skinSettings.normalBlurRadius = this.SliderControls(skinSettings.normalBlurRadius, 0.0f, 1.0f);
+
+            GUILayout.Label("Normal Blur Depth Range");
+            skinSettings.normalBlurDepthRange = this.SliderControls(skinSettings.normalBlurDepthRange, 0.0f, 20.0f);
+
+            GUILayout.Label("Normal Blur Iterations");
+            skinSettings.normalBlurIter = this.SliderControls(skinSettings.normalBlurIter, 1, 10);
+
+            GUILayout.Space(16.0f);
+
+            // ambient occlusion
+            GUILayout.Label("Ambient Occlusion Color Bleeding");
+            skinSettings.colorBleedWeights = this.RGBControls(skinSettings.colorBleedWeights);
+
+            GUILayout.Space(16.0f);
+
+            // save and load
             GUILayout.Label("Save/Load Preset");
             GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
@@ -1144,6 +1313,7 @@ namespace HSSSS
             {
                 if (HSSSS.LoadConfig())
                 {
+                    this.skinSettings = HSSSS.skinSettings;
                     Console.WriteLine("#### HSSSS: Loaded Configurations");
                 }
 
@@ -1151,10 +1321,14 @@ namespace HSSSS
                 {
                     Console.WriteLine("#### HSSSS: Failed to Load Configuration");
                 }
+
+                this.UpdateWindowSize();
             }
 
             if (GUILayout.Button("Save Preset"))
             {
+                HSSSS.skinSettings = this.skinSettings;
+
                 if (HSSSS.SaveConfig())
                 {
                     Console.WriteLine("#### HSSSS: Saved Configurations");
@@ -1164,6 +1338,8 @@ namespace HSSSS
                 {
                     Console.WriteLine("#### HSSSS: Failed to Save Configurations");
                 }
+
+                this.UpdateWindowSize();
             }
 
             GUILayout.EndHorizontal();
@@ -1171,21 +1347,25 @@ namespace HSSSS
 
         private void TransmissionSettings()
         {
+            //
             GUILayout.Label("Transmission Weight");
-            HSSSS.SSS.TransmissionSettings.Weight = this.SliderControls(HSSSS.SSS.TransmissionSettings.Weight, 0.0f, 1.0f);
+            skinSettings.transWeight = this.SliderControls(skinSettings.transWeight, 0.0f, 1.0f);
 
             GUILayout.Label("Transmission Distortion");
-            HSSSS.SSS.TransmissionSettings.BumpDistortion = this.SliderControls(HSSSS.SSS.TransmissionSettings.BumpDistortion, 0.0f, 1.0f);
+            skinSettings.transDistortion = this.SliderControls(skinSettings.transDistortion, 0.0f, 1.0f);
 
             GUILayout.Label("Transmission Shadow Weight");
-            HSSSS.SSS.TransmissionSettings.ShadowWeight = this.SliderControls(HSSSS.SSS.TransmissionSettings.ShadowWeight, 0.0f, 1.0f);
+            skinSettings.transShadowWeight = this.SliderControls(skinSettings.transShadowWeight, 0.0f, 1.0f);
 
             GUILayout.Label("Transmission Falloff");
-            HSSSS.SSS.TransmissionSettings.Falloff = this.SliderControls(HSSSS.SSS.TransmissionSettings.Falloff, 1.0f, 20.0f);
+            skinSettings.transFalloff = this.SliderControls(skinSettings.transFalloff, 1.0f, 20.0f);
 
             GUILayout.Label("Transmission Absorption");
-            HSSSS.SSS.SkinSettings.TransmissionAbsorption = this.RGBControls(HSSSS.SSS.SkinSettings.TransmissionAbsorption);
+            skinSettings.transAbsorption = this.RGBControls(skinSettings.transAbsorption);
 
+            GUILayout.Space(16.0f);
+
+            //
             GUILayout.Label("Save/Load Preset");
             GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
@@ -1194,6 +1374,7 @@ namespace HSSSS
                 if (HSSSS.LoadConfig())
                 {
                     Console.WriteLine("#### HSSSS: Loaded Configurations");
+                    this.skinSettings = HSSSS.skinSettings;
                 }
 
                 else
@@ -1204,6 +1385,8 @@ namespace HSSSS
 
             if (GUILayout.Button("Save Preset"))
             {
+                HSSSS.skinSettings = this.skinSettings;
+
                 if (HSSSS.SaveConfig())
                 {
                     Console.WriteLine("#### HSSSS: Saved Configurations");
@@ -1220,30 +1403,74 @@ namespace HSSSS
 
         private void LightShadowSettings()
         {
-            GUILayout.Label("Light Alpha");
+            // 
+            GUILayout.Label("PCF TAPS COUNT");
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
-            lightAlpha = this.SliderControls(lightAlpha, 0.0f, 100.0f);
+            if (GUILayout.Button("Off"))
+            {
+                Shader.DisableKeyword("_PCF_TAPS_8");
+                Shader.DisableKeyword("_PCF_TAPS_16");
+                Shader.DisableKeyword("_PCF_TAPS_32");
+                Shader.DisableKeyword("_PCF_TAPS_64");
+                Shader.DisableKeyword("_DIR_PCF_ON");
+            }
+
+            if (GUILayout.Button("8"))
+            {
+                Shader.DisableKeyword("_PCF_TAPS_16");
+                Shader.DisableKeyword("_PCF_TAPS_32");
+                Shader.DisableKeyword("_PCF_TAPS_64");
+
+                Shader.EnableKeyword("_PCF_TAPS_8");
+            }
+
+            if (GUILayout.Button("16"))
+            {
+                Shader.DisableKeyword("_PCF_TAPS_8");
+                Shader.DisableKeyword("_PCF_TAPS_32");
+                Shader.DisableKeyword("_PCF_TAPS_64");
+
+                Shader.EnableKeyword("_PCF_TAPS_16");
+            }
+
+            if (GUILayout.Button("32"))
+            {
+                Shader.DisableKeyword("_PCF_TAPS_8");
+                Shader.DisableKeyword("_PCF_TAPS_16");
+                Shader.DisableKeyword("_PCF_TAPS_64");
+
+                Shader.EnableKeyword("_PCF_TAPS_32");
+            }
+
+            if (GUILayout.Button("64"))
+            {
+                Shader.DisableKeyword("_PCF_TAPS_8");
+                Shader.DisableKeyword("_PCF_TAPS_16");
+                Shader.DisableKeyword("_PCF_TAPS_32");
+
+                Shader.EnableKeyword("_PCF_TAPS_64");
+            }
+
+            GUILayout.EndHorizontal();
 
             GUILayout.Space(16.0f);
 
             GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
-            if (GUILayout.Button("Directional"))
+            if (GUILayout.Button("Directional PCF ON"))
             {
-                this.SetLightAlpha(LightType.Directional);
+                Shader.EnableKeyword("_DIR_PCF_ON");
             }
 
-            if (GUILayout.Button("Spot"))
+            if (GUILayout.Button("Directional PCF OFF"))
             {
-                this.SetLightAlpha(LightType.Spot);
-            }
-
-            if (GUILayout.Button("Point"))
-            {
-                this.SetLightAlpha(LightType.Point);
+                Shader.DisableKeyword("_DIR_PCF_ON");
             }
 
             GUILayout.EndHorizontal();
+
+            GUILayout.Space(16.0f);
 
             GUILayout.Label("Penumbra Scale (Directional Lights)");
             penumbraScale.x = this.SliderControls(penumbraScale.x, 0.0f, 10.0f);
@@ -1251,7 +1478,7 @@ namespace HSSSS
             GUILayout.Label("Penumbra Scale (Spot Lights)");
             penumbraScale.y = this.SliderControls(penumbraScale.y, 0.0f, 10.0f);
 
-            GUILayout.Label("Penumbra Scale (Point Lights");
+            GUILayout.Label("Penumbra Scale (Point Lights)");
             penumbraScale.z = this.SliderControls(penumbraScale.z, 0.0f, 10.0f);
 
             Shader.SetGlobalFloat("_DirLightPenumbra", penumbraScale.x);
@@ -1273,6 +1500,22 @@ namespace HSSSS
             sliderValue = GUILayout.HorizontalSlider(sliderValue, minValue, maxValue);
 
             if (float.TryParse(GUILayout.TextField(sliderValue.ToString("0.00"), GUILayout.Width(64.0f)), out float fieldValue))
+            {
+                sliderValue = fieldValue;
+            }
+
+            GUILayout.EndHorizontal();
+
+            return sliderValue;
+        }
+
+        private int SliderControls(int sliderValue, int minValue, int maxValue)
+        {
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
+
+            sliderValue = (int) GUILayout.HorizontalSlider(sliderValue, minValue, maxValue);
+
+            if (int.TryParse(GUILayout.TextField(sliderValue.ToString(), GUILayout.Width(64.0f)), out int fieldValue))
             {
                 sliderValue = fieldValue;
             }
@@ -1311,24 +1554,20 @@ namespace HSSSS
 
             return rgbValue;
         }
-
-        private void SetLightAlpha(LightType type)
+        private void UpdateSettings()
         {
-            Dictionary<int, ObjectCtrlInfo> ociDict = Singleton<Studio.Studio>.Instance.dicObjectCtrl;
-
-            foreach(KeyValuePair<int, ObjectCtrlInfo> entry in ociDict)
+            if (HSSSS.skinSettings.normalBlurIter != this.skinSettings.normalBlurIter)
             {
-                if (entry.Value is OCILight)
-                {
-                    var light = (OCILight) entry.Value;
+                HSSSS.skinSettings = this.skinSettings;
+                HSSSS.SSS.ImportSettings();
+                HSSSS.SSS.ForceRefresh();
+            }
 
-                    if (type == light.lightType)
-                    {
-                        Color lightColor = light.lightInfo.color;
-                        lightColor.a = (float)lightAlpha * 0.01f;
-                        light.SetColor(lightColor);
-                    }
-                }
+            else
+            {
+                HSSSS.skinSettings = this.skinSettings;
+                HSSSS.SSS.ImportSettings();
+                HSSSS.SSS.Refresh();
             }
         }
     }
