@@ -51,7 +51,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "0.9.0"; } }
+        public string Version { get { return "1.0.1"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -135,6 +135,7 @@ namespace HSSSS
         private static bool useTessellation;
         private static bool useWetSpecGloss;
         private static bool fixAlphaShadow;
+        private static bool useEyePOMShader;
         private static bool useSoftShadow;
         private static bool useCustomThickness;
 
@@ -226,11 +227,11 @@ namespace HSSSS
                             new HarmonyMethod(typeof(HSSSS), nameof(ShadowMapPatcher))
                             );
 
-                        Shader.EnableKeyword("_PCF_TAPS_64");
+                        Shader.EnableKeyword("_PCF_TAPS_16");
 
-                        Shader.SetGlobalFloat("_DirLightPenumbra", 1.0f);
-                        Shader.SetGlobalFloat("_SpotLightPenumbra", 1.0f);
-                        Shader.SetGlobalFloat("_PointLightPenumbra", 1.0f);
+                        Shader.SetGlobalVector("_DirLightPenumbra", new Vector3(1.0f, 1.0f, 1.0f));
+                        Shader.SetGlobalVector("_SpotLightPenumbra", new Vector3(1.0f, 1.0f, 1.0f));
+                        Shader.SetGlobalVector("_PointLightPenumbra", new Vector3(1.0f, 1.0f, 1.0f));
                     }
                 }
                 #endregion
@@ -324,6 +325,8 @@ namespace HSSSS
             useWetSpecGloss = ModPrefs.GetBool("HSSSS", "WetSpecGloss", false, true);
             // additional replacement option for some transparent materials
             fixAlphaShadow = ModPrefs.GetBool("HSSSS", "FixShadow", false, true);
+            // dedicated eye shader which supports pom/sss
+            useEyePOMShader = ModPrefs.GetBool("HSSSS", "EyePOMShader", false, true);
             // extensive PCF soft shadows for spotlight/pointlight
             useSoftShadow = ModPrefs.GetBool("HSSSS", "SoftShadow", false, true);
             // whether to use custom thickness map instead of the built-in texture
@@ -492,9 +495,17 @@ namespace HSSSS
                 eyeBrowMaterial = assetBundle.LoadAsset<Material>("EyeBrow");
                 eyeLashMaterial = assetBundle.LoadAsset<Material>("EyeLash");
                 eyeAlphaMaterial = assetBundle.LoadAsset<Material>("EyeAlpha");
-                //eyePupilMaterial = assetBundle.LoadAsset<Material>("EyePupil");
-                eyePupilMaterial = assetBundle.LoadAsset<Material>("EyePOM");
                 eyeWhiteMaterial = assetBundle.LoadAsset<Material>("EyeWhite");
+
+                if (useEyePOMShader)
+                {
+                    eyePupilMaterial = assetBundle.LoadAsset<Material>("EyePOM");
+                }
+
+                else
+                {
+                    eyePupilMaterial = assetBundle.LoadAsset<Material>("EyePupil");
+                }
 
                 #region Errors
                 if (null == eyeBrowMaterial)
@@ -626,11 +637,14 @@ namespace HSSSS
 
             if (null != mainCamera)
             {
-                SSS = mainCamera.gameObject.AddComponent<DeferredRenderer>();
-
-                if (null == SSS)
+                if (SSS == null)
                 {
-                    Console.WriteLine("#### HSSSS: Failed to Initialize Post FX");
+                    SSS = mainCamera.gameObject.AddComponent<DeferredRenderer>();
+
+                    if (null == SSS)
+                    {
+                        Console.WriteLine("#### HSSSS: Failed to Initialize Post FX");
+                    }
                 }
             }
         }
@@ -853,14 +867,20 @@ namespace HSSSS
 
                     case CharReference.TagObjKey.ObjEyeL:
                         ShaderReplacer(eyePupilMaterial, mat);
-                        //mat.EnableKeyword("_METALLIC_OFF");
                         mat.renderQueue = 2001;
+                        if (!useEyePOMShader)
+                        {
+                            mat.EnableKeyword("_METALLIC_OFF");
+                        }
                         break;
 
                     case CharReference.TagObjKey.ObjEyeR:
                         ShaderReplacer(eyePupilMaterial, mat);
-                        //mat.EnableKeyword("_METALLIC_OFF");
                         mat.renderQueue = 2001;
+                        if (!useEyePOMShader)
+                        {
+                            mat.EnableKeyword("_METALLIC_OFF");
+                        }
                         break;
 
                     case CharReference.TagObjKey.ObjNip:
@@ -914,7 +934,7 @@ namespace HSSSS
 
                 if (bodyMat != null)
                 {
-                    if (!bodyMat.shader.name.Contains("HSSSS"))
+                    if (WillReplaceShader(bodyMat.shader))
                     {
                         ShaderReplacer(skinMaterial, bodyMat);
 
@@ -939,7 +959,7 @@ namespace HSSSS
 
                 if (faceMat != null)
                 {
-                    if (!faceMat.shader.name.Contains("HSSSS"))
+                    if (WillReplaceShader(faceMat.shader))
                     {
                         ShaderReplacer(skinMaterial, faceMat);
 
@@ -970,7 +990,7 @@ namespace HSSSS
                             {
                                 if (mat != null)
                                 {
-                                    if (!mat.shader.name.Contains("HSSSS") && !mat.shader.name.Contains("Alloy"))
+                                    if (WillReplaceShader(mat.shader))
                                     {
                                         ObjectParser(mat, key);
                                         Console.WriteLine("#### HSSSS Replaced " + mat.name);
@@ -978,6 +998,7 @@ namespace HSSSS
                                 }
                             }
 
+                            // turn on receive shadows if disabled
                             if (!obj.GetComponent<Renderer>().receiveShadows)
                             {
                                 obj.GetComponent<Renderer>().receiveShadows = true;
@@ -997,7 +1018,7 @@ namespace HSSSS
 
                     if (juiceMat != null)
                     {
-                        if (!juiceMat.shader.name.Contains("HSSSS"))
+                        if (WillReplaceShader(juiceMat.shader))
                         {
                             ShaderReplacer(overlayMaterial, juiceMat);
                             juiceMat.SetFloat("_Metallic", 0.65f);
@@ -1010,9 +1031,10 @@ namespace HSSSS
 
             public static void MiscReplacer(CharFemaleBody __instance)
             {
+                // face blush
                 if (null != __instance.matHohoAka)
                 {
-                    if (!__instance.matHohoAka.shader.name.Contains("HSSSS"))
+                    if (WillReplaceShader(__instance.matHohoAka.shader))
                     {
                         ShaderReplacer(overlayMaterial, __instance.matHohoAka);
                         __instance.matHohoAka.EnableKeyword("_METALLIC_OFF");
@@ -1033,7 +1055,7 @@ namespace HSSSS
 
                         if (null != blushMat)
                         {
-                            if (!blushMat.shader.name.Contains("HSSSS"))
+                            if (WillReplaceShader(blushMat.shader))
                             {
                                 ShaderReplacer(overlayMaterial, blushMat);
                                 blushMat.EnableKeyword("_METALLIC_OFF");
@@ -1050,7 +1072,7 @@ namespace HSSSS
 
                     if (objHead != null)
                     {
-                        // EyeShade
+                        // eye occlusion
                         GameObject objShade = null;
 
                         if (null != objHead.transform.Find("cf_N_head/cf_O_eyekage"))
@@ -1075,7 +1097,7 @@ namespace HSSSS
 
                             if (null != matShade)
                             {
-                                if (!matShade.shader.name.Contains("HSSSS"))
+                                if (WillReplaceShader(matShade.shader))
                                 {
                                     ShaderReplacer(eyeAlphaMaterial, matShade);
                                     matShade.EnableKeyword("_METALLIC_OFF");
@@ -1085,7 +1107,7 @@ namespace HSSSS
                             }
                         }
 
-                        // Tears
+                        // dears
                         for (int i = 1; i < 4; i++)
                         {
                             GameObject objTears = objHead.transform.Find("cf_N_head/N_namida/cf_O_namida" + i.ToString("00")).gameObject;
@@ -1102,7 +1124,7 @@ namespace HSSSS
 
                                 if (null != matTears)
                                 {
-                                    if (!matTears.shader.name.Contains("HSSSS"))
+                                    if (WillReplaceShader(matTears.shader))
                                     {
                                         ShaderReplacer(eyeAlphaMaterial, matTears);
                                         matTears.SetFloat("_Metallic", 0.80f);
@@ -1112,8 +1134,31 @@ namespace HSSSS
                                 }
                             }
                         }
+
+                        // disable sclera if POMshader enabled
+                        if (useEyePOMShader)
+                        {
+                            Transform[] trfScelra =
+                            {
+                                objHead.transform.Find("cf_N_head/N_eyeL/cf_O_eyewhite_L"),
+                                objHead.transform.Find("cf_N_head/N_eyeR/cf_O_eyewhite_R")
+                            };
+
+                            foreach (Transform trf in trfScelra)
+                            {
+                                if (trf != null)
+                                {
+                                    trf.gameObject.SetActive(false);
+                                }
+                            }
+                        }
                     }
                 }
+            }
+
+            public static bool WillReplaceShader(Shader shader)
+            {
+                return shader.name.Contains("Shader Forge/") || shader.name.Contains("HSStandard/") || shader.name.Contains("Unlit/") || shader.name.Equals("Standard");
             }
         }
         #endregion
@@ -1123,7 +1168,14 @@ namespace HSSSS
     {
         private static Vector2 windowPosition = new Vector2(250.0f, 0.000f);
         private static Vector2 windowSize = new Vector2(768.0f, 128.0f);
-        private static Vector3 penumbraScale = new Vector3(1.0f, 1.0f, 1.0f);
+
+        private static bool togglePCF = true;
+        private static bool togglePCSS = false;
+        private static bool toggleDirPCF = false;
+
+        private static Vector3 dirPenumbra = new Vector3(1.0f, 1.0f, 1.0f);
+        private static Vector3 spotPenumbra = new Vector3(1.0f, 1.0f, 1.0f);
+        private static Vector3 pointPenumbra = new Vector3(1.0f, 1.0f, 1.0f);
 
         private Rect configWindow;
         private SkinSettings skinSettings;
@@ -1403,7 +1455,7 @@ namespace HSSSS
 
         private void LightShadowSettings()
         {
-            // 
+            // pcf iterations count
             GUILayout.Label("PCF TAPS COUNT");
             GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
@@ -1414,6 +1466,12 @@ namespace HSSSS
                 Shader.DisableKeyword("_PCF_TAPS_32");
                 Shader.DisableKeyword("_PCF_TAPS_64");
                 Shader.DisableKeyword("_DIR_PCF_ON");
+                Shader.DisableKeyword("_PCSS_ON");
+                togglePCF = false;
+                togglePCSS = false;
+                toggleDirPCF = false;
+
+                this.UpdateWindowSize();
             }
 
             if (GUILayout.Button("8"))
@@ -1421,8 +1479,10 @@ namespace HSSSS
                 Shader.DisableKeyword("_PCF_TAPS_16");
                 Shader.DisableKeyword("_PCF_TAPS_32");
                 Shader.DisableKeyword("_PCF_TAPS_64");
-
                 Shader.EnableKeyword("_PCF_TAPS_8");
+                togglePCF = true;
+
+                this.UpdateWindowSize();
             }
 
             if (GUILayout.Button("16"))
@@ -1430,8 +1490,10 @@ namespace HSSSS
                 Shader.DisableKeyword("_PCF_TAPS_8");
                 Shader.DisableKeyword("_PCF_TAPS_32");
                 Shader.DisableKeyword("_PCF_TAPS_64");
-
                 Shader.EnableKeyword("_PCF_TAPS_16");
+                togglePCF = true;
+
+                this.UpdateWindowSize();
             }
 
             if (GUILayout.Button("32"))
@@ -1439,8 +1501,10 @@ namespace HSSSS
                 Shader.DisableKeyword("_PCF_TAPS_8");
                 Shader.DisableKeyword("_PCF_TAPS_16");
                 Shader.DisableKeyword("_PCF_TAPS_64");
-
                 Shader.EnableKeyword("_PCF_TAPS_32");
+                togglePCF = true;
+
+                this.UpdateWindowSize();
             }
 
             if (GUILayout.Button("64"))
@@ -1448,42 +1512,120 @@ namespace HSSSS
                 Shader.DisableKeyword("_PCF_TAPS_8");
                 Shader.DisableKeyword("_PCF_TAPS_16");
                 Shader.DisableKeyword("_PCF_TAPS_32");
-
                 Shader.EnableKeyword("_PCF_TAPS_64");
+                togglePCF = true;
+
+                this.UpdateWindowSize();
             }
 
             GUILayout.EndHorizontal();
 
             GUILayout.Space(16.0f);
 
+            // pcf soft shadow for directional lights
             GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
             if (GUILayout.Button("Directional PCF ON"))
             {
                 Shader.EnableKeyword("_DIR_PCF_ON");
+                toggleDirPCF = true;
+
+                this.UpdateWindowSize();
             }
 
             if (GUILayout.Button("Directional PCF OFF"))
             {
                 Shader.DisableKeyword("_DIR_PCF_ON");
+                toggleDirPCF = false;
+
+                this.UpdateWindowSize();
             }
 
             GUILayout.EndHorizontal();
 
             GUILayout.Space(16.0f);
 
-            GUILayout.Label("Penumbra Scale (Directional Lights)");
-            penumbraScale.x = this.SliderControls(penumbraScale.x, 0.0f, 10.0f);
+            // pcss soft shadow toggle
+            GUILayout.BeginHorizontal(GUILayout.Height(32.0f));
 
-            GUILayout.Label("Penumbra Scale (Spot Lights)");
-            penumbraScale.y = this.SliderControls(penumbraScale.y, 0.0f, 10.0f);
+            if (GUILayout.Button("PCSS ON"))
+            {
+                togglePCSS = true;
+                Shader.EnableKeyword("_PCSS_ON");
 
-            GUILayout.Label("Penumbra Scale (Point Lights)");
-            penumbraScale.z = this.SliderControls(penumbraScale.z, 0.0f, 10.0f);
+                this.UpdateWindowSize();
+            }
 
-            Shader.SetGlobalFloat("_DirLightPenumbra", penumbraScale.x);
-            Shader.SetGlobalFloat("_SpotLightPenumbra", penumbraScale.y);
-            Shader.SetGlobalFloat("_PointLightPenumbra", penumbraScale.z);
+            if (GUILayout.Button("PCSS OFF"))
+            {
+                togglePCSS = false;
+                Shader.DisableKeyword("_PCSS_ON");
+
+                this.UpdateWindowSize();
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(16.0f);
+
+            #region PCSS sliders
+            if (togglePCSS && togglePCF)
+            {
+                if(toggleDirPCF)
+                {
+                    GUILayout.Label("PCSS Blocker Search Radius (Directional)");
+                    dirPenumbra.x = this.SliderControls(dirPenumbra.x, 0.0f, 10.0f);
+                    GUILayout.Label("PCSS Light Radius (Directional)");
+                    dirPenumbra.y = this.SliderControls(dirPenumbra.y, 0.0f, 10.0f);
+                    GUILayout.Label("PCSS Minimum Penumbra (Directional)");
+                    dirPenumbra.z = this.SliderControls(dirPenumbra.z, 0.0f, 10.0f);
+                    Shader.SetGlobalVector("_DirLightPenumbra", dirPenumbra);
+
+                    GUILayout.Space(16.0f);
+                }
+
+                GUILayout.Label("PCSS Blocker Search Radius (Spot)");
+                spotPenumbra.x = this.SliderControls(spotPenumbra.x, 0.0f, 10.0f);
+                GUILayout.Label("PCSS Light Radius (Spot)");
+                spotPenumbra.y = this.SliderControls(spotPenumbra.y, 0.0f, 10.0f);
+                GUILayout.Label("PCSS Minimum Penumbra (Spot)");
+                spotPenumbra.z = this.SliderControls(spotPenumbra.z, 0.0f, 10.0f);
+                Shader.SetGlobalVector("_SpotLightPenumbra", spotPenumbra);
+
+                GUILayout.Space(16.0f);
+
+                GUILayout.Label("PCSS Blocker Search Radius (Point)");
+                pointPenumbra.x = this.SliderControls(pointPenumbra.x, 0.0f, 10.0f);
+                GUILayout.Label("PCSS Light Radius (Point)");
+                pointPenumbra.y = this.SliderControls(pointPenumbra.y, 0.0f, 10.0f);
+                GUILayout.Label("PCSS Minimum Penumbra (Point)");
+                pointPenumbra.z = this.SliderControls(pointPenumbra.z, 0.0f, 10.0f);
+                Shader.SetGlobalVector("_PointLightPenumbra", pointPenumbra);
+            }
+            #endregion
+
+            #region PCF sliders
+            else if (togglePCF)
+            {
+                if (toggleDirPCF)
+                {
+                    GUILayout.Label("Penumbra Scale (Directional Lights)");
+                    dirPenumbra.z = this.SliderControls(dirPenumbra.z, 0.0f, 10.0f);
+                    Shader.SetGlobalVector("_DirLightPenumbra", dirPenumbra);
+                }
+
+                GUILayout.Label("Penumbra Scale (Spot Lights)");
+                spotPenumbra.z = this.SliderControls(spotPenumbra.z, 0.0f, 10.0f);
+                Shader.SetGlobalVector("_SpotLightPenumbra", spotPenumbra);
+
+                GUILayout.Label("Penumbra Scale (Point Lights)");
+                pointPenumbra.z = this.SliderControls(pointPenumbra.z, 0.0f, 10.0f);
+                Shader.SetGlobalVector("_PointLightPenumbra", pointPenumbra);
+            }
+            #endregion
+
+            GUILayout.Space(16.0f);
+            GUILayout.Label("<size=32>Requires SoftShadow=1 option in modprefs.ini!</size>");
         }
 
         private void PresetsControls()
