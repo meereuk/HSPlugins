@@ -6,7 +6,7 @@ namespace HSSSS
     public class ShadowMapDispatcher : MonoBehaviour
     {
         private Light mLight;
-        private CommandBuffer buffer;
+        private CommandBuffer mBuffer;
         private string bufferName;
 
         private void Awake()
@@ -21,7 +21,7 @@ namespace HSSSS
             {
                 if (this.HasCommandBuffer())
                 {
-                    this.mLight.RemoveCommandBuffer(LightEvent.AfterShadowMap, this.buffer);
+                    this.mLight.RemoveCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
                 }
 
                 this.InitializeCommandBuffer();
@@ -40,7 +40,7 @@ namespace HSSSS
         {
             if (this.mLight && this.HasCommandBuffer())
             {
-                this.mLight.RemoveCommandBuffer(LightEvent.AfterShadowMap, this.buffer);
+                this.mLight.RemoveCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
             }
         }
 
@@ -48,7 +48,7 @@ namespace HSSSS
         {
             if (this.mLight && this.HasCommandBuffer())
             {
-                this.mLight.RemoveCommandBuffer(LightEvent.AfterShadowMap, this.buffer);
+                this.mLight.RemoveCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
             }
 
         }
@@ -58,12 +58,13 @@ namespace HSSSS
             if (this.mLight.type == LightType.Directional)
             {
                 RenderTargetIdentifier sourceID = BuiltinRenderTextureType.CurrentActive;
-
-                this.buffer = new CommandBuffer();
-                this.buffer.name = this.bufferName;
-                this.buffer.SetGlobalTexture("_CustomShadowMap", sourceID);
-
-                this.mLight.AddCommandBuffer(LightEvent.AfterShadowMap, this.buffer);
+                int targetID = Shader.PropertyToID("_CustomShadowMap");
+                this.mBuffer = new CommandBuffer() { name = this.bufferName };
+                this.mBuffer.SetShadowSamplingMode(sourceID, ShadowSamplingMode.RawDepth);
+                this.mBuffer.GetTemporaryRT(targetID, 4096, 4096, 0, FilterMode.Bilinear, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+                this.mBuffer.Blit(sourceID, targetID);
+                this.mBuffer.ReleaseTemporaryRT(targetID);
+                this.mLight.AddCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
             }
         }
 

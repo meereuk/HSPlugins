@@ -301,10 +301,5 @@ namespace HSSSS
         {
             this.skinSettings = HSSSS.skinSettings;
         }
-
-        public void ExportSettings()
-        {
-            HSSSS.skinSettings = this.skinSettings;
-        }
     }
 }
