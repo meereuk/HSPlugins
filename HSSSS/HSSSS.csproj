@@ -78,6 +78,12 @@
       <HintPath>..\..\CommonLibs\UnityEngine.UI.Translation.dll</HintPath>
     </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\HSExtSave\HSExtSave.csproj">
+      <Project>{47f37b20-7dd7-4a1d-a144-d727375e3b77}</Project>
+      <Name>HSExtSave</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>

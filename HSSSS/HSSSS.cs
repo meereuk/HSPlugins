@@ -11,11 +11,13 @@ using IllusionPlugin;
 
 namespace HSSSS
 {
+    #region Namespace Globals
     public enum LUTProfile
     {
         penner,
         nvidia1,
-        nvidia2
+        nvidia2,
+        jimenez
     };
 
     public enum PCFState
@@ -49,6 +51,7 @@ namespace HSSSS
 
         public Vector3 colorBleedWeights;
         public Vector3 transAbsorption;
+        public Vector3 scatteringColor;
 
         public bool bakedThickness;
 
@@ -72,12 +75,13 @@ namespace HSSSS
         public Vector3 spotLightPenumbra;
         public Vector3 dirLightPenumbra;
     }
+    #endregion
 
     public class HSSSS : IEnhancedPlugin
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.0.9"; } }
+        public string Version { get { return "1.1.0"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -97,8 +101,17 @@ namespace HSSSS
         private static Shader deferredReflections;
 
         // camera effects
-        internal static DeferredRenderer SSS = null;
-        internal static SkinSettings skinSettings = new SkinSettings()
+        private static DeferredRenderer SSS = null;
+
+        public static Shader deferredTransmissionBlit;
+        public static Shader deferredBlurredNormals;
+
+        public static Texture2D defaultSkinLUT;
+        public static Texture2D faceWorksSkinLUT;
+        public static Texture2D faceWorksShadowLUT;
+        public static Texture2D skinJitter;
+
+        public static SkinSettings skinSettings = new SkinSettings()
         {
             sssEnabled = true,
             transEnabled = true,
@@ -130,7 +143,7 @@ namespace HSSSS
             transDistortion = 0.5f,
             transFalloff = 2.0f
         };
-        internal static ShadowSettings shadowSettings = new ShadowSettings()
+        public static ShadowSettings shadowSettings = new ShadowSettings()
         {
             pcfState = PCFState.disable,
 
@@ -142,29 +155,21 @@ namespace HSSSS
             dirLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
         };
 
-        internal static Shader deferredTransmissionBlit;
-        internal static Shader deferredBlurredNormals;
-
-        internal static Texture2D defaultSkinLUT;
-        internal static Texture2D faceWorksSkinLUT;
-        internal static Texture2D faceWorksShadowLUT;
-        internal static Texture2D skinJitter;
-
         // skin and body materials
-        public static Material skinMaterial;
-        public static Material milkMaterial;
-        public static Material overlayMaterial;
-        public static Material eyeBrowMaterial;
-        public static Material eyeLashMaterial;
-        public static Material eyeCorneaMaterial;
-        public static Material eyeScleraMaterial;
-        public static Material eyeOverlayMaterial;
+        private static Material skinMaterial;
+        private static Material milkMaterial;
+        private static Material overlayMaterial;
+        private static Material eyeBrowMaterial;
+        private static Material eyeLashMaterial;
+        private static Material eyeCorneaMaterial;
+        private static Material eyeScleraMaterial;
+        private static Material eyeOverlayMaterial;
 
         // thickness textures
-        public static Texture2D femaleBodyThickness;
-        public static Texture2D femaleHeadThickness;
-        public static Texture2D maleBodyThickness;
-        public static Texture2D maleHeadThickness;
+        private static Texture2D femaleBodyThickness;
+        private static Texture2D femaleHeadThickness;
+        private static Texture2D maleBodyThickness;
+        private static Texture2D maleHeadThickness;
 
         // light cookie (spot)
         public static Texture2D spotCookie;
@@ -187,13 +192,23 @@ namespace HSSSS
         private static int uiScale;
 
         // ui window
-        internal static GUISkin windowSkin;
-        internal GameObject windowObj;
+        public static GUISkin windowSkin;
+        public GameObject windowObj;
+
+        // singleton
+        public static HSSSS instance = null;
         #endregion
 
         #region Unity Methods
         public void OnApplicationStart()
         {
+            instance = this;
+
+            if (instance != this)
+            {
+                Console.WriteLine("#### HSSSS: Could not initialize the singleton pattern");
+            }
+
             isStudio = "StudioNEO" == Application.productName;
 
             pluginName = this.Name;
@@ -218,6 +233,8 @@ namespace HSSSS
                 {
                     this.DeferredAssetLoader();
                     this.InternalShaderReplacer();
+
+                    HSExtSave.HSExtSave.RegisterHandler("HSSSS", null, null, this.OnSceneLoad, null, this.OnSceneSave, null, null);
                 }
 
                 else
@@ -314,7 +331,7 @@ namespace HSSSS
                         SSS.ImportSettings();
                         SSS.ForceRefresh();
                         UpdateShadowConfig();
-                        UpdateMiscConfig();
+                        UpdateOtherConfig();
                     }
 
                     else
@@ -360,6 +377,42 @@ namespace HSSSS
         }
         #endregion
 
+        #region Scene Methods
+        private void OnSceneLoad(string path, XmlNode node)
+        {
+            if (node != null)
+            {
+                try
+                {
+                    this.LoadConfig(node);
+                    this.RefreshConfig(false);
+                    Console.WriteLine("#### HSSSS: Loaded Configurations from the Scene File");
+                }
+                catch
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Load Configurations in the Scene File");
+                }
+            }
+            else
+            {
+                Console.WriteLine("#### HSSSS: Could not Find Configurations in the Scene File");
+            }
+        }
+
+        private void OnSceneSave(string path, XmlWriter writer)
+        {
+            try
+            {
+                this.SaveConfig(writer);
+                Console.WriteLine("#### HSSSS: Saved Configurations in the Scene File");
+            }
+            catch
+            {
+                Console.WriteLine("#### HSSSS: Failed to Save Configurations in the Scene File");
+            }
+        }
+        #endregion
+
         #region Custom Methods
         private void IPAConfigParser()
         {
@@ -369,17 +422,13 @@ namespace HSSSS
             useDeferred = ModPrefs.GetBool("HSSSS", "DeferredSkin", true, true);
             // tesellation skin shader (deferred only)
             useTessellation = ModPrefs.GetBool("HSSSS", "Tessellation", false, true);
-            // semi-pbr wetness option for meta/nyaacho wet specgloss
-            //useWetSpecGloss = ModPrefs.GetBool("HSSSS", "WetSpecGloss", false, true);
             // additional replacement option for some transparent materials
             fixAlphaShadow = ModPrefs.GetBool("HSSSS", "FixShadow", false, true);
             // dedicated eye shader which supports pom/sss
             useEyePOMShader = ModPrefs.GetBool("HSSSS", "EyePOMShader", false, true);
-            // extensive PCF soft shadows for spotlight/pointlight
-            //useSoftShadow = ModPrefs.GetBool("HSSSS", "SoftShadow", false, true);
             // whether to use custom thickness map instead of the built-in texture
             useCustomThickness = ModPrefs.GetBool("HSSSS", "CustomThickness", false, true);
-            // custom texture location
+            // custom thickness texture location
             femaleBodyCustom = ModPrefs.GetString("HSSSS", "FemaleBody", "HSSSS/FemaleBody.png", true);
             femaleHeadCustom = ModPrefs.GetString("HSSSS", "FemaleHead", "HSSSS/FemaleHead.png", true);
             maleBodyCustom = ModPrefs.GetString("HSSSS", "MaleBody", "HSSSS/MaleBody.png", true);
@@ -426,7 +475,7 @@ namespace HSSSS
             // hssssresources.unity3d
             assetBundle = AssetBundle.LoadFromMemory(Resources.hssssresources);
 
-            // built-in thickness textures
+            // custom thickness texture
             if (useCustomThickness)
             {
                 femaleBodyCustom = Path.Combine(pluginLocation, femaleBodyCustom);
@@ -488,6 +537,7 @@ namespace HSSSS
                 }
             }
 
+            // build-in thickness texture
             else
             {
                 femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
@@ -757,7 +807,24 @@ namespace HSSSS
             return isPressed;
         }
 
-        internal static void UpdateShadowConfig()
+        public void RefreshConfig(bool softRefresh)
+        {
+            this.UpdateShadowConfig();
+            this.UpdateOtherConfig();
+            SSS.ImportSettings();
+
+            if (softRefresh)
+            {
+                SSS.Refresh();
+            }
+
+            else
+            {
+                SSS.ForceRefresh();
+            }
+        }
+
+        public void UpdateShadowConfig()
         {
             Shader.DisableKeyword("_PCF_TAPS_8");
             Shader.DisableKeyword("_PCF_TAPS_16");
@@ -807,7 +874,7 @@ namespace HSSSS
             Shader.SetGlobalVector("_PointLightPenumbra", shadowSettings.pointLightPenumbra);
         }
 
-        internal static void UpdateMiscConfig()
+        public void UpdateOtherConfig()
         {
             Shader.DisableKeyword("_WET_SPECGLOSS");
 
@@ -816,14 +883,16 @@ namespace HSSSS
                 Shader.EnableKeyword("_WET_SPECGLOSS");
             }
         }
+        #endregion
 
-        internal static bool LoadExternalConfig()
+        #region Presets
+        public bool LoadExternalConfig()
         {
             try
             {
                 XmlDocument config = new XmlDocument();
                 config.Load(configPath);
-                LoadConfig(config.LastChild);
+                this.LoadConfig(config.LastChild);
 
                 SSS.ImportSettings();
                 SSS.ForceRefresh();
@@ -837,14 +906,14 @@ namespace HSSSS
             }
         }
 
-        internal static bool SaveExternalConfig()
+        public bool SaveExternalConfig()
         {
             try
             {
                 XmlWriterSettings settings = new XmlWriterSettings() { Indent = true };
                 XmlWriter writer = XmlWriter.Create(configPath, settings);
                 writer.WriteStartElement("HSSSS");
-                SaveConfig(writer);
+                this.SaveConfig(writer);
                 writer.WriteEndElement();
                 writer.Close();
 
@@ -857,7 +926,7 @@ namespace HSSSS
             }
         }
 
-        private static void SaveConfig(XmlWriter writer)
+        private void SaveConfig(XmlWriter writer)
         {
             writer.WriteAttributeString("version", pluginVersion);
             // skin scattering
@@ -975,7 +1044,7 @@ namespace HSSSS
             writer.WriteEndElement();
         }
 
-        private static void LoadConfig(XmlNode node)
+        private void LoadConfig(XmlNode node)
         {
             foreach (XmlNode child0 in node.ChildNodes)
             {
@@ -1632,7 +1701,7 @@ namespace HSSSS
 
     public class ConfigWindow : MonoBehaviour
     {
-        internal static int uiScale;
+        public static int uiScale;
         private int singleSpace;
         private int doubleSpace;
         private int tetraSpace;
@@ -1742,7 +1811,7 @@ namespace HSSSS
 
             if (GUILayout.Button("Load Preset"))
             {
-                if (HSSSS.LoadExternalConfig())
+                if (HSSSS.instance.LoadExternalConfig())
                 {
                     this.skinSettings = HSSSS.skinSettings;
                     this.shadowSettings = HSSSS.shadowSettings;
@@ -1762,7 +1831,7 @@ namespace HSSSS
                 HSSSS.skinSettings = this.skinSettings;
                 HSSSS.shadowSettings = this.shadowSettings;
 
-                if (HSSSS.SaveExternalConfig())
+                if (HSSSS.instance.SaveExternalConfig())
                 {
                     Console.WriteLine("#### HSSSS: Saved Configurations");
                 }
@@ -1951,16 +2020,16 @@ namespace HSSSS
                 {
                     if(this.shadowSettings.pcssEnabled)
                     {
-                        GUILayout.Label("Blocker Search Radius (Directional Lights)");
+                        GUILayout.Label("Directional Light / Blocker Search Radius");
                         this.shadowSettings.dirLightPenumbra.x = this.SliderControls(this.shadowSettings.dirLightPenumbra.x, 0.0f, 20.0f);
-                        GUILayout.Label("Light Radius (Directional Lights)");
+                        GUILayout.Label("Directional Light / Light Radius");
                         this.shadowSettings.dirLightPenumbra.y = this.SliderControls(this.shadowSettings.dirLightPenumbra.y, 0.0f, 20.0f);
-                        GUILayout.Label("Minimum Penumbra (Directional Lights)");
+                        GUILayout.Label("Directional Light / Minimum Penumbra");
                     }
 
                     else
                     {
-                        GUILayout.Label("Penumbra Scale (Directional Lights)");
+                        GUILayout.Label("Directional Light / Penumbra Scale");
                     }
 
                     this.shadowSettings.dirLightPenumbra.z = this.SliderControls(this.shadowSettings.dirLightPenumbra.z, 0.0f, 20.0f);
@@ -1971,16 +2040,16 @@ namespace HSSSS
                 // spot lights
                 if (this.shadowSettings.pcssEnabled)
                 {
-                    GUILayout.Label("Blocker Search Radius (Spot Lights)");
+                    GUILayout.Label("Spot Light / Blocker Search Radius");
                     this.shadowSettings.spotLightPenumbra.x = this.SliderControls(this.shadowSettings.spotLightPenumbra.x, 0.0f, 20.0f);
-                    GUILayout.Label("Light Radius (Spot Lights)");
+                    GUILayout.Label("Spot Light / Light Radius");
                     this.shadowSettings.spotLightPenumbra.y = this.SliderControls(this.shadowSettings.spotLightPenumbra.y, 0.0f, 20.0f);
-                    GUILayout.Label("Minimum Penumbra (Spot Lights)");
+                    GUILayout.Label("Spot Light / Minimum Penumbra");
                 }
 
                 else
                 {
-                    GUILayout.Label("Penumbra Scale (Spot Lights)");
+                    GUILayout.Label("Spot Light / Penumbra Scale");
                 }
 
                 this.shadowSettings.spotLightPenumbra.z = this.SliderControls(this.shadowSettings.spotLightPenumbra.z, 0.0f, 20.0f);
@@ -1990,23 +2059,26 @@ namespace HSSSS
                 // point lights
                 if (this.shadowSettings.pcssEnabled)
                 {
-                    GUILayout.Label("Blocker Search Radius (Point Lights)");
+                    GUILayout.Label("Point Light / Blocker Search Radius");
                     this.shadowSettings.pointLightPenumbra.x = this.SliderControls(this.shadowSettings.pointLightPenumbra.x, 0.0f, 20.0f);
-                    GUILayout.Label("Light Radius (Point Lights)");
+                    GUILayout.Label("Point Light / Light Radius");
                     this.shadowSettings.pointLightPenumbra.y = this.SliderControls(this.shadowSettings.pointLightPenumbra.y, 0.0f, 20.0f);
-                    GUILayout.Label("Minimum Penumbra (Point Lights)");
+                    GUILayout.Label("Point Light / Minimum Penumbra");
                 }
 
                 else
                 {
-                    GUILayout.Label("Penumbra Scale (Point Lights)");
+                    GUILayout.Label("Point Light / Penumbra Scale");
                 }
 
                 this.shadowSettings.pointLightPenumbra.z = this.SliderControls(this.shadowSettings.pointLightPenumbra.z, 0.0f, 20.0f);
             }
 
-            GUILayout.Space(tetraSpace);
-            GUILayout.Label($"<size={doubleSpace + tetraSpace}>Requires SoftShadow=1 option in modprefs.ini!</size>");
+            else
+            {
+                this.shadowSettings.dirPcfEnabled = false;
+                this.shadowSettings.pcssEnabled = false;
+            }
         }
 
         private void OtherSettings()
@@ -2014,24 +2086,18 @@ namespace HSSSS
             // wet specgloss
             GUILayout.Label("Wet Skin SpecGloss");
             GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
+            this.skinSettings.useWetSpecGloss = GUILayout.Toolbar(Convert.ToUInt16(this.skinSettings.useWetSpecGloss), new string[] { "Disable", "Enable" }) == 1;
+            GUILayout.EndHorizontal();
 
-            bool useWetSpecGloss = GUILayout.Toolbar(Convert.ToUInt16(this.skinSettings.useWetSpecGloss), new string[] { "Disable", "Enable" }) == 1;
+            GUILayout.Space(octaSpace);
 
-            if (this.skinSettings.useWetSpecGloss != useWetSpecGloss)
+            // force refresh configurations
+            GUILayout.Label("Troubleshooting");
+            GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
+            if (GUILayout.Button("Force Refresh Configurations"))
             {
-                this.skinSettings.useWetSpecGloss = useWetSpecGloss;
-
-                if (this.skinSettings.useWetSpecGloss)
-                {
-                    Shader.EnableKeyword("_WET_SPECGLOSS");
-                }
-
-                else
-                {
-                    Shader.DisableKeyword("_WET_SPECGLOSS");
-                }
+                HSSSS.instance.RefreshConfig(false);
             }
-
             GUILayout.EndHorizontal();
         }
 
@@ -2100,20 +2166,7 @@ namespace HSSSS
         {
             HSSSS.skinSettings = this.skinSettings;
             HSSSS.shadowSettings = this.shadowSettings;
-            HSSSS.UpdateShadowConfig();
-            HSSSS.UpdateMiscConfig();
-
-            HSSSS.SSS.ImportSettings();
-
-            if (HSSSS.skinSettings.normalBlurIter != this.skinSettings.normalBlurIter)
-            {
-                HSSSS.SSS.ForceRefresh();
-            }
-
-            else
-            {
-                HSSSS.SSS.Refresh();
-            }
+            HSSSS.instance.RefreshConfig(HSSSS.skinSettings.normalBlurIter != this.skinSettings.normalBlurIter);
         }
     }
 }
