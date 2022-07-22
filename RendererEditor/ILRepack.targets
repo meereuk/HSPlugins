@@ -11,7 +11,7 @@
         InternalizeExclude="@(DoNotInternalizeAssemblies)"
         InputAssemblies="@(InputAssemblies)"
         TargetKind="Dll"
-        OutputFile="$(OutputPath)\$(AssemblyName).dll"
+        OutputFile="D:\Games\Illusion\HoneySelect\mods\[KKUL] RenderEditor\Plugins\$(AssemblyName).dll"
     />
     </Target>
 </Project>

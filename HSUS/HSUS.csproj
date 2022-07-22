@@ -1,0 +1,159 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B7F5AD75-EF8F-46A3-A599-EB5CC400A65A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>HSUS</RootNamespace>
+    <AssemblyName>HSUS</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE;HONEYSELECT;IPA</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="CharaMakerUtils.cs" />
+    <Compile Include="Features\AlternativeCenterToObjects.cs" />
+    <Compile Include="Features\AnimationOptionDisplay.cs" />
+    <Compile Include="Features\AutoJointCorrection.cs" />
+    <Compile Include="Features\AutomaticMemoryClean.cs" />
+    <Compile Include="Features\CameraShortcuts.cs" />
+    <Compile Include="Features\DebugConsole.cs" />
+    <Compile Include="Features\DefaultChars.cs" />
+    <Compile Include="Features\DeleteConfirmation.cs" />
+    <Compile Include="Features\EyesBlink.cs" />
+    <Compile Include="Features\FingersFKCopyButtons.cs" />
+    <Compile Include="Features\FKColors.cs" />
+    <Compile Include="Features\Forced\HDRColorPicker.cs" />
+    <Compile Include="Features\Forced\ParentCharactersToObjects.cs" />
+    <Compile Include="Features\Forced\Various.cs" />
+    <Compile Include="Features\GenericFK.cs" />
+    <Compile Include="Features\IFeature.cs" />
+    <Compile Include="Features\ImprovedTransformOperations.cs" />
+    <Compile Include="Features\ImproveNeoUI.cs" />
+    <Compile Include="Features\OptimizeCharaMaker.cs" />
+    <Compile Include="Features\OptimizeNEO.cs" />
+    <Compile Include="Features\PostProcessing.cs" />
+    <Compile Include="Features\SubMenus\SmAccessoryCustom.cs" />
+    <Compile Include="Features\SubMenus\SmCharaLoadCustom.cs" />
+    <Compile Include="Features\SubMenus\SmClothesLoadCustom.cs" />
+    <Compile Include="Features\SubMenus\SmClothes_FCustom.cs" />
+    <Compile Include="Features\SubMenus\SmFaceSkinCustom.cs" />
+    <Compile Include="Features\SubMenus\SmHair_FCustom.cs" />
+    <Compile Include="Features\SubMenus\SmKindColorDCustom.cs" />
+    <Compile Include="Features\SubMenus\SmKindColorDSCustom.cs" />
+    <Compile Include="Features\SubMenus\SmSwimsuitCustom.cs" />
+    <Compile Include="Features\UIScale.cs" />
+    <Compile Include="HSUS.cs" />
+    <Compile Include="MiniProfiler\AbstractValueProvider.cs" />
+    <Compile Include="MiniProfiler\FramerateValueProvider.cs" />
+    <Compile Include="MiniProfiler\Graphic.cs" />
+    <Compile Include="MiniProfiler\KeyboardShortcut.cs" />
+    <Compile Include="MiniProfiler\MemoryValueProvider.cs" />
+    <Compile Include="MiniProfiler\MiniProfiler.cs" />
+    <Compile Include="MiniProfiler\Texture2DUtil.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="ToolBox\EditablePair.cs" />
+    <Compile Include="ToolBox\GenericConfig.cs" />
+    <Compile Include="ToolBox\GenericPlugin.cs" />
+    <Compile Include="ToolBox\HarmonyExtensions.cs" />
+    <Compile Include="ToolBox\IMGUIExtensions.cs" />
+    <Compile Include="ToolBox\MonoBehaviourExtensions.cs" />
+    <Compile Include="ToolBox\ReflectionExtensions.cs" />
+    <Compile Include="ToolBox\TimelineCompatibility.cs" />
+    <Compile Include="ToolBox\TransformExtensions.cs" />
+    <Compile Include="ToolBox\TranslationDictionary.cs" />
+    <Compile Include="ToolBox\VariousExtensions.cs" />
+    <Compile Include="ToolBox\WeakKeyDictionary.cs" />
+    <Compile Include="ToolBox\XmlExtensions.cs" />
+    <Compile Include="UIUtility\ConfirmationDialog.cs" />
+    <Compile Include="UIUtility\ContextMenu\AContextMenuElement.cs" />
+    <Compile Include="UIUtility\ContextMenu\ContextMenuUIElement.cs" />
+    <Compile Include="UIUtility\ContextMenu\GroupElement.cs" />
+    <Compile Include="UIUtility\ContextMenu\LeafElement.cs" />
+    <Compile Include="UIUtility\EventHandlers\DragHandler.cs" />
+    <Compile Include="UIUtility\EventHandlers\PointerDownHandler.cs" />
+    <Compile Include="UIUtility\EventHandlers\PointerEnterHandler.cs" />
+    <Compile Include="UIUtility\EventHandlers\ScrollHandler.cs" />
+    <Compile Include="UIUtility\Extensions.cs" />
+    <Compile Include="UIUtility\LoopListView\ClickEventListener.cs" />
+    <Compile Include="UIUtility\LoopListView\ItemPosMgr.cs" />
+    <Compile Include="UIUtility\LoopListView\LoopListView2.cs" />
+    <Compile Include="UIUtility\LoopListView\LoopListViewItem2.cs" />
+    <Compile Include="UIUtility\MovableWindow.cs" />
+    <Compile Include="UIUtility\OneTimeContentSizeFitter.cs" />
+    <Compile Include="UIUtility\OneTimeHorizontalLayoutGroup.cs" />
+    <Compile Include="UIUtility\OneTimeVerticalLayoutGroup.cs" />
+    <Compile Include="UIUtility\UIUtility.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\CommonLibs\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\CommonLibs\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>..\..\CommonLibs\Assembly-CSharp-firstpass.dll</HintPath>
+    </Reference>
+    <Reference Include="IllusionInjector">
+      <HintPath>..\..\CommonLibs\IllusionInjector.dll</HintPath>
+    </Reference>
+    <Reference Include="IllusionPlugin">
+      <HintPath>..\..\CommonLibs\IllusionPlugin.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Xml" />
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\CommonLibs\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\..\CommonLibs\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI.Translation">
+      <HintPath>..\..\CommonLibs\UnityEngine.UI.Translation.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\DefaultResources.unity3d" />
+    <None Include="Resources\DefaultResourcesAI.unity3d" />
+    <None Include="Resources\DefaultResourcesHS2.unity3d" />
+    <None Include="Resources\DefaultResourcesKOI.unity3d" />
+    <None Include="Resources\hsusresources.unity3d" />
+    <None Include="UIUtility\Resources\DefaultResources.unity3d" />
+    <None Include="UIUtility\Resources\DefaultResourcesAI.unity3d" />
+    <None Include="UIUtility\Resources\DefaultResourcesHS2.unity3d" />
+    <None Include="UIUtility\Resources\DefaultResourcesKOI.unity3d" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

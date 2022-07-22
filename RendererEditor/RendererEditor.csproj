@@ -33,39 +33,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\ToolBox\EditablePair.cs">
-      <Link>ToolBox\EditablePair.cs</Link>
-    </Compile>
-    <Compile Include="..\ToolBox\GenericConfig.cs">
-      <Link>ToolBox\GenericConfig.cs</Link>
-    </Compile>
-    <Compile Include="..\toolbox\GenericPlugin.cs">
-      <Link>ToolBox\GenericPlugin.cs</Link>
-    </Compile>
-    <Compile Include="..\ToolBox\HarmonyExtensions.cs">
-      <Link>ToolBox\HarmonyExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\ToolBox\IMGUIExtensions.cs">
-      <Link>ToolBox\IMGUIExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\ToolBox\MonoBehaviourExtensions.cs">
-      <Link>ToolBox\MonoBehaviourExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\ToolBox\ReflectionExtensions.cs">
-      <Link>ToolBox\ReflectionExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\ToolBox\TimelineCompatibility.cs">
-      <Link>ToolBox\TimelineCompatibility.cs</Link>
-    </Compile>
-    <Compile Include="..\ToolBox\TransformExtensions.cs">
-      <Link>ToolBox\TransformExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\ToolBox\VariousExtensions.cs">
-      <Link>ToolBox\VariousExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\ToolBox\XmlExtensions.cs">
-      <Link>ToolBox\XmlExtensions.cs</Link>
-    </Compile>
     <Compile Include="Extensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RendererEditor.cs" />
@@ -75,6 +42,19 @@
     <Compile Include="Targets\MaterialData.cs" />
     <Compile Include="Targets\Projector.cs" />
     <Compile Include="Targets\Renderer.cs" />
+    <Compile Include="ToolBox\EditablePair.cs" />
+    <Compile Include="ToolBox\GenericConfig.cs" />
+    <Compile Include="ToolBox\GenericPlugin.cs" />
+    <Compile Include="ToolBox\HarmonyExtensions.cs" />
+    <Compile Include="ToolBox\IMGUIExtensions.cs" />
+    <Compile Include="ToolBox\MonoBehaviourExtensions.cs" />
+    <Compile Include="ToolBox\ReflectionExtensions.cs" />
+    <Compile Include="ToolBox\TimelineCompatibility.cs" />
+    <Compile Include="ToolBox\TransformExtensions.cs" />
+    <Compile Include="ToolBox\TranslationDictionary.cs" />
+    <Compile Include="ToolBox\VariousExtensions.cs" />
+    <Compile Include="ToolBox\WeakKeyDictionary.cs" />
+    <Compile Include="ToolBox\XmlExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="0Harmony">
