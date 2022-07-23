@@ -150,9 +150,9 @@ namespace HSSSS
             dirPcfEnabled = false,
             pcssEnabled = false,
 
-            pointLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
-            spotLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
             dirLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
+            spotLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
+            pointLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
         };
 
         // skin and body materials
@@ -596,7 +596,6 @@ namespace HSSSS
             deferredBlurredNormals = assetBundle.LoadAsset<Shader>("BlurredNormals");
 
             // internal deferred & reflection shaders
-            // additional pcf filters for spot/point lights
             deferredShading = assetBundle.LoadAsset<Shader>("InternalDeferredShading");
             deferredReflections = assetBundle.LoadAsset<Shader>("InternalDeferredReflections");
 
@@ -763,7 +762,7 @@ namespace HSSSS
             }
         }
 
-        public void UpdateShadowConfig()
+        private void UpdateShadowConfig()
         {
             Shader.DisableKeyword("_PCF_TAPS_8");
             Shader.DisableKeyword("_PCF_TAPS_16");
@@ -816,7 +815,7 @@ namespace HSSSS
             }
         }
 
-        public void UpdateOtherConfig()
+        private void UpdateOtherConfig()
         {
             Shader.DisableKeyword("_WET_SPECGLOSS");
 
