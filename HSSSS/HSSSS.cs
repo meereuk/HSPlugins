@@ -62,6 +62,7 @@ namespace HSSSS
         public float transFalloff;
 
         public bool useWetSpecGloss;
+        public bool useMicroDetails;
     }
 
     public struct ShadowSettings
@@ -81,7 +82,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.1.1"; } }
+        public string Version { get { return "1.2.0"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -103,8 +104,10 @@ namespace HSSSS
         // camera effects
         private static DeferredRenderer SSS = null;
 
-        public static Shader deferredTransmissionBlit;
-        public static Shader deferredBlurredNormals;
+        public static Shader normalBlurShader;
+        public static Shader diffuseBlurShader;
+        public static Shader initSpecularShader;
+        public static Shader transmissionBlitShader;
 
         public static Texture2D defaultSkinLUT;
         public static Texture2D faceWorksSkinLUT;
@@ -141,7 +144,10 @@ namespace HSSSS
             transShadowWeight = 0.5f,
             transBlurRadius = 1.0f,
             transDistortion = 0.5f,
-            transFalloff = 2.0f
+            transFalloff = 2.0f,
+
+            useWetSpecGloss = true,
+            useMicroDetails = true
         };
         public static ShadowSettings shadowSettings = new ShadowSettings()
         {
@@ -300,32 +306,29 @@ namespace HSSSS
 
         public void OnLevelWasLoaded(int level)
         {
-            if ((isStudio && level == 3) || (!isStudio && level > 3))
+            if (isEnabled && level >= 3)
             {
-                if (isEnabled)
+                if (this.PostFxInitializer())
                 {
-                    if (this.PostFxInitializer())
+                    if (!LoadExternalConfig())
                     {
-                        if (!LoadExternalConfig())
+                        Console.WriteLine("#### HSSSS: Could not load config.xml; writing a new one...");
+
+                        if (SaveExternalConfig())
                         {
-                            Console.WriteLine("#### HSSSS: Could not load config.xml; writing a new one...");
-
-                            if (SaveExternalConfig())
-                            {
-                                Console.WriteLine("#### HSSSS: Successfully wrote a new configuration file");
-                            }
+                            Console.WriteLine("#### HSSSS: Successfully wrote a new configuration file");
                         }
-
-                        else
-                        {
-                            Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
-                        }
-
-                        SSS.ImportSettings();
-                        SSS.ForceRefresh();
-                        UpdateShadowConfig();
-                        UpdateOtherConfig();
                     }
+
+                    else
+                    {
+                        Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
+                    }
+
+                    SSS.ImportSettings();
+                    SSS.ForceRefresh();
+                    UpdateShadowConfig();
+                    UpdateOtherConfig();
                 }
             }
         }
@@ -592,8 +595,10 @@ namespace HSSSS
             }
 
             // post fx shaders
-            deferredTransmissionBlit = assetBundle.LoadAsset<Shader>("TransmissionBlit");
-            deferredBlurredNormals = assetBundle.LoadAsset<Shader>("BlurredNormals");
+            normalBlurShader = assetBundle.LoadAsset<Shader>("ScreenSpaceNormalBlur");
+            diffuseBlurShader = assetBundle.LoadAsset<Shader>("ScreenSpaceDiffuseBlur");
+            initSpecularShader = assetBundle.LoadAsset<Shader>("InitSpecularBuffer");
+            transmissionBlitShader = assetBundle.LoadAsset<Shader>("TransmissionBlit");
 
             // internal deferred & reflection shaders
             deferredShading = assetBundle.LoadAsset<Shader>("InternalDeferredShading");
@@ -609,7 +614,7 @@ namespace HSSSS
                 Console.WriteLine("#### HSSSS: Failed to Load Skin Material");
             }
 
-            if (null == deferredTransmissionBlit || null == deferredBlurredNormals)
+            if (null == transmissionBlitShader || null == normalBlurShader)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load PostFX Shaders");
             }
@@ -817,11 +822,20 @@ namespace HSSSS
 
         private void UpdateOtherConfig()
         {
+            // wet glossiness
             Shader.DisableKeyword("_WET_SPECGLOSS");
 
             if (skinSettings.useWetSpecGloss)
             {
                 Shader.EnableKeyword("_WET_SPECGLOSS");
+            }
+
+            // microdetails
+            Shader.DisableKeyword("_MICRODETAILS");
+
+            if (skinSettings.useMicroDetails)
+            {
+                Shader.EnableKeyword("_MICRODETAILS");
             }
         }
         #endregion
@@ -980,7 +994,10 @@ namespace HSSSS
             // miscellaneous
             writer.WriteStartElement("Miscellaneous");
             {
+                // wet skin gloss
                 writer.WriteElementString("WetSpecGloss", XmlConvert.ToString(skinSettings.useWetSpecGloss));
+                // skin microdetails
+                writer.WriteElementString("MicroDetails", XmlConvert.ToString(skinSettings.useMicroDetails));
             }
             writer.WriteEndElement();
         }
@@ -1228,8 +1245,13 @@ namespace HSSSS
                         {
                             switch (child1.Name)
                             {
+                                // wet skin glossiness
                                 case "WetSpecGloss":
                                     skinSettings.useWetSpecGloss = XmlConvert.ToBoolean(child1.InnerText);
+                                    break;
+                                // skin microdetails
+                                case "MicroDetails":
+                                    skinSettings.useMicroDetails = XmlConvert.ToBoolean(child1.InnerText);
                                     break;
                             }
                         }
@@ -1307,7 +1329,7 @@ namespace HSSSS
 
                     case CharReference.TagObjKey.ObjEyelashes:
                         ShaderReplacer(eyeLashMaterial, mat);
-                        mat.EnableKeyword("_SKINEFFECT_ON");
+                        //mat.EnableKeyword("_SKINEFFECT_ON");
                         mat.EnableKeyword("_METALLIC_OFF");
                         mat.renderQueue = 2001;
                         break;
@@ -1357,6 +1379,8 @@ namespace HSSSS
 
                     case CharReference.TagObjKey.ObjNail:
                         ShaderReplacer(skinMaterial, mat);
+                        mat.SetTexture("_DetailNormalMap_2", null);
+                        mat.SetTexture("_DetailNormalMap_3", null);
                         break;
 
                     default:
@@ -1417,7 +1441,10 @@ namespace HSSSS
                         {
                             bodyMat.SetTexture("_Thickness", femaleBodyThickness);
                         }
-                        
+
+                        bodyMat.SetTextureScale("_DetailNormalMap_2", new Vector2(64.0f, 64.0f));
+                        bodyMat.SetTextureScale("_DetailNormalMap_3", new Vector2(64.0f, 64.0f));
+
                         Console.WriteLine("#### HSSSS Replaced " + bodyMat);
                     }
                 }
@@ -1442,6 +1469,9 @@ namespace HSSSS
                         {
                             faceMat.SetTexture("_Thickness", femaleHeadThickness);
                         }
+
+                        faceMat.SetTextureScale("_DetailNormalMap_2", new Vector2(16.0f, 16.0f));
+                        faceMat.SetTextureScale("_DetailNormalMap_3", new Vector2(16.0f, 16.0f));
 
                         Console.WriteLine("#### HSSSS Replaced " + faceMat);
                     }
@@ -1653,8 +1683,9 @@ namespace HSSSS
                                 {
                                     if (WillReplaceShader(matTears.shader))
                                     {
-                                        ShaderReplacer(eyeOverlayMaterial, matTears);
-                                        matTears.SetFloat("_Metallic", 0.80f);
+                                        ShaderReplacer(milkMaterial, matTears);
+                                        //ShaderReplacer(eyeOverlayMaterial, matTears);
+                                        matTears.SetFloat("_Metallic", 0.72f);
                                         matTears.renderQueue = 2004;
                                         Console.WriteLine("#### HSSSS Replaced " + matTears.name);
                                     }
@@ -1675,6 +1706,7 @@ namespace HSSSS
 
     public class ConfigWindow : MonoBehaviour
     {
+        #region Global Fields
         public static int uiScale;
         private int singleSpace;
         private int doubleSpace;
@@ -1699,9 +1731,10 @@ namespace HSSSS
         private TabState tabState;
 
         private readonly string[] tabLabels = new string[] { "Scattering", "Transmission", "Lights & Shadows", "Miscellaneous" };
-        private readonly string[] lutLabels = new string[] { "Penner (Default)", "FaceWorks Type 1", "FaceWorks Type 2" };
+        private readonly string[] lutLabels = new string[] { "Penner", "FaceWorks Type 1", "FaceWorks Type 2", "Jimenez" };
         private readonly string[] pcfLabels = new string[] { "Off", "8x", "16x", "32x", "64x" };
-        
+        #endregion
+
         public void Awake()
         {
             windowSize = new Vector2(192.0f * uiScale, 192.0f);
@@ -1862,7 +1895,7 @@ namespace HSSSS
             GUILayout.Space(tetraSpace);
 
             // profiles
-            GUILayout.Label("Pre-integrated BRDF");
+            GUILayout.Label("Skin Scattering Profile");
 
             GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
 
@@ -1878,39 +1911,54 @@ namespace HSSSS
 
             GUILayout.Space(tetraSpace);
 
-            // skin diffusion brdf
-            GUILayout.Label("Skin BRDF Lookup Scale");
-            skinSettings.skinLutScale = this.SliderControls(skinSettings.skinLutScale, 0.0f, 1.0f);
-
-            GUILayout.Label("Skin BRDF Lookup Bias");
-            skinSettings.skinLutBias = this.SliderControls(skinSettings.skinLutBias, 0.0f, 1.0f);
-
-            GUILayout.Space(tetraSpace);
-
-            // shadow penumbra brdf
-            if (skinSettings.lutProfile == LUTProfile.nvidia2)
+            if (skinSettings.lutProfile == LUTProfile.jimenez)
             {
-                GUILayout.Label("Shadow BRDF Lookup Scale");
-                skinSettings.shadowLutScale = this.SliderControls(skinSettings.shadowLutScale, 0.0f, 1.0f);
+                GUILayout.Label("Diffuse Blur Radius");
+                skinSettings.normalBlurRadius = this.SliderControls(skinSettings.normalBlurRadius, 0.0f, 4.0f);
 
-                GUILayout.Label("Shadow BRDF Lookup Bias");
-                skinSettings.shadowLutBias = this.SliderControls(skinSettings.shadowLutBias, 0.0f, 1.0f);
+                GUILayout.Label("Diffuse Blur Depth Range");
+                skinSettings.normalBlurDepthRange = this.SliderControls(skinSettings.normalBlurDepthRange, 0.0f, 20.0f);
+
+                GUILayout.Label("Diffuse Blur Iterations");
+                skinSettings.normalBlurIter = this.SliderControls(skinSettings.normalBlurIter, 0, 10);
             }
 
-            GUILayout.Space(tetraSpace);
+            else
+            {
+                // skin diffusion brdf
+                GUILayout.Label("Skin BRDF Lookup Scale");
+                skinSettings.skinLutScale = this.SliderControls(skinSettings.skinLutScale, 0.0f, 1.0f);
 
-            // normal blurs
-            GUILayout.Label("Normal Blur Weight");
-            skinSettings.normalBlurWeight = this.SliderControls(skinSettings.normalBlurWeight, 0.0f, 1.0f);
+                GUILayout.Label("Skin BRDF Lookup Bias");
+                skinSettings.skinLutBias = this.SliderControls(skinSettings.skinLutBias, 0.0f, 1.0f);
 
-            GUILayout.Label("Normal Blur Radius");
-            skinSettings.normalBlurRadius = this.SliderControls(skinSettings.normalBlurRadius, 0.0f, 1.0f);
+                GUILayout.Space(tetraSpace);
 
-            GUILayout.Label("Normal Blur Depth Range");
-            skinSettings.normalBlurDepthRange = this.SliderControls(skinSettings.normalBlurDepthRange, 0.0f, 20.0f);
+                // shadow penumbra brdf
+                if (skinSettings.lutProfile == LUTProfile.nvidia2)
+                {
+                    GUILayout.Label("Shadow BRDF Lookup Scale");
+                    skinSettings.shadowLutScale = this.SliderControls(skinSettings.shadowLutScale, 0.0f, 1.0f);
 
-            GUILayout.Label("Normal Blur Iterations");
-            skinSettings.normalBlurIter = this.SliderControls(skinSettings.normalBlurIter, 1, 10);
+                    GUILayout.Label("Shadow BRDF Lookup Bias");
+                    skinSettings.shadowLutBias = this.SliderControls(skinSettings.shadowLutBias, 0.0f, 1.0f);
+                }
+
+                GUILayout.Space(tetraSpace);
+
+                // normal blurs
+                GUILayout.Label("Normal Blur Weight");
+                skinSettings.normalBlurWeight = this.SliderControls(skinSettings.normalBlurWeight, 0.0f, 1.0f);
+
+                GUILayout.Label("Normal Blur Radius");
+                skinSettings.normalBlurRadius = this.SliderControls(skinSettings.normalBlurRadius, 0.0f, 4.0f);
+
+                GUILayout.Label("Normal Blur Depth Range");
+                skinSettings.normalBlurDepthRange = this.SliderControls(skinSettings.normalBlurDepthRange, 0.0f, 20.0f);
+
+                GUILayout.Label("Normal Blur Iterations");
+                skinSettings.normalBlurIter = this.SliderControls(skinSettings.normalBlurIter, 0, 10);
+            }
 
             GUILayout.Space(tetraSpace);
 
@@ -2058,9 +2106,15 @@ namespace HSSSS
         private void OtherSettings()
         {
             // wet specgloss
-            GUILayout.Label("Wet Skin SpecGloss");
+            GUILayout.Label("Wet Skin Glossiness");
             GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
             this.skinSettings.useWetSpecGloss = GUILayout.Toolbar(Convert.ToUInt16(this.skinSettings.useWetSpecGloss), new string[] { "Disable", "Enable" }) == 1;
+            GUILayout.EndHorizontal();
+
+            // skin microdetails
+            GUILayout.Label("Skin Microdetails");
+            GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
+            this.skinSettings.useMicroDetails = GUILayout.Toolbar(Convert.ToUInt16(this.skinSettings.useMicroDetails), new string[] { "Disable", "Enable" }) == 1;
             GUILayout.EndHorizontal();
 
             GUILayout.Space(octaSpace);
