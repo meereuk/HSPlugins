@@ -22,8 +22,11 @@ namespace HSSSS
         private static Texture2D defaultSkinLUT;
         private static Texture2D faceWorksSkinLUT;
         private static Texture2D faceWorksShadowLUT;
+        private static Texture2D deepScatterLUT;
 
         private static SkinSettings skinSettings;
+
+        public static bool hsrCompatible = false;
 
         public void Awake()
         {
@@ -35,6 +38,7 @@ namespace HSSSS
             defaultSkinLUT = HSSSS.defaultSkinLUT;
             faceWorksSkinLUT = HSSSS.faceWorksSkinLUT;
             faceWorksShadowLUT = HSSSS.faceWorksShadowLUT;
+            deepScatterLUT = HSSSS.deepScatterLUT;
 
             skinSettings = HSSSS.skinSettings;
         }
@@ -108,6 +112,19 @@ namespace HSSSS
 
         private void RefreshTransmissionProperties()
         {
+            Shader.DisableKeyword("_BAKED_THICKNESS");
+
+            if (skinSettings.bakedThickness)
+            {
+                Shader.EnableKeyword("_BAKED_THICKNESS");
+            }
+
+            else
+            {
+                Shader.SetGlobalTexture("_DeferredTransmissionLut", deepScatterLUT);
+                Shader.SetGlobalFloat("_DeferredThicknessBias", skinSettings.thicknessBias * 0.01f);
+            }
+
             Shader.SetGlobalVector("_DeferredTransmissionParams", new Vector4(skinSettings.transWeight, skinSettings.transFalloff, skinSettings.transDistortion, skinSettings.transShadowWeight));
         }
 
@@ -217,17 +234,42 @@ namespace HSSSS
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.normalBlurBuffer);
         }
 
+        private void InitDummyBuffer()
+        {
+            int copyRT = Shader.PropertyToID("_DeferredTransmissionBuffer");
+
+            //// transmission & ambient lights
+            this.copyBuffer = new CommandBuffer() { name = this.copyBufferName };
+            // get temporary rendertextures
+            this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB32);
+            // extract thickness map from gbuffer 3
+            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, copyMaterial, 0);
+            // release rendertexture
+            this.copyBuffer.ReleaseTemporaryRT(copyRT);
+            // add commandbuffer
+            this.mCamera.AddCommandBuffer(CameraEvent.AfterGBuffer, this.copyBuffer);
+        }
+
         private void InitializeBuffers()
         {
-            // buffer 1: screen space scattering
-            if (skinSettings.lutProfile == LUTProfile.jimenez)
+            if (hsrCompatible)
             {
-                this.InitDiffuseBlurBuffer();
+                // buffer 0: hsr compatible buffer
+                this.InitDummyBuffer();
             }
-            // buffer 2: pre-integrated scattering
+
             else
             {
-                this.InitNormalBlurBuffer();
+                // buffer 1: screen space scattering
+                if (skinSettings.lutProfile == LUTProfile.jimenez)
+                {
+                    this.InitDiffuseBlurBuffer();
+                }
+                // buffer 2: pre-integrated scattering
+                else
+                {
+                    this.InitNormalBlurBuffer();
+                }
             }
         }
 

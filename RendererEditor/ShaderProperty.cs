@@ -159,6 +159,10 @@ namespace RendererEditor
             new ShaderProperty() {name = "_HighlightWidth1", floatRange = new Vector2(0, 1f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_HighlightShift1", floatRange = new Vector2(-180f, 180f), hasFloatRange = true, type = Type.Float},
             new ShaderProperty() {name = "_PupilSize", floatRange = new Vector2(0f, 1f), hasFloatRange = true, type = Type.Float},
+            //
+            new ShaderProperty() {name = "_DistortWeight", floatRange = new Vector2(0f, 1f), hasFloatRange = true, type = Type.Float},
+            new ShaderProperty() {name = "_DistortGeoWeight", floatRange = new Vector2(0f, 1f), hasFloatRange = true, type = Type.Float},
+            new ShaderProperty() {name = "_DistortIntensity", floatRange = new Vector2(0f, 128f), hasFloatRange = true, type = Type.Float},
             //Bools
             new ShaderProperty() {name = "_HairEffect", type = Type.Boolean},
             new ShaderProperty() {name = "_GlossUseAlpha", type = Type.Boolean},

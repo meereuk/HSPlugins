@@ -57,9 +57,10 @@ namespace HSSSS
 
         public float transWeight;
         public float transShadowWeight;
-        public float transBlurRadius;
         public float transDistortion;
         public float transFalloff;
+
+        public float thicknessBias;
 
         public bool useWetSpecGloss;
         public bool useMicroDetails;
@@ -82,7 +83,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.2.0"; } }
+        public string Version { get { return "1.2.2"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -112,6 +113,7 @@ namespace HSSSS
         public static Texture2D defaultSkinLUT;
         public static Texture2D faceWorksSkinLUT;
         public static Texture2D faceWorksShadowLUT;
+        public static Texture2D deepScatterLUT;
         public static Texture2D skinJitter;
 
         public static SkinSettings skinSettings = new SkinSettings()
@@ -142,9 +144,10 @@ namespace HSSSS
 
             transWeight = 1.0f,
             transShadowWeight = 0.5f,
-            transBlurRadius = 1.0f,
             transDistortion = 0.5f,
             transFalloff = 2.0f,
+
+            thicknessBias = 0.5f,
 
             useWetSpecGloss = true,
             useMicroDetails = true
@@ -183,6 +186,7 @@ namespace HSSSS
         // modprefs.ini options
         private static bool isStudio;
         private static bool isEnabled;
+        private static bool hsrCompatible;
         private static bool fixAlphaShadow;
         private static bool useTessellation;
         private static bool useEyePOMShader;
@@ -244,45 +248,48 @@ namespace HSSSS
                 #region Harmony
                 HarmonyInstance harmony = HarmonyInstance.Create("com.kkul.hssss");
 
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharCustom), nameof(CharCustom.SetBodyBaseMaterial)), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.BodyReplacer))
-                    );
+                if (!hsrCompatible)
+                {
+                    harmony.Patch(
+                        AccessTools.Method(typeof(CharCustom), nameof(CharCustom.SetBodyBaseMaterial)), null,
+                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.BodyReplacer))
+                        );
 
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharCustom), nameof(CharCustom.SetFaceBaseMaterial)), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.FaceReplacer))
-                    );
+                    harmony.Patch(
+                        AccessTools.Method(typeof(CharCustom), nameof(CharCustom.SetFaceBaseMaterial)), null,
+                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.FaceReplacer))
+                        );
 
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharCustom), nameof(CharCustom.ChangeMaterial)), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.CommonReplacer))
-                    );
+                    harmony.Patch(
+                        AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeEyeWColor)), null,
+                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.ScleraReplacer))
+                        );
 
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeEyeWColor)), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.ScleraReplacer))
-                    );
+                    harmony.Patch(
+                        AccessTools.Method(typeof(CharMaleCustom), nameof(CharMaleCustom.ChangeEyeWColor)), null,
+                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.ScleraReplacer))
+                        );
 
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharMaleCustom), nameof(CharMaleCustom.ChangeEyeWColor)), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.ScleraReplacer))
-                    );
+                    harmony.Patch(
+                        AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeNailColor)), null,
+                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.NailReplacer))
+                        );
 
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeNailColor)), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.NailReplacer))
-                    );
+                    harmony.Patch(
+                        AccessTools.Method(typeof(CharCustom), nameof(CharCustom.ChangeMaterial)), null,
+                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.CommonReplacer))
+                        );
 
-                harmony.Patch(
-                    AccessTools.Method(typeof(Manager.Character), nameof(Manager.Character.Awake)), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.JuicesReplacer))
-                    );
+                    harmony.Patch(
+                        AccessTools.Method(typeof(Manager.Character), nameof(Manager.Character.Awake)), null,
+                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.JuicesReplacer))
+                        );
 
-                harmony.Patch(
-                    AccessTools.Method(typeof(CharFemaleBody), nameof(CharFemaleBody.Reload)), null,
-                    new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.MiscReplacer))
-                    );
+                    harmony.Patch(
+                        AccessTools.Method(typeof(CharFemaleBody), nameof(CharFemaleBody.Reload)), null,
+                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.MiscReplacer))
+                        );
+                }
 
                 if (isStudio)
                 {
@@ -325,8 +332,12 @@ namespace HSSSS
                         Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
                     }
 
-                    SSS.ImportSettings();
-                    SSS.ForceRefresh();
+                    if (!hsrCompatible)
+                    {
+                        SSS.ImportSettings();
+                        SSS.ForceRefresh();
+                    }
+                    
                     UpdateShadowConfig();
                     UpdateOtherConfig();
                 }
@@ -347,6 +358,7 @@ namespace HSSSS
             {
                 if (this.windowObj == null)
                 {
+                    ConfigWindow.hsrCompatible = hsrCompatible;
                     ConfigWindow.uiScale = uiScale;
                     this.windowObj = new GameObject("HSSSS.ConfigWindow");
                     this.windowObj.AddComponent<ConfigWindow>();
@@ -407,11 +419,11 @@ namespace HSSSS
             // enable & disable plugin
             isEnabled = ModPrefs.GetBool("HSSSS", "Enabled", true, true);
             // shadow fix for overlay materials
-            fixAlphaShadow = ModPrefs.GetBool("HSSSS", "FixShadow", false, true);
+            fixAlphaShadow = ModPrefs.GetBool("HSSSS", "FixShadow", true, true);
             // tesellation skin shader
             useTessellation = ModPrefs.GetBool("HSSSS", "Tessellation", false, true);
             // dedicated eye shader which supports pom/sss
-            useEyePOMShader = ModPrefs.GetBool("HSSSS", "EyePOMShader", false, true);
+            useEyePOMShader = ModPrefs.GetBool("HSSSS", "EyePOMShader", true, true);
             // whether to use custom thickness map instead of the built-in texture
             useCustomThickness = ModPrefs.GetBool("HSSSS", "CustomThickness", false, true);
             // custom thickness texture location
@@ -419,6 +431,8 @@ namespace HSSSS
             femaleHeadCustom = ModPrefs.GetString("HSSSS", "FemaleHead", "HSSSS/FemaleHead.png", true);
             maleBodyCustom = ModPrefs.GetString("HSSSS", "MaleBody", "HSSSS/MaleBody.png", true);
             maleHeadCustom = ModPrefs.GetString("HSSSS", "MaleHead", "HSSSS/MaleHead.png", true);
+            // toggle automatic skin replacer
+            hsrCompatible = ModPrefs.GetBool("HSSSS", "HSRCompatibleMode", false, true);
             // shortcut for the ui window (deferred only)
             try
             {
@@ -454,6 +468,14 @@ namespace HSSSS
             }
             // ui window scale
             uiScale = ModPrefs.GetInt("HSSSS", "UIScale", 4, true);
+
+            if (hsrCompatible)
+            {
+                fixAlphaShadow = false;
+                useTessellation = false;
+                useEyePOMShader = false;
+                useCustomThickness = false;
+            }
         }
 
         private void BaseAssetLoader()
@@ -536,6 +558,7 @@ namespace HSSSS
             defaultSkinLUT = assetBundle.LoadAsset<Texture2D>("DefaultSkinLUT");
             faceWorksSkinLUT = assetBundle.LoadAsset<Texture2D>("FaceWorksSkinLUT");
             faceWorksShadowLUT = assetBundle.LoadAsset<Texture2D>("FaceWorksShadowLUT");
+            deepScatterLUT = assetBundle.LoadAsset<Texture2D>("DeepScatterLUT");
 
             // jitter texture
             skinJitter = assetBundle.LoadAsset<Texture2D>("SkinJitter");
@@ -633,8 +656,8 @@ namespace HSSSS
             // materials for additional replacement
             if (fixAlphaShadow)
             {
-                eyeBrowMaterial = assetBundle.LoadAsset<Material>("Overlay");
-                eyeLashMaterial = assetBundle.LoadAsset<Material>("Overlay");
+                eyeBrowMaterial = assetBundle.LoadAsset<Material>("EyeBrow");
+                eyeLashMaterial = assetBundle.LoadAsset<Material>("EyeLash");
                 eyeOverlayMaterial = assetBundle.LoadAsset<Material>("OverlayForward");
                 eyeScleraMaterial = assetBundle.LoadAsset<Material>("Standard");
 
@@ -647,7 +670,7 @@ namespace HSSSS
                 // ordinary overlay eye shader
                 else
                 {
-                    eyeCorneaMaterial = assetBundle.LoadAsset<Material>("Overlay");
+                    eyeCorneaMaterial = assetBundle.LoadAsset<Material>("OverlayForward");
                 }
 
                 // confirm materials are loaded
@@ -720,6 +743,7 @@ namespace HSSSS
                 if (SSS == null)
                 {
                     SSS = mainCamera.gameObject.AddComponent<DeferredRenderer>();
+                    DeferredRenderer.hsrCompatible = hsrCompatible;
 
                     if (null == SSS)
                     {
@@ -754,16 +778,20 @@ namespace HSSSS
         {
             this.UpdateShadowConfig();
             this.UpdateOtherConfig();
-            SSS.ImportSettings();
 
-            if (softRefresh)
+            if (!hsrCompatible)
             {
-                SSS.Refresh();
-            }
+                SSS.ImportSettings();
 
-            else
-            {
-                SSS.ForceRefresh();
+                if (softRefresh)
+                {
+                    SSS.Refresh();
+                }
+
+                else
+                {
+                    SSS.ForceRefresh();
+                }
             }
         }
 
@@ -822,20 +850,23 @@ namespace HSSSS
 
         private void UpdateOtherConfig()
         {
-            // wet glossiness
-            Shader.DisableKeyword("_WET_SPECGLOSS");
-
-            if (skinSettings.useWetSpecGloss)
+            if (!hsrCompatible)
             {
-                Shader.EnableKeyword("_WET_SPECGLOSS");
-            }
+                // wet glossiness
+                Shader.DisableKeyword("_WET_SPECGLOSS");
 
-            // microdetails
-            Shader.DisableKeyword("_MICRODETAILS");
+                if (skinSettings.useWetSpecGloss)
+                {
+                    Shader.EnableKeyword("_WET_SPECGLOSS");
+                }
 
-            if (skinSettings.useMicroDetails)
-            {
-                Shader.EnableKeyword("_MICRODETAILS");
+                // microdetails
+                Shader.DisableKeyword("_MICRODETAILS");
+
+                if (skinSettings.useMicroDetails)
+                {
+                    Shader.EnableKeyword("_MICRODETAILS");
+                }
             }
         }
         #endregion
@@ -849,8 +880,11 @@ namespace HSSSS
                 config.Load(configPath);
                 this.LoadConfig(config.LastChild);
 
-                SSS.ImportSettings();
-                SSS.ForceRefresh();
+                if (!hsrCompatible)
+                {
+                    SSS.ImportSettings();
+                    SSS.ForceRefresh();
+                }
 
                 return true;
             }
@@ -948,12 +982,12 @@ namespace HSSSS
                 writer.WriteElementString("Weight", XmlConvert.ToString(skinSettings.transWeight));
                 // normal distortion
                 writer.WriteElementString("NormalDistortion", XmlConvert.ToString(skinSettings.transDistortion));
-                // on-the-fly blur radius
-                writer.WriteElementString("BlurRadius", XmlConvert.ToString(skinSettings.transBlurRadius));
                 // shadow weight
                 writer.WriteElementString("ShadowWeight", XmlConvert.ToString(skinSettings.transShadowWeight));
                 // falloff
                 writer.WriteElementString("FallOff", XmlConvert.ToString(skinSettings.transFalloff));
+                // thickness bias
+                writer.WriteElementString("ThicknessBias", XmlConvert.ToString(skinSettings.thicknessBias));
             }
             writer.WriteEndElement();
             // shadow
@@ -1146,16 +1180,16 @@ namespace HSSSS
                                     skinSettings.transDistortion = XmlConvert.ToSingle(child1.InnerText);
                                     break;
 
-                                case "BlurRadius":
-                                    skinSettings.transBlurRadius = XmlConvert.ToSingle(child1.InnerText);
-                                    break;
-
                                 case "ShadowWeight":
                                     skinSettings.transShadowWeight = XmlConvert.ToSingle(child1.InnerText);
                                     break;
 
                                 case "Falloff":
                                     skinSettings.transFalloff = XmlConvert.ToSingle(child1.InnerText);
+                                    break;
+
+                                case "ThicknessBias":
+                                    skinSettings.thicknessBias = XmlConvert.ToSingle(child1.InnerText);
                                     break;
                             }
                         }
@@ -1322,21 +1356,18 @@ namespace HSSSS
                 {
                     case CharReference.TagObjKey.ObjUnderHair:
                         ShaderReplacer(overlayMaterial, mat);
-                        mat.EnableKeyword("_SKINEFFECT_ON");
                         mat.EnableKeyword("_METALLIC_OFF");
                         mat.renderQueue = 2001;
                         break;
 
                     case CharReference.TagObjKey.ObjEyelashes:
                         ShaderReplacer(eyeLashMaterial, mat);
-                        //mat.EnableKeyword("_SKINEFFECT_ON");
                         mat.EnableKeyword("_METALLIC_OFF");
                         mat.renderQueue = 2001;
                         break;
 
                     case CharReference.TagObjKey.ObjEyebrow:
                         ShaderReplacer(eyeBrowMaterial, mat);
-                        mat.EnableKeyword("_SKINEFFECT_ON");
                         mat.EnableKeyword("_METALLIC_OFF");
                         mat.renderQueue = 2002;
                         break;
@@ -1355,6 +1386,12 @@ namespace HSSSS
                     case CharReference.TagObjKey.ObjEyeL:
                         ShaderReplacer(eyeCorneaMaterial, mat);
                         mat.renderQueue = 2001;
+                        if (useEyePOMShader)
+                        {
+                            mat.SetFloat("_BumpScale", 1.0f);
+                            mat.SetFloat("_DetailNormalMapScale", 1.0f);
+                            mat.SetTexture("_SpecGlossMap", null);
+                        }
                         if (!useEyePOMShader)
                         {
                             mat.EnableKeyword("_METALLIC_OFF");
@@ -1364,7 +1401,13 @@ namespace HSSSS
                     case CharReference.TagObjKey.ObjEyeR:
                         ShaderReplacer(eyeCorneaMaterial, mat);
                         mat.renderQueue = 2001;
-                        if (!useEyePOMShader)
+                        if (useEyePOMShader)
+                        {
+                            mat.SetFloat("_BumpScale", 1.0f);
+                            mat.SetFloat("_DetailNormalMapScale", 1.0f);
+                            mat.SetTexture("_SpecGlossMap", null);
+                        }
+                        else
                         {
                             mat.EnableKeyword("_METALLIC_OFF");
                         }
@@ -1372,9 +1415,9 @@ namespace HSSSS
 
                     case CharReference.TagObjKey.ObjNip:
                         ShaderReplacer(overlayMaterial, mat);
-                        mat.EnableKeyword("_SKINEFFECT_ON");
-                        mat.EnableKeyword("_METALLIC_OFF");
                         mat.renderQueue = 2001;
+                        mat.EnableKeyword("_METALLIC_OFF");
+                        mat.EnableKeyword("_SKINEFFECT_ON");
                         break;
 
                     case CharReference.TagObjKey.ObjNail:
@@ -1399,9 +1442,12 @@ namespace HSSSS
                 {
                     if (cacheMat.HasProperty(entry.Key))
                     {
-                        targetMaterial.SetTexture(entry.Value, cacheMat.GetTexture(entry.Key));
-                        targetMaterial.SetTextureScale(entry.Value, cacheMat.GetTextureScale(entry.Key));
-                        targetMaterial.SetTextureOffset(entry.Value, cacheMat.GetTextureOffset(entry.Key));
+                        if (targetMaterial.GetTexture(entry.Key) == null)
+                        {
+                            targetMaterial.SetTexture(entry.Value, cacheMat.GetTexture(entry.Key));
+                            targetMaterial.SetTextureScale(entry.Value, cacheMat.GetTextureScale(entry.Key));
+                            targetMaterial.SetTextureOffset(entry.Value, cacheMat.GetTextureOffset(entry.Key));
+                        }
                     }
                 }
 
@@ -1442,9 +1488,6 @@ namespace HSSSS
                             bodyMat.SetTexture("_Thickness", femaleBodyThickness);
                         }
 
-                        bodyMat.SetTextureScale("_DetailNormalMap_2", new Vector2(64.0f, 64.0f));
-                        bodyMat.SetTextureScale("_DetailNormalMap_3", new Vector2(64.0f, 64.0f));
-
                         Console.WriteLine("#### HSSSS Replaced " + bodyMat);
                     }
                 }
@@ -1469,9 +1512,6 @@ namespace HSSSS
                         {
                             faceMat.SetTexture("_Thickness", femaleHeadThickness);
                         }
-
-                        faceMat.SetTextureScale("_DetailNormalMap_2", new Vector2(16.0f, 16.0f));
-                        faceMat.SetTextureScale("_DetailNormalMap_3", new Vector2(16.0f, 16.0f));
 
                         Console.WriteLine("#### HSSSS Replaced " + faceMat);
                     }
@@ -1576,6 +1616,7 @@ namespace HSSSS
                         if (WillReplaceShader(juiceMat.shader))
                         {
                             ShaderReplacer(milkMaterial, juiceMat);
+                            juiceMat.EnableKeyword("_DISP_ALPHA");
                             juiceMat.SetFloat("_Metallic", 0.65f);
                             juiceMat.renderQueue = 2002;
                             Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
@@ -1592,9 +1633,9 @@ namespace HSSSS
                     if (WillReplaceShader(__instance.matHohoAka.shader))
                     {
                         ShaderReplacer(overlayMaterial, __instance.matHohoAka);
-                        __instance.matHohoAka.EnableKeyword("_SKINEFFECT_ON");
-                        __instance.matHohoAka.EnableKeyword("_METALLIC_OFF");
                         __instance.matHohoAka.renderQueue = 2001;
+                        __instance.matHohoAka.EnableKeyword("_METALLIC_OFF");
+                        __instance.matHohoAka.EnableKeyword("_SKINEFFECT_ON");
                         Console.WriteLine("#### HSSSS Replaced " + __instance.matHohoAka.name);
                     }
                 }
@@ -1614,9 +1655,9 @@ namespace HSSSS
                             if (WillReplaceShader(blushMat.shader))
                             {
                                 ShaderReplacer(overlayMaterial, blushMat);
-                                blushMat.EnableKeyword("_SKINEFFECT_ON");
-                                blushMat.EnableKeyword("_METALLIC_OFF");
                                 blushMat.renderQueue = 2001;
+                                blushMat.EnableKeyword("_METALLIC_OFF");
+                                blushMat.EnableKeyword("_SKINEFFECT_ON");
                                 Console.WriteLine("#### HSSSS Replaced " + blushMat.name);
                             }
                         }
@@ -1629,7 +1670,6 @@ namespace HSSSS
 
                     if (objHead != null)
                     {
-                        // eye occlusion
                         GameObject objShade = null;
 
                         if (null != objHead.transform.Find("cf_N_head/cf_O_eyekage"))
@@ -1684,7 +1724,7 @@ namespace HSSSS
                                     if (WillReplaceShader(matTears.shader))
                                     {
                                         ShaderReplacer(milkMaterial, matTears);
-                                        //ShaderReplacer(eyeOverlayMaterial, matTears);
+                                        ShaderReplacer(eyeOverlayMaterial, matTears);
                                         matTears.SetFloat("_Metallic", 0.72f);
                                         matTears.renderQueue = 2004;
                                         Console.WriteLine("#### HSSSS Replaced " + matTears.name);
@@ -1707,6 +1747,7 @@ namespace HSSSS
     public class ConfigWindow : MonoBehaviour
     {
         #region Global Fields
+        public static bool hsrCompatible;
         public static int uiScale;
         private int singleSpace;
         private int doubleSpace;
@@ -1733,6 +1774,7 @@ namespace HSSSS
         private readonly string[] tabLabels = new string[] { "Scattering", "Transmission", "Lights & Shadows", "Miscellaneous" };
         private readonly string[] lutLabels = new string[] { "Penner", "FaceWorks Type 1", "FaceWorks Type 2", "Jimenez" };
         private readonly string[] pcfLabels = new string[] { "Off", "8x", "16x", "32x", "64x" };
+        private readonly string[] thkLabels = new string[] { "Baked", "ShadowMap" };
         #endregion
 
         public void Awake()
@@ -1788,26 +1830,36 @@ namespace HSSSS
         private void WindowFunction(int WindowID)
         {
             GUILayout.Space(octaSpace);
-            this.TabsControl();
-            GUILayout.Space(tetraSpace);
 
-            switch (this.tabState)
+            if (hsrCompatible)
             {
-                case TabState.skinScattering:
-                    this.ScatteringSettings();
-                    break;
+                this.tabState = TabState.lightShadow;
+                this.LightShadowSettings();
+            }
 
-                case TabState.skinTransmission:
-                    this.TransmissionSettings();
-                    break;
+            else
+            {
+                this.TabsControl();
+                GUILayout.Space(tetraSpace);
 
-                case TabState.lightShadow:
-                    this.LightShadowSettings();
-                    break;
+                switch (this.tabState)
+                {
+                    case TabState.skinScattering:
+                        this.ScatteringSettings();
+                        break;
 
-                case TabState.miscellaneous:
-                    this.OtherSettings();
-                    break;
+                    case TabState.skinTransmission:
+                        this.TransmissionSettings();
+                        break;
+
+                    case TabState.lightShadow:
+                        this.LightShadowSettings();
+                        break;
+
+                    case TabState.miscellaneous:
+                        this.OtherSettings();
+                        break;
+                }
             }
 
             GUILayout.Space(tetraSpace);
@@ -1969,20 +2021,49 @@ namespace HSSSS
 
         private void TransmissionSettings()
         {
+            GUILayout.Label("Thickness Sampling Method");
+
+            GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
+            bool bakedThickness = GUILayout.Toolbar(Convert.ToUInt16(!this.skinSettings.bakedThickness), new string[] { "Pre-Baked", "Shadow Map" }) == 0;
+            GUILayout.EndHorizontal();
+
+            if (this.skinSettings.bakedThickness != bakedThickness)
+            {
+                this.skinSettings.bakedThickness = bakedThickness;
+                this.UpdateWindowSize();
+            }
+
+            if (!this.skinSettings.bakedThickness && !this.shadowSettings.pcssEnabled)
+            {
+                GUILayout.Label("<color=red>TURN ON PCSS SOFT SHADOW TO USE THIS OPTION!</color>");
+            }
+
             GUILayout.Label("Transmission Weight");
             skinSettings.transWeight = this.SliderControls(skinSettings.transWeight, 0.0f, 1.0f);
 
-            GUILayout.Label("Transmission Distortion");
-            skinSettings.transDistortion = this.SliderControls(skinSettings.transDistortion, 0.0f, 1.0f);
+            if (this.skinSettings.bakedThickness)
+            {
+                GUILayout.Label("Transmission Distortion");
+                skinSettings.transDistortion = this.SliderControls(skinSettings.transDistortion, 0.0f, 1.0f);
 
-            GUILayout.Label("Transmission Shadow Weight");
-            skinSettings.transShadowWeight = this.SliderControls(skinSettings.transShadowWeight, 0.0f, 1.0f);
+                GUILayout.Label("Transmission Shadow Weight");
+                skinSettings.transShadowWeight = this.SliderControls(skinSettings.transShadowWeight, 0.0f, 1.0f);
+            }
+
+            else
+            {
+                GUILayout.Label("Transmission Thickness Bias");
+                skinSettings.thicknessBias = this.SliderControls(skinSettings.thicknessBias, 0.0f, 5.0f);
+            }
 
             GUILayout.Label("Transmission Falloff");
             skinSettings.transFalloff = this.SliderControls(skinSettings.transFalloff, 1.0f, 20.0f);
 
-            GUILayout.Label("Transmission Absorption");
-            skinSettings.transAbsorption = this.RGBControls(skinSettings.transAbsorption);
+            if (this.skinSettings.bakedThickness)
+            {
+                GUILayout.Label("Transmission Absorption");
+                skinSettings.transAbsorption = this.RGBControls(skinSettings.transAbsorption);
+            }
         }
 
         private void LightShadowSettings()
@@ -2192,9 +2273,11 @@ namespace HSSSS
         }
         private void UpdateSettings()
         {
+            bool forceRefresh = HSSSS.skinSettings.normalBlurIter != this.skinSettings.normalBlurIter;
+
             HSSSS.skinSettings = this.skinSettings;
             HSSSS.shadowSettings = this.shadowSettings;
-            HSSSS.instance.RefreshConfig(HSSSS.skinSettings.normalBlurIter != this.skinSettings.normalBlurIter);
+            HSSSS.instance.RefreshConfig(forceRefresh);
         }
     }
 }
