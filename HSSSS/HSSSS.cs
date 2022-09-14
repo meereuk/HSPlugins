@@ -83,7 +83,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.2.2"; } }
+        public string Version { get { return "1.2.3"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -1184,7 +1184,7 @@ namespace HSSSS
                                     skinSettings.transShadowWeight = XmlConvert.ToSingle(child1.InnerText);
                                     break;
 
-                                case "Falloff":
+                                case "FallOff":
                                     skinSettings.transFalloff = XmlConvert.ToSingle(child1.InnerText);
                                     break;
 
@@ -2273,11 +2273,12 @@ namespace HSSSS
         }
         private void UpdateSettings()
         {
-            bool forceRefresh = HSSSS.skinSettings.normalBlurIter != this.skinSettings.normalBlurIter;
+            bool softRefresh = HSSSS.skinSettings.normalBlurIter == this.skinSettings.normalBlurIter;
+            softRefresh = softRefresh && (HSSSS.skinSettings.lutProfile == this.skinSettings.lutProfile);
 
             HSSSS.skinSettings = this.skinSettings;
             HSSSS.shadowSettings = this.shadowSettings;
-            HSSSS.instance.RefreshConfig(forceRefresh);
+            HSSSS.instance.RefreshConfig(softRefresh);
         }
     }
 }
