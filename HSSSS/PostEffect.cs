@@ -216,16 +216,24 @@ namespace HSSSS
             this.normalBlurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010);
             this.normalBlurBuffer.GetTemporaryRT(buffRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010);
 
-            this.normalBlurBuffer.Blit(BuiltinRenderTextureType.GBuffer2, flipRT, normalBlurMaterial, 0);
-            this.normalBlurBuffer.Blit(flipRT, flopRT, normalBlurMaterial, 1);
-
-            for (int i = 1; i < skinSettings.normalBlurIter; i ++)
+            if (skinSettings.normalBlurIter > 0)
             {
-                this.normalBlurBuffer.Blit(flopRT, flipRT, normalBlurMaterial, 0);
+                this.normalBlurBuffer.Blit(BuiltinRenderTextureType.GBuffer2, flipRT, normalBlurMaterial, 0);
                 this.normalBlurBuffer.Blit(flipRT, flopRT, normalBlurMaterial, 1);
+
+                for (int i = 1; i < skinSettings.normalBlurIter; i++)
+                {
+                    this.normalBlurBuffer.Blit(flopRT, flipRT, normalBlurMaterial, 0);
+                    this.normalBlurBuffer.Blit(flipRT, flopRT, normalBlurMaterial, 1);
+                }
+
+                this.normalBlurBuffer.Blit(flopRT, buffRT);
             }
 
-            this.normalBlurBuffer.Blit(flopRT, buffRT);
+            else
+            {
+                this.normalBlurBuffer.Blit(BuiltinRenderTextureType.GBuffer2, buffRT);
+            }
 
             this.normalBlurBuffer.ReleaseTemporaryRT(flipRT);
             this.normalBlurBuffer.ReleaseTemporaryRT(flopRT);

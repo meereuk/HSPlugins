@@ -70,9 +70,9 @@ namespace HSSSS
 
         private bool HasCommandBuffer()
         {
-            foreach (var buf in this.mLight.GetCommandBuffers(LightEvent.AfterShadowMap))
+            foreach (var buffer in this.mLight.GetCommandBuffers(LightEvent.AfterShadowMap))
             {
-                if (buf.name == this.bufferName)
+                if (buffer.name == this.bufferName)
                 {
                     return true;
                 }
