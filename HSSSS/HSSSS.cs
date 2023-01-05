@@ -83,6 +83,13 @@ namespace HSSSS
         public Vector3 pointLightPenumbra;
         public Vector3 spotLightPenumbra;
         public Vector3 dirLightPenumbra;
+
+        public bool rtShadowEnabled;
+
+        public float rtShadowRayLength;
+        public float rtShadowRayRadius;
+        public float rtShadowMeanDepth;
+        public float rtShadowDepthBias;
     }
     #endregion
 
@@ -90,7 +97,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.2.5"; } }
+        public string Version { get { return "1.2.9"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -111,11 +118,15 @@ namespace HSSSS
 
         // camera effects
         private static DeferredRenderer SSS = null;
+        private static BackFaceDepthSampler BDS = null;
+
+        private static GameObject depthCamera = null;
 
         public static Shader normalBlurShader;
         public static Shader diffuseBlurShader;
         public static Shader initSpecularShader;
         public static Shader transmissionBlitShader;
+        public static Shader backFaceDepthShader;
 
         public static Texture2D defaultSkinLUT;
         public static Texture2D faceWorksSkinLUT;
@@ -178,6 +189,13 @@ namespace HSSSS
             dirLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
             spotLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
             pointLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
+
+            rtShadowEnabled = false,
+
+            rtShadowRayLength = 0.05f,
+            rtShadowRayRadius = 0.05f,
+            rtShadowMeanDepth = 0.05f,
+            rtShadowDepthBias = 0.01f,
         };
 
         // skin and body materials
@@ -195,6 +213,14 @@ namespace HSSSS
         private static Texture2D femaleHeadThickness;
         private static Texture2D maleBodyThickness;
         private static Texture2D maleHeadThickness;
+
+        // pre-baked triplanar coordinates
+        /*
+        private static Texture2D femaleBodyNormal;
+        private static Texture2D femaleHeadNormal;
+        private static Texture2D femaleBodyPosition;
+        private static Texture2D femaleHeadPosition;
+        */
 
         // light cookie (spot)
         public static Texture2D spotCookie;
@@ -276,18 +302,18 @@ namespace HSSSS
                         new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.NailReplacer))
                         );
 
-                    harmony.Patch(
-                        AccessTools.Method(typeof(CharFemaleBody), nameof(CharFemaleBody.Reload)), null,
-                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.MiscReplacer))
-                        );
-
-                    harmony.Patch(
-                        AccessTools.Method(typeof(Manager.Character), nameof(Manager.Character.Awake)), null,
-                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.JuicesReplacer))
-                        );
-
                     if (fixAlphaShadow)
                     {
+                        harmony.Patch(
+                            AccessTools.Method(typeof(CharFemaleBody), nameof(CharFemaleBody.Reload)), null,
+                            new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.MiscReplacer))
+                            );
+
+                        harmony.Patch(
+                            AccessTools.Method(typeof(Manager.Character), nameof(Manager.Character.Awake)), null,
+                            new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.JuicesReplacer))
+                            );
+
                         harmony.Patch(
                             AccessTools.Method(typeof(CharCustom), nameof(CharCustom.ChangeMaterial)), null,
                             new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.CommonPartsReplacer))
@@ -562,6 +588,14 @@ namespace HSSSS
                 maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
             }
 
+            // triplanar coordinates
+            /*
+            femaleBodyNormal = assetBundle.LoadAsset<Texture2D>("FemaleBodyNormal");
+            femaleHeadNormal = assetBundle.LoadAsset<Texture2D>("FemaleHeadNormal");
+            femaleBodyPosition = assetBundle.LoadAsset<Texture2D>("FemaleBodyPosition");
+            femaleHeadPosition = assetBundle.LoadAsset<Texture2D>("FemaleHeadPosition");
+            */
+
             // sss lookup textures
             defaultSkinLUT = assetBundle.LoadAsset<Texture2D>("DefaultSkinLUT");
             faceWorksSkinLUT = assetBundle.LoadAsset<Texture2D>("FaceWorksSkinLUT");
@@ -631,6 +665,7 @@ namespace HSSSS
             diffuseBlurShader = assetBundle.LoadAsset<Shader>("ScreenSpaceDiffuseBlur");
             initSpecularShader = assetBundle.LoadAsset<Shader>("InitSpecularBuffer");
             transmissionBlitShader = assetBundle.LoadAsset<Shader>("TransmissionBlit");
+            backFaceDepthShader = assetBundle.LoadAsset<Shader>("BackFaceDepth");
 
             // internal deferred & reflection shaders
             deferredShading = assetBundle.LoadAsset<Shader>("InternalDeferredShading");
@@ -753,16 +788,23 @@ namespace HSSSS
                 {
                     SSS = mainCamera.gameObject.AddComponent<DeferredRenderer>();
                     DeferredRenderer.hsrCompatible = hsrCompatible;
+                }
 
-                    if (null == SSS)
-                    {
-                        Console.WriteLine("#### HSSSS: Failed to Initialize Post FX");
-                    }
+                if (BDS == null)
+                {
+                    depthCamera = new GameObject("HSSSS.BackFaceDepthCamera");
+                    BDS = depthCamera.AddComponent<BackFaceDepthSampler>();
+                    BDS.mainCamera = mainCamera.GetComponent<Camera>();
+                }
 
-                    else
-                    {
-                        return true;
-                    }
+                if (SSS == null || BDS == null)
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Initialize Post FX");
+                }
+
+                else
+                {
+                    return true;
                 }
             }
 
@@ -812,6 +854,7 @@ namespace HSSSS
             Shader.DisableKeyword("_PCF_TAPS_64");
             Shader.DisableKeyword("_DIR_PCF_ON");
             Shader.DisableKeyword("_PCSS_ON");
+            Shader.DisableKeyword("_RT_SHADOW_HQ");
 
             if (isStudio)
             {
@@ -855,9 +898,25 @@ namespace HSSSS
                     Shader.EnableKeyword("_PCSS_ON");
                 }
 
+                if (shadowSettings.rtShadowEnabled)
+                {
+                    Shader.EnableKeyword("_RT_SHADOW_HQ");
+                    depthCamera.SetActive(true);
+                }
+                
+                else
+                {
+                    depthCamera.SetActive(false);
+                }
+
                 Shader.SetGlobalVector("_DirLightPenumbra", shadowSettings.dirLightPenumbra);
                 Shader.SetGlobalVector("_SpotLightPenumbra", shadowSettings.spotLightPenumbra);
                 Shader.SetGlobalVector("_PointLightPenumbra", shadowSettings.pointLightPenumbra);
+
+                Shader.SetGlobalFloat("_SSShadowRayLength", shadowSettings.rtShadowRayLength);
+                Shader.SetGlobalFloat("_SSShadowRayRadius", shadowSettings.rtShadowRayRadius);
+                Shader.SetGlobalFloat("_SSShadowMeanDepth", shadowSettings.rtShadowMeanDepth);
+                Shader.SetGlobalFloat("_SSShadowDepthBias", shadowSettings.rtShadowDepthBias);
             }
         }
 
@@ -919,11 +978,11 @@ namespace HSSSS
             }
 
             // microdetails
-            Shader.DisableKeyword("_MICRODETAILS");
+            Shader.DisableKeyword("_MICRODETAILS_ON");
 
             if (skinSettings.useMicroDetails)
             {
-                Shader.EnableKeyword("_MICRODETAILS");
+                Shader.EnableKeyword("_MICRODETAILS_ON");
             }
 
             if (skinRefresh)
@@ -1523,6 +1582,7 @@ namespace HSSSS
                             mat.SetFloat("_BumpScale", 1.0f);
                             mat.SetFloat("_DetailNormalMapScale", 1.0f);
                             mat.SetTexture("_SpecGlossMap", null);
+                            mat.SetTexture("_EmissionMap", mat.GetTexture("_MainTex"));
                         }
                         else
                         {
@@ -1538,6 +1598,7 @@ namespace HSSSS
                             mat.SetFloat("_BumpScale", 1.0f);
                             mat.SetFloat("_DetailNormalMapScale", 1.0f);
                             mat.SetTexture("_SpecGlossMap", null);
+                            mat.SetTexture("_EmissionMap", mat.GetTexture("_MainTex"));
                         }
                         else
                         {
@@ -1657,6 +1718,10 @@ namespace HSSSS
                             else if (___chaInfo.Sex == 1)
                             {
                                 mat.SetTexture("_Thickness", femaleBodyThickness);
+                                /*
+                                mat.SetTexture("_TriplanarNormalMap", femaleBodyNormal);
+                                mat.SetTexture("_TriplanarPositionMap", femaleBodyPosition);
+                                */
                             }
                         }
 
@@ -1670,6 +1735,10 @@ namespace HSSSS
                             else if (___chaInfo.Sex == 1)
                             {
                                 mat.SetTexture("Thickness", femaleHeadThickness);
+                                /*
+                                mat.SetTexture("_TriplanarNormalMap", femaleHeadNormal);
+                                mat.SetTexture("_TriplanarPositionMap", femaleHeadPosition);
+                                */
                             }
                         }
 
@@ -1776,9 +1845,36 @@ namespace HSSSS
                     }
                 }
 
+                // tongue
+                GameObject objHead = __instance.objHead;
+
+                if (objHead != null)
+                {
+                    GameObject objTongue = null;
+
+                    if (null != objHead.transform.Find("cf_N_head/cf_O_sita"))
+                    {
+                        objTongue = objHead.transform.Find("cf_N_head/cf_O_sita").gameObject;
+                    }
+
+                    if (null != objTongue)
+                    {
+                        Material matTongue = objTongue.GetComponent<Renderer>().material;
+
+                        if (null != matTongue)
+                        {
+                            if (WillReplaceShader(matTongue.shader))
+                            {
+                                ShaderReplacer(skinMaterial, matTongue);
+                                Console.WriteLine("#### HSSSS Replaced " + matTongue.name);
+                            }
+                        }
+                    }
+                }
+
                 if (fixAlphaShadow)
                 {
-                    GameObject objHead = __instance.objHead;
+                    //GameObject objHead = __instance.objHead;
 
                     if (objHead != null)
                     {
@@ -2295,6 +2391,35 @@ namespace HSSSS
             {
                 this.shadowSettings.dirPcfEnabled = false;
                 this.shadowSettings.pcssEnabled = false;
+            }
+
+            GUILayout.Space(tetraSpace);
+
+            GUILayout.Label("Screen Space Shadow");
+            GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
+
+            bool rtShadowEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.shadowSettings.rtShadowEnabled), new string[] { "Disable", "Enable" } ) == 1;
+
+            if (this.shadowSettings.rtShadowEnabled != rtShadowEnabled)
+            {
+                this.shadowSettings.rtShadowEnabled = rtShadowEnabled;
+                this.UpdateWindowSize();
+            }
+
+            GUILayout.EndHorizontal();
+
+            if (this.shadowSettings.rtShadowEnabled)
+            {
+                GUILayout.Space(tetraSpace);
+
+                GUILayout.Label("Screen Space Shadow / Ray Length");
+                this.shadowSettings.rtShadowRayLength = this.SliderControls(this.shadowSettings.rtShadowRayLength, 0.0f, 0.2f);
+                GUILayout.Label("Screen Space Shadow / Ray Radius");
+                this.shadowSettings.rtShadowRayRadius = this.SliderControls(this.shadowSettings.rtShadowRayRadius, 0.0f, 0.2f);
+                GUILayout.Label("Screen Space Shadow / Mean Depth");
+                this.shadowSettings.rtShadowMeanDepth = this.SliderControls(this.shadowSettings.rtShadowMeanDepth, 0.0f, 0.2f);
+                GUILayout.Label("Screen Space Shadow / Depth Bias");
+                this.shadowSettings.rtShadowDepthBias = this.SliderControls(this.shadowSettings.rtShadowDepthBias, 0.0f, 0.2f);
             }
         }
 

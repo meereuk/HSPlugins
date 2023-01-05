@@ -319,4 +319,73 @@ namespace HSSSS
         }
         #endregion
     }
+
+    public class BackFaceDepthSampler : MonoBehaviour
+    {
+        public Camera mainCamera;
+
+        private Camera depthCamera;
+        private Shader depthShader;
+        private RenderTexture depthBuffer;
+
+        public void OnEnable()
+        {
+            this.SetUpDepthCamera();
+            this.depthShader = HSSSS.backFaceDepthShader;
+        }
+
+        public void OnDisable()
+        {
+            DestroyObject(this.depthCamera);
+            DestroyImmediate(this.depthBuffer);
+
+            this.depthCamera = null;
+            this.depthBuffer = null;
+        }
+
+        public void Update()
+        {
+            if (this.depthCamera && this.mainCamera)
+            {
+                this.UpdateDepthCamera();
+                this.CaptureDepth();
+            }
+        }
+
+        private void SetUpDepthCamera()
+        {
+            if (this.depthCamera == null)
+            {
+                this.depthCamera = this.gameObject.AddComponent<Camera>();
+            }
+
+            this.depthCamera.name = "BackFaceDepthCamera";
+            this.depthCamera.enabled = false;
+            this.depthCamera.backgroundColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
+            this.depthCamera.clearFlags = CameraClearFlags.SolidColor;
+            this.depthCamera.renderingPath = RenderingPath.VertexLit;
+        }
+
+        private void UpdateDepthCamera()
+        {
+            this.depthCamera.transform.position = this.mainCamera.transform.position;
+            this.depthCamera.transform.rotation = this.mainCamera.transform.rotation;
+            this.depthCamera.fieldOfView = this.mainCamera.fieldOfView;
+            this.depthCamera.nearClipPlane = this.mainCamera.nearClipPlane;
+            this.depthCamera.farClipPlane = this.mainCamera.farClipPlane;
+        }
+
+        private void CaptureDepth()
+        {
+            this.depthBuffer = RenderTexture.GetTemporary(
+                Screen.currentResolution.width, Screen.currentResolution.height,
+                24, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear
+                );
+
+            this.depthCamera.targetTexture = this.depthBuffer;
+            this.depthCamera.RenderWithShader(this.depthShader, "");
+            Shader.SetGlobalTexture("_BackFaceDepthBuffer", this.depthBuffer);
+            RenderTexture.ReleaseTemporary(this.depthBuffer);
+        }
+    }
 }
