@@ -3,6 +3,58 @@ using UnityEngine.Rendering;
 
 namespace HSSSS
 {
+    public class CookieUpdater : MonoBehaviour
+    {
+        private Light mLight;
+        private GameObject mObject;
+        private MeshRenderer mRenderer;
+        private Material mMaterial;
+        private Texture mCookie;
+
+        private void Awake()
+        {
+            this.mLight = GetComponent<Light>();
+
+            this.mMaterial = new Material(Shader.Find("Unlit/Texture"));
+
+            if (this.mMaterial.GetTexture("_MainTex") == null)
+            {
+                this.mMaterial.SetTexture("_MainTex", HSSSS.spotCookie);
+            }
+
+            this.mLight = GetComponent<Light>();
+            this.mRenderer = this.mLight.gameObject.AddComponent<MeshRenderer>();
+            this.mRenderer.material = this.mMaterial;
+        }
+
+        /*
+        private void OnEnable()
+        {
+            this.mRenderer = this.mLight.gameObject.GetComponent<MeshRenderer>();
+
+            if (this.mRenderer == null)
+            {
+                this.mRenderer = this.mLight.gameObject.AddComponent<MeshRenderer>();
+                
+                if (this.mRenderer.material == null)
+                {
+                    this.mMaterial = new Material(Shader.Find("Unlit/Texture"));
+                    this.mMaterial.SetTexture("_MainTex", HSSSS.spotCookie);
+                    this.mRenderer.material = this.mMaterial;
+                }
+            }
+        }
+        */
+
+        private void Update()
+        {
+            this.mCookie = this.mRenderer.material.mainTexture;
+            this.mCookie.wrapMode = TextureWrapMode.Clamp;
+            this.mLight.cookie = this.mCookie;
+        }
+    }
+
+
     public class ShadowMapDispatcher : MonoBehaviour
     {
         private Light mLight;

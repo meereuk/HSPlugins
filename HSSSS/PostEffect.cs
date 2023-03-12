@@ -348,6 +348,15 @@ namespace HSSSS
             if (this.depthCamera && this.mainCamera)
             {
                 this.UpdateDepthCamera();
+                //this.CaptureDepth();
+            }
+        }
+
+        public void LateUpdate()
+        {
+            if (this.depthCamera && this.mainCamera)
+            {
+                //this.UpdateDepthCamera();
                 this.CaptureDepth();
             }
         }
@@ -364,6 +373,10 @@ namespace HSSSS
             this.depthCamera.backgroundColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
             this.depthCamera.clearFlags = CameraClearFlags.SolidColor;
             this.depthCamera.renderingPath = RenderingPath.VertexLit;
+
+            this.depthCamera.cullingMask = 0;
+            this.depthCamera.cullingMask |= 1 << LayerMask.NameToLayer("Chara");
+            this.depthCamera.cullingMask |= 1 << LayerMask.NameToLayer("Map");
         }
 
         private void UpdateDepthCamera()

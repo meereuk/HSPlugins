@@ -97,7 +97,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.2.9"; } }
+        public string Version { get { return "1.3.0-canary"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -122,12 +122,14 @@ namespace HSSSS
 
         private static GameObject depthCamera = null;
 
+        // shaders
         public static Shader normalBlurShader;
         public static Shader diffuseBlurShader;
         public static Shader initSpecularShader;
         public static Shader transmissionBlitShader;
         public static Shader backFaceDepthShader;
 
+        // textures
         public static Texture2D defaultSkinLUT;
         public static Texture2D faceWorksSkinLUT;
         public static Texture2D faceWorksShadowLUT;
@@ -208,19 +210,13 @@ namespace HSSSS
         private static Material eyeScleraMaterial;
         private static Material eyeOverlayMaterial;
 
+        private static Material sweatMaterial;
+
         // thickness textures
         private static Texture2D femaleBodyThickness;
         private static Texture2D femaleHeadThickness;
         private static Texture2D maleBodyThickness;
         private static Texture2D maleHeadThickness;
-
-        // pre-baked triplanar coordinates
-        /*
-        private static Texture2D femaleBodyNormal;
-        private static Texture2D femaleHeadNormal;
-        private static Texture2D femaleBodyPosition;
-        private static Texture2D femaleHeadPosition;
-        */
 
         // light cookie (spot)
         public static Texture2D spotCookie;
@@ -588,14 +584,6 @@ namespace HSSSS
                 maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
             }
 
-            // triplanar coordinates
-            /*
-            femaleBodyNormal = assetBundle.LoadAsset<Texture2D>("FemaleBodyNormal");
-            femaleHeadNormal = assetBundle.LoadAsset<Texture2D>("FemaleHeadNormal");
-            femaleBodyPosition = assetBundle.LoadAsset<Texture2D>("FemaleBodyPosition");
-            femaleHeadPosition = assetBundle.LoadAsset<Texture2D>("FemaleHeadPosition");
-            */
-
             // sss lookup textures
             defaultSkinLUT = assetBundle.LoadAsset<Texture2D>("DefaultSkinLUT");
             faceWorksSkinLUT = assetBundle.LoadAsset<Texture2D>("FaceWorksSkinLUT");
@@ -625,14 +613,19 @@ namespace HSSSS
                 Console.WriteLine("#### HSSSS: Failed to Load Male Thickness Textures");
             }
 
-            if (null == defaultSkinLUT || null == faceWorksSkinLUT || null == faceWorksShadowLUT)
+            if (null == defaultSkinLUT || null == faceWorksSkinLUT || null == faceWorksShadowLUT || null == deepScatterLUT)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Skin Lookup Textures");
             }
 
             if (null == skinJitter)
             {
-                Console.WriteLine("#### HSSSS: Failed to Load Jitter Texture");
+                Console.WriteLine("#### HSSSS: Failed to Load Skin Jitter Texture");
+            }
+
+            if (null == shadowJitter)
+            {
+                Console.WriteLine("#### HSSSS: Failed to Load Shadow Jitter Texture");
             }
 
             if (null == spotCookie)
@@ -644,6 +637,8 @@ namespace HSSSS
 
         private void DeferredAssetLoader()
         {
+            sweatMaterial = assetBundle.LoadAsset<Material>("Sweat");
+
             // tesellation materials
             if (useTessellation)
             {
@@ -1487,18 +1482,42 @@ namespace HSSSS
         #region Harmony Patches
         private static void SpotLightPatcher(OCILight __instance)
         {
-            if (LightType.Spot == __instance.lightType)
+            if (__instance.lightType == LightType.Spot)
             {
+                if (__instance.light.gameObject.GetComponent<CookieUpdater>() == null)
+                {
+                    __instance.light.gameObject.AddComponent<CookieUpdater>();
+                }
+                /*
+                Renderer rend = __instance.light.gameObject.GetComponent<Renderer>();
+
                 if (null == __instance.light.cookie)
                 {
                     __instance.light.cookie = spotCookie;
                 }
+
+                Renderer rend = __instance.light.gameObject.GetComponent<Renderer>();
+
+                if (rend == null)
+                {
+                    rend = __instance.light.gameObject.AddComponent<MeshRenderer>();
+                    rend.material = new Material(Shader.Find("Standard"));
+                    rend.material.SetTexture("_MainTex", spotCookie);
+
+                    __instance.light.cookie = spotCookie;
+                }
+
+                else
+                {
+                    __instance.light.cookie = rend.material.GetTexture("_MainTex");
+                }
+                */
             }
         }
 
         private static void ShadowMapPatcher(OCILight __instance)
         {
-            if (__instance.light != null)
+            if (__instance.lightType == LightType.Directional)
             {
                 if (__instance.light.gameObject.GetComponent<ShadowMapDispatcher>() == null)
                 {
@@ -1579,7 +1598,7 @@ namespace HSSSS
                         mat.renderQueue = 2001;
                         if (useEyePOMShader)
                         {
-                            mat.SetFloat("_BumpScale", 1.0f);
+                            mat.SetFloat("_BumpScale", 0.5f);
                             mat.SetFloat("_DetailNormalMapScale", 1.0f);
                             mat.SetTexture("_SpecGlossMap", null);
                             mat.SetTexture("_EmissionMap", mat.GetTexture("_MainTex"));
@@ -1595,7 +1614,7 @@ namespace HSSSS
                         mat.renderQueue = 2001;
                         if (useEyePOMShader)
                         {
-                            mat.SetFloat("_BumpScale", 1.0f);
+                            mat.SetFloat("_BumpScale", 0.5f);
                             mat.SetFloat("_DetailNormalMapScale", 1.0f);
                             mat.SetTexture("_SpecGlossMap", null);
                             mat.SetTexture("_EmissionMap", mat.GetTexture("_MainTex"));
@@ -1718,10 +1737,6 @@ namespace HSSSS
                             else if (___chaInfo.Sex == 1)
                             {
                                 mat.SetTexture("_Thickness", femaleBodyThickness);
-                                /*
-                                mat.SetTexture("_TriplanarNormalMap", femaleBodyNormal);
-                                mat.SetTexture("_TriplanarPositionMap", femaleBodyPosition);
-                                */
                             }
                         }
 
@@ -1734,11 +1749,7 @@ namespace HSSSS
 
                             else if (___chaInfo.Sex == 1)
                             {
-                                mat.SetTexture("Thickness", femaleHeadThickness);
-                                /*
-                                mat.SetTexture("_TriplanarNormalMap", femaleHeadNormal);
-                                mat.SetTexture("_TriplanarPositionMap", femaleHeadPosition);
-                                */
+                                mat.SetTexture("_Thickness", femaleHeadThickness);
                             }
                         }
 
@@ -1933,8 +1944,13 @@ namespace HSSSS
                                     if (WillReplaceShader(matTears.shader))
                                     {
                                         //ShaderReplacer(milkMaterial, matTears);
-                                        ShaderReplacer(eyeOverlayMaterial, matTears);
-                                        matTears.SetFloat("_Metallic", 0.72f);
+                                        //ShaderReplacer(eyeOverlayMaterial, matTears);
+                                        ShaderReplacer(sweatMaterial, matTears);
+                                        matTears.SetFloat("_Metallic", 0.64f);
+                                        matTears.SetFloat("_Smoothness", 0.96f);
+                                        matTears.SetFloat("_BumpScale", 4.00f);
+                                        matTears.SetFloat("_Phong", 1.0f);
+                                        matTears.SetColor("_Color", new Color(0.64f, 0.64f, 0.64f, 0.64f));
                                         matTears.renderQueue = 2004;
                                         Console.WriteLine("#### HSSSS Replaced " + matTears.name);
                                     }
