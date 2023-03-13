@@ -9,6 +9,7 @@ using Studio;
 using Harmony;
 using IllusionPlugin;
 
+
 namespace HSSSS
 {
     #region Namespace Globals
