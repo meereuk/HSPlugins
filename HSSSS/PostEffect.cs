@@ -374,19 +374,12 @@ namespace HSSSS
             this.InitializeBuffers();
         }
 
-        /*
-        public void ImportSettings()
-        {
-            skinSettings = HSSSS.skinSettings;
-        }
-        */
         #endregion
     }
 
-    public class BackFaceDepthSampler : MonoBehaviour
+    public class BackFaceDepthRenderer : MonoBehaviour
     {
         public Camera mainCamera;
-
         private Camera depthCamera;
         private Shader depthShader;
         private RenderTexture depthBuffer;
@@ -406,19 +399,19 @@ namespace HSSSS
             this.depthBuffer = null;
         }
 
-        public void Update()
+        public void OnPreCull()
         {
             if (this.depthCamera && this.mainCamera)
             {
-                this.UpdateDepthCamera();
+                this.UpdateCameraParams();
             }
         }
 
-        public void LateUpdate()
+        public void OnPreRender()
         {
             if (this.depthCamera && this.mainCamera)
             {
-                this.CaptureDepth();
+                this.CaptureDepthBuffer();
             }
         }
 
@@ -429,7 +422,7 @@ namespace HSSSS
                 this.depthCamera = this.gameObject.AddComponent<Camera>();
             }
 
-            this.depthCamera.name = "BackFaceDepthCamera";
+            this.depthCamera.name = "HSSSS.BackFaceDepthCamera";
             this.depthCamera.enabled = false;
             this.depthCamera.backgroundColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
             this.depthCamera.clearFlags = CameraClearFlags.SolidColor;
@@ -440,7 +433,7 @@ namespace HSSSS
             this.depthCamera.cullingMask |= 1 << LayerMask.NameToLayer("Map");
         }
 
-        private void UpdateDepthCamera()
+        private void UpdateCameraParams()
         {
             this.depthCamera.transform.position = this.mainCamera.transform.position;
             this.depthCamera.transform.rotation = this.mainCamera.transform.rotation;
@@ -449,13 +442,9 @@ namespace HSSSS
             this.depthCamera.farClipPlane = this.mainCamera.farClipPlane;
         }
 
-        private void CaptureDepth()
+        private void CaptureDepthBuffer()
         {
-            this.depthBuffer = RenderTexture.GetTemporary(
-                Screen.currentResolution.width, Screen.currentResolution.height,
-                24, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear
-                );
-
+            this.depthBuffer = RenderTexture.GetTemporary(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             this.depthCamera.targetTexture = this.depthBuffer;
             this.depthCamera.RenderWithShader(this.depthShader, "");
             Shader.SetGlobalTexture("_BackFaceDepthBuffer", this.depthBuffer);
@@ -479,8 +468,17 @@ namespace HSSSS
 
         private void Awake()
         {
-            this.rtSizeW = Screen.width / 2;
-            this.rtSizeH = Screen.height / 2;
+            if (HSSSS.ssaoSettings.halfsize)
+            {
+                this.rtSizeW = Screen.width / 2;
+                this.rtSizeH = Screen.height / 2;
+            }
+
+            else
+            {
+                this.rtSizeW = Screen.width;
+                this.rtSizeH = Screen.height;
+            }
         }
 
         private void OnEnable()
@@ -510,6 +508,7 @@ namespace HSSSS
         {
             this.UpdateMatrices();
             this.mMaterial.SetTexture("_SSGITemporalAOBuffer", this.aoTexture);
+            Shader.SetGlobalTexture("_SSGITemporalAOBuffer", this.aoTexture);
         }
 
         private void SetupAOCommandBuffer()
@@ -539,7 +538,6 @@ namespace HSSSS
             this.aoBuffer.Blit(flopRT, BuiltinRenderTextureType.CameraTarget);
 
             this.aoBuffer.ReleaseTemporaryRT(flipRT);
-            //this.aoBuffer.ReleaseTemporaryRT(flopRT);
 
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeReflections, this.aoBuffer);
         }
@@ -587,6 +585,18 @@ namespace HSSSS
 
             if (!soft)
             {
+                if (HSSSS.ssaoSettings.halfsize)
+                {
+                    this.rtSizeW = Screen.width / 2;
+                    this.rtSizeH = Screen.height / 2;
+                }
+
+                else
+                {
+                    this.rtSizeW = Screen.width;
+                    this.rtSizeH = Screen.height;
+                }
+
                 this.RemoveAOCommandBuffer();
                 this.SetupAOCommandBuffer();
             }

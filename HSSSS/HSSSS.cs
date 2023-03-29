@@ -103,6 +103,7 @@ namespace HSSSS
     public struct SSAOSettings
     {
         public bool enabled;
+        public bool halfsize;
 
         public Quality quality;
 
@@ -146,7 +147,7 @@ namespace HSSSS
         // camera effects
         public static CameraHelper CameraProjector = null;
         private static DeferredRenderer DeferredRenderer = null;
-        private static BackFaceDepthSampler BackFaceRenderer = null;
+        private static BackFaceDepthRenderer BackFaceRenderer = null;
         public static ScreenSpaceGlobalIllumination SSGIRenderer = null;
 
         private static GameObject mainCamera = null;
@@ -234,6 +235,7 @@ namespace HSSSS
         public static SSAOSettings ssaoSettings = new SSAOSettings()
         {
             enabled = true,
+            halfsize = true,
             quality = Quality.medium,
             rayLength = 4.0f,
             depthBias = 0.1f,
@@ -848,7 +850,7 @@ namespace HSSSS
                 if (BackFaceRenderer == null)
                 {
                     depthCamera = new GameObject("HSSSS.BackFaceDepthCamera");
-                    BackFaceRenderer = depthCamera.AddComponent<BackFaceDepthSampler>();
+                    BackFaceRenderer = depthCamera.AddComponent<BackFaceDepthRenderer>();
                     BackFaceRenderer.mainCamera = mainCamera.GetComponent<Camera>();
                 }
 
@@ -2486,13 +2488,15 @@ namespace HSSSS
                 GUILayout.Label("Screen Space Shadow / Depth Bias");
                 this.shadowSettings.SSCSDepthBias = this.SliderControls(this.shadowSettings.SSCSDepthBias, 0.0f, 1.0f);
             }
-            #endregion
 
             GUILayout.Space(tetraSpace);
+            #endregion
+
+            #region SSGI
             GUILayout.Label("Screen Space Global Illumination");
             GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
 
-            bool ssaoEnabled = GUILayout.Toolbar(Convert.ToUInt16(ssaoSettings.enabled), new string[] { "Disable", "Enable" }) == 1;
+            bool ssaoEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.ssaoSettings.enabled), new string[] { "Disable", "Enable" }) == 1;
 
             if (this.ssaoSettings.enabled != ssaoEnabled)
             {
@@ -2506,8 +2510,14 @@ namespace HSSSS
             {
                 GUILayout.Space(tetraSpace);
 
+                GUILayout.Label("Quality");
                 GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
                 this.ssaoSettings.quality = (Quality)GUILayout.Toolbar((int)this.ssaoSettings.quality, new string[] { "Low", "Medium", "High", "Ultra" });
+                GUILayout.EndHorizontal();
+
+                GUILayout.Label("Resolution");
+                GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
+                this.ssaoSettings.halfsize = GUILayout.Toolbar(Convert.ToUInt16(this.ssaoSettings.halfsize), new string[] { "Full", "Half" }) == 1;
                 GUILayout.EndHorizontal();
 
                 GUILayout.Label("Occlusion Power");
@@ -2521,6 +2531,7 @@ namespace HSSSS
                 GUILayout.Label("Temporal Reprojection");
                 this.ssaoSettings.mixFactor = this.SliderControls(this.ssaoSettings.mixFactor, 0.0f, 0.90f);
             }
+            #endregion
         }
 
         private void OtherSettings()
@@ -2661,7 +2672,7 @@ namespace HSSSS
                 HSSSS.SSGIRenderer.enabled = this.ssaoSettings.enabled;
             }
 
-            softRefresh = HSSSS.ssaoSettings.quality == this.ssaoSettings.quality;
+            softRefresh = HSSSS.ssaoSettings.quality == this.ssaoSettings.quality && HSSSS.ssaoSettings.halfsize == this.ssaoSettings.halfsize;
             HSSSS.ssaoSettings = this.ssaoSettings;
             HSSSS.SSGIRenderer.UpdateSSAOSettings(softRefresh);
         }
