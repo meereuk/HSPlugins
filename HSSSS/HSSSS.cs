@@ -70,54 +70,67 @@ namespace HSSSS
 
         public float thicknessBias;
 
-        public bool useWetSpecGloss;
-        public bool useMicroDetails;
-
         public float microDetailWeight_1;
         public float microDetailWeight_2;
         public float microDetailTiling;
 
         public float phongStrength;
         public float edgeLength;
+
+        public float eyebrowoffset;
     }
 
     public struct ShadowSettings
     {
         public PCFState pcfState;
-
-        public bool dirPcfEnabled;
         public bool pcssEnabled;
 
         public Vector3 pointLightPenumbra;
         public Vector3 spotLightPenumbra;
         public Vector3 dirLightPenumbra;
 
+        /*
         public bool SSCSEnabled;
 
         public float SSCSRayLength;
         public float SSCSRayRadius;
         public float SSCSMeanDepth;
         public float SSCSDepthBias;
+        */
     }
 
     public struct SSAOSettings
     {
         public bool enabled;
-        public bool halfsize;
+
+        public bool usegtao;
+        public bool denoise;
 
         public Quality quality;
 
+        public float intensity;
+        public float lightBias;
         public float rayLength;
-        public float depthBias;
-        public float depthFade;
+        public float meanDepth;
+        public float fadeDepth;
         public float mixFactor;
-        public float power;
+        public int stepPower;
+        public int blockSize;
     }
 
     public struct SSGISettings
     {
-        public Vector2 rayLength;
-        public Vector2 intensity;
+        public bool enabled;
+
+        public bool halfres;
+        public bool denoise;
+
+        public Quality quality;
+
+        public float rayLength;
+        public float intensity;
+        public float depthFade;
+        public float mixFactor;
     }
     #endregion
 
@@ -125,7 +138,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.3.0"; } }
+        public string Version { get { return "1.4.0-canary"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -145,13 +158,12 @@ namespace HSSSS
         private static Shader deferredReflections;
 
         // camera effects
-        public static CameraHelper CameraProjector = null;
-        private static DeferredRenderer DeferredRenderer = null;
-        private static BackFaceDepthRenderer BackFaceRenderer = null;
-        public static ScreenSpaceGlobalIllumination SSGIRenderer = null;
+        public static CameraProjector CameraProjector = null;
+        public static DeferredRenderer DeferredRenderer = null;
+        public static BackFaceRenderer BackFaceRenderer = null;
+        public static SSAORenderer SSAORenderer = null;
 
         private static GameObject mainCamera = null;
-        private static GameObject depthCamera = null;
 
         // shaders
         public static Shader normalBlurShader;
@@ -160,7 +172,8 @@ namespace HSSSS
         public static Shader transmissionBlitShader;
         public static Shader backFaceDepthShader;
         public static Shader contactShadowShader;
-        public static Shader ssgiShader;
+        public static Shader temporalBlendShader;
+        public static Shader ssaoShader;
 
         // textures
         public static Texture2D pennerSkinLUT;
@@ -200,11 +213,7 @@ namespace HSSSS
             transShadowWeight = 0.5f,
             transDistortion = 0.5f,
             transFalloff = 2.0f,
-
             thicknessBias = 0.5f,
-
-            useWetSpecGloss = true,
-            useMicroDetails = true,
 
             microDetailWeight_1 = 0.32f,
             microDetailWeight_2 = 0.32f,
@@ -212,36 +221,53 @@ namespace HSSSS
             microDetailTiling = 64.0f,
 
             phongStrength = 0.5f,
-            edgeLength = 2.0f
+            edgeLength = 2.0f,
+            eyebrowoffset = 0.1f
         };
         public static ShadowSettings shadowSettings = new ShadowSettings()
         {
             pcfState = PCFState.disable,
-
-            dirPcfEnabled = false,
             pcssEnabled = false,
 
             dirLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
             spotLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
             pointLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
 
+            /*
             SSCSEnabled = false,
 
             SSCSRayLength = 0.05f,
             SSCSRayRadius = 0.05f,
             SSCSMeanDepth = 0.05f,
             SSCSDepthBias = 0.01f,
+            */
         };
         public static SSAOSettings ssaoSettings = new SSAOSettings()
         {
+            enabled = false,
+            usegtao = true,
+            denoise = false,
+            quality = Quality.medium,
+            rayLength = 0.1f,
+            meanDepth = 0.1f,
+            fadeDepth = 100.0f,
+            mixFactor = 0.2f,
+            intensity = 1.0f,
+            lightBias = 0.0f,
+            stepPower = 2,
+            blockSize = 1
+        };
+
+        public static SSGISettings ssgiSettings = new SSGISettings()
+        {
             enabled = true,
-            halfsize = true,
+            halfres = true,
+            denoise = true,
             quality = Quality.medium,
             rayLength = 4.0f,
-            depthBias = 0.1f,
+            intensity = 1.0f,
             depthFade = 50.0f,
-            mixFactor = 0.5f,
-            power = 1.0f
+            mixFactor = 0.8f
         };
 
         // body materials
@@ -433,6 +459,7 @@ namespace HSSSS
                 if (this.windowObj == null)
                 {
                     ConfigWindow.useTessellation = useTessellation;
+                    ConfigWindow.fixAlphaShadow = fixAlphaShadow;
                     ConfigWindow.hsrCompatible = hsrCompatible;
                     ConfigWindow.uiScale = uiScale;
                     this.windowObj = new GameObject("HSSSS.ConfigWindow");
@@ -707,7 +734,8 @@ namespace HSSSS
             transmissionBlitShader = assetBundle.LoadAsset<Shader>("TransmissionBlit");
             backFaceDepthShader = assetBundle.LoadAsset<Shader>("BackFaceDepth");
             contactShadowShader = assetBundle.LoadAsset<Shader>("ScreenSpaceShadow");
-            ssgiShader = assetBundle.LoadAsset<Shader>("SSGI");
+            temporalBlendShader = assetBundle.LoadAsset<Shader>("TemporalBlend");
+            ssaoShader = assetBundle.LoadAsset<Shader>("SSAO");
 
             // internal deferred & reflection shaders
             deferredShading = assetBundle.LoadAsset<Shader>("InternalDeferredShading");
@@ -738,7 +766,7 @@ namespace HSSSS
                 Console.WriteLine("#### HSSSS: Failed to Load Contact Shadow Shader");
             }
 
-            if (null == ssgiShader)
+            if (null == ssaoShader)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Global Illumination Shader");
             }
@@ -839,7 +867,7 @@ namespace HSSSS
             {
                 if (CameraProjector == null)
                 {
-                    CameraProjector = mainCamera.gameObject.AddComponent<CameraHelper>();
+                    CameraProjector = mainCamera.gameObject.AddComponent<CameraProjector>();
                 }
 
                 if (DeferredRenderer == null)
@@ -849,14 +877,12 @@ namespace HSSSS
 
                 if (BackFaceRenderer == null)
                 {
-                    depthCamera = new GameObject("HSSSS.BackFaceDepthCamera");
-                    BackFaceRenderer = depthCamera.AddComponent<BackFaceDepthRenderer>();
-                    BackFaceRenderer.mainCamera = mainCamera.GetComponent<Camera>();
+                    BackFaceRenderer = mainCamera.gameObject.AddComponent<BackFaceRenderer>();
                 }
 
-                if (SSGIRenderer == null)
+                if (SSAORenderer == null)
                 {
-                    SSGIRenderer = mainCamera.gameObject.AddComponent<ScreenSpaceGlobalIllumination>();
+                    SSAORenderer = mainCamera.gameObject.AddComponent<SSAORenderer>();
                 }
 
                 if (CameraProjector == null)
@@ -864,7 +890,7 @@ namespace HSSSS
                     Console.WriteLine("#### HSSSS: Failed to Initialize Camera Projector");
                 }
 
-                if (DeferredRenderer == null || BackFaceRenderer == null || SSGIRenderer == null)
+                if (DeferredRenderer == null || BackFaceRenderer == null || SSAORenderer == null)
                 {
                     Console.WriteLine("#### HSSSS: Failed to Initialize Post FX");
                 }
@@ -919,18 +945,14 @@ namespace HSSSS
             Shader.DisableKeyword("_PCF_TAPS_16");
             Shader.DisableKeyword("_PCF_TAPS_32");
             Shader.DisableKeyword("_PCF_TAPS_64");
-            Shader.DisableKeyword("_DIR_PCF_ON");
             Shader.DisableKeyword("_PCSS_ON");
-            Shader.DisableKeyword("_RT_SHADOW_HQ");
 
             if (isStudio)
             {
                 switch (shadowSettings.pcfState)
                 {
                     case PCFState.disable:
-                        Shader.DisableKeyword("_DIR_PCF_ON");
                         Shader.DisableKeyword("_PCSS_ON");
-                        shadowSettings.dirPcfEnabled = false;
                         shadowSettings.pcssEnabled = false;
                         break;
 
@@ -955,25 +977,9 @@ namespace HSSSS
                         break;
                 }
 
-                if (shadowSettings.dirPcfEnabled)
-                {
-                    Shader.EnableKeyword("_DIR_PCF_ON");
-                }
-
                 if (shadowSettings.pcssEnabled)
                 {
                     Shader.EnableKeyword("_PCSS_ON");
-                }
-
-                if (shadowSettings.SSCSEnabled)
-                {
-                    Shader.EnableKeyword("_RT_SHADOW_HQ");
-                    depthCamera.SetActive(true);
-                }
-                
-                else
-                {
-                    depthCamera.SetActive(false);
                 }
 
                 // pcf & pcss
@@ -982,10 +988,12 @@ namespace HSSSS
                 Shader.SetGlobalVector("_PointLightPenumbra", shadowSettings.pointLightPenumbra);
 
                 // scss
+                /*
                 Shader.SetGlobalFloat("_SSCSRayLength", shadowSettings.SSCSRayLength);
                 Shader.SetGlobalFloat("_SSCSRayRadius", shadowSettings.SSCSRayRadius);
                 Shader.SetGlobalFloat("_SSCSMeanDepth", shadowSettings.SSCSMeanDepth);
                 Shader.SetGlobalFloat("_SSCSDepthBias", shadowSettings.SSCSDepthBias);
+                */
             }
         }
 
@@ -1031,6 +1039,11 @@ namespace HSSSS
                         {
                             mat.SetFloat("_EdgeLength", skinSettings.edgeLength);
                         }
+
+                        if (mat.HasProperty("_VertexWrapOffset"))
+                        {
+                            mat.SetFloat("_VertexWrapOffset", skinSettings.eyebrowoffset);
+                        }
                     }
                 }
             }
@@ -1038,22 +1051,6 @@ namespace HSSSS
 
         private void UpdateOtherConfig(bool skinRefresh)
         {
-            // wet glossiness
-            Shader.DisableKeyword("_WET_SPECGLOSS");
-
-            if (skinSettings.useWetSpecGloss)
-            {
-                Shader.EnableKeyword("_WET_SPECGLOSS");
-            }
-
-            // microdetails
-            Shader.DisableKeyword("_MICRODETAILS_ON");
-
-            if (skinSettings.useMicroDetails)
-            {
-                Shader.EnableKeyword("_MICRODETAILS_ON");
-            }
-
             if (skinRefresh)
             {
                 var CharacterManager = Singleton<Manager.Character>.Instance;
@@ -1064,6 +1061,7 @@ namespace HSSSS
                     UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjSkinFace);
                     UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjUnderHair);
                     UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjNail);
+                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjEyebrow);
                 }
 
                 foreach (KeyValuePair<int, CharMale> male in CharacterManager.dictMale)
@@ -1072,6 +1070,7 @@ namespace HSSSS
                     UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjSkinFace);
                     UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjUnderHair);
                     UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjNail);
+                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjEyebrow);
                 }
             }
         }
@@ -1196,8 +1195,6 @@ namespace HSSSS
             {
                 // pcf state
                 writer.WriteAttributeString("State", Convert.ToString(shadowSettings.pcfState));
-                // soft shadow for directional lights
-                writer.WriteElementString("DirPCF", XmlConvert.ToString(shadowSettings.dirPcfEnabled));
                 // pcss soft shadow
                 writer.WriteElementString("PCSS", XmlConvert.ToString(shadowSettings.pcssEnabled));
                 // directional light
@@ -1229,12 +1226,9 @@ namespace HSSSS
             // miscellaneous
             writer.WriteStartElement("Miscellaneous");
             {
-                // wet skin gloss
-                writer.WriteElementString("WetSpecGloss", XmlConvert.ToString(skinSettings.useWetSpecGloss));
                 // skin microdetails
                 writer.WriteStartElement("MicroDetails");
                 {
-                    writer.WriteAttributeString("Enabled", XmlConvert.ToString(skinSettings.useMicroDetails));
                     writer.WriteElementString("Weight_1", XmlConvert.ToString(skinSettings.microDetailWeight_1));
                     writer.WriteElementString("Weight_2", XmlConvert.ToString(skinSettings.microDetailWeight_2));
                     writer.WriteElementString("Tiling", XmlConvert.ToString(skinSettings.microDetailTiling));
@@ -1247,7 +1241,8 @@ namespace HSSSS
                     writer.WriteElementString("EdgeLength", XmlConvert.ToString(skinSettings.edgeLength));
                 }
                 writer.WriteEndElement();
-                //writer.WriteElementString("MicroDetails", XmlConvert.ToString(skinSettings.useMicroDetails));
+                // eyebrow wrap
+                writer.WriteElementString("EyebrowOffset", XmlConvert.ToString(skinSettings.eyebrowoffset));
             }
             writer.WriteEndElement();
         }
@@ -1419,10 +1414,6 @@ namespace HSSSS
                         {
                             switch (child1.Name)
                             {
-                                case "DirPCF":
-                                    shadowSettings.dirPcfEnabled = XmlConvert.ToBoolean(child1.InnerText);
-                                    break;
-
                                 case "PCSS":
                                     shadowSettings.pcssEnabled = XmlConvert.ToBoolean(child1.InnerText);
                                     break;
@@ -1495,22 +1486,7 @@ namespace HSSSS
                         {
                             switch (child1.Name)
                             {
-                                // wet skin glossiness
-                                case "WetSpecGloss":
-                                    skinSettings.useWetSpecGloss = XmlConvert.ToBoolean(child1.InnerText);
-                                    break;
-                                // skin microdetails
                                 case "MicroDetails":
-                                    // compatibility with previous version
-                                    if (child1.Attributes != null && child1.Attributes["Enabled"] != null)
-                                    {
-                                        skinSettings.useMicroDetails = XmlConvert.ToBoolean(child1.Attributes["Enabled"].Value);
-                                    }
-                                    else
-                                    {
-                                        skinSettings.useMicroDetails = XmlConvert.ToBoolean(child1.InnerText);
-                                    }
-
                                     foreach (XmlNode child2 in child1.ChildNodes)
                                     {
                                         switch (child2.Name)
@@ -1529,6 +1505,7 @@ namespace HSSSS
                                         }
                                     }
                                     break;
+
                                 // tessellation
                                 case "Tessellation":
                                     foreach (XmlNode child2 in child1.ChildNodes)
@@ -1544,6 +1521,11 @@ namespace HSSSS
                                                 break;
                                         }
                                     }
+                                    break;
+
+                                // eyebrow wrap
+                                case "EyebrowOffset":
+                                    skinSettings.eyebrowoffset = XmlConvert.ToSingle(child1.InnerText);
                                     break;
                             }
                         }
@@ -1653,6 +1635,10 @@ namespace HSSSS
 
                     case CharReference.TagObjKey.ObjEyebrow:
                         ShaderReplacer(eyeBrowMaterial, mat);
+                        if (fixAlphaShadow)
+                        {
+                            mat.SetFloat("_VertexWrapOffset", skinSettings.eyebrowoffset);
+                        }
                         break;
 
                     case CharReference.TagObjKey.ObjEyeHi:
@@ -2019,6 +2005,7 @@ namespace HSSSS
     {
         #region Global Fields
         public static bool useTessellation;
+        public static bool fixAlphaShadow;
         public static bool hsrCompatible;
         public static int uiScale;
         private int singleSpace;
@@ -2033,18 +2020,20 @@ namespace HSSSS
         private SkinSettings skinSettings;
         private ShadowSettings shadowSettings;
         private SSAOSettings ssaoSettings;
+        private SSGISettings ssgiSettings;
 
         private enum TabState
         {
             skinScattering,
             skinTransmission,
             lightShadow,
+            postEffects,
             miscellaneous
         };
 
         private TabState tabState;
 
-        private readonly string[] tabLabels = new string[] { "Scattering", "Transmission", "Lights & Shadows", "Miscellaneous" };
+        private readonly string[] tabLabels = new string[] { "Scattering", "Transmission", "Lights & Shadows", "Post Effects", "Miscellaneous" };
         private readonly string[] lutLabels = new string[] { "Penner", "FaceWorks Type 1", "FaceWorks Type 2", "Jimenez" };
         private readonly string[] pcfLabels = new string[] { "Off", "Low", "Medium", "High", "Ultra" };
         private readonly string[] thkLabels = new string[] { "Pre-Baked", "On-the-Fly" };
@@ -2064,6 +2053,7 @@ namespace HSSSS
             this.skinSettings = HSSSS.skinSettings;
             this.shadowSettings = HSSSS.shadowSettings;
             this.ssaoSettings = HSSSS.ssaoSettings;
+            this.ssgiSettings = HSSSS.ssgiSettings;
         }
 
         public void OnGUI()
@@ -2128,6 +2118,10 @@ namespace HSSSS
 
                     case TabState.lightShadow:
                         this.LightShadowSettings();
+                        break;
+
+                    case TabState.postEffects:
+                        this.PostEffectsSettings();
                         break;
 
                     case TabState.miscellaneous:
@@ -2359,22 +2353,6 @@ namespace HSSSS
 
             GUILayout.Space(tetraSpace);
 
-            // pcf soft shadow on directional lights
-            GUILayout.Label("PCF on Directional Lights");
-            GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
-
-            bool dirPcfEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.shadowSettings.dirPcfEnabled), new string[] { "Disable", "Enable" }) == 1;
-
-            if (this.shadowSettings.dirPcfEnabled != dirPcfEnabled)
-            {
-                this.shadowSettings.dirPcfEnabled = dirPcfEnabled;
-                this.UpdateWindowSize();
-            }
-
-            GUILayout.EndHorizontal();
-
-            GUILayout.Space(tetraSpace);
-
             // pcss soft shadow toggle
             GUILayout.Label("Percentage Closer Soft Shadow");
             GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
@@ -2394,24 +2372,21 @@ namespace HSSSS
             if (this.shadowSettings.pcfState != PCFState.disable)
             {
                 // directional lights
-                if (this.shadowSettings.dirPcfEnabled)
+                if (this.shadowSettings.pcssEnabled)
                 {
-                    if(this.shadowSettings.pcssEnabled)
-                    {
-                        GUILayout.Label("Directional Light / Blocker Search Radius");
-                        this.shadowSettings.dirLightPenumbra.x = this.SliderControls(this.shadowSettings.dirLightPenumbra.x, 0.0f, 20.0f);
-                        GUILayout.Label("Directional Light / Light Radius");
-                        this.shadowSettings.dirLightPenumbra.y = this.SliderControls(this.shadowSettings.dirLightPenumbra.y, 0.0f, 20.0f);
-                        GUILayout.Label("Directional Light / Minimum Penumbra");
-                    }
-
-                    else
-                    {
-                        GUILayout.Label("Directional Light / Penumbra Scale");
-                    }
-
-                    this.shadowSettings.dirLightPenumbra.z = this.SliderControls(this.shadowSettings.dirLightPenumbra.z, 0.0f, 20.0f);
+                    GUILayout.Label("Directional Light / Blocker Search Radius");
+                    this.shadowSettings.dirLightPenumbra.x = this.SliderControls(this.shadowSettings.dirLightPenumbra.x, 0.0f, 20.0f);
+                    GUILayout.Label("Directional Light / Light Radius");
+                    this.shadowSettings.dirLightPenumbra.y = this.SliderControls(this.shadowSettings.dirLightPenumbra.y, 0.0f, 20.0f);
+                    GUILayout.Label("Directional Light / Minimum Penumbra");
                 }
+
+                else
+                {
+                    GUILayout.Label("Directional Light / Penumbra Scale");
+                }
+
+                this.shadowSettings.dirLightPenumbra.z = this.SliderControls(this.shadowSettings.dirLightPenumbra.z, 0.0f, 20.0f);
 
                 GUILayout.Space(tetraSpace);
 
@@ -2454,7 +2429,6 @@ namespace HSSSS
 
             else
             {
-                this.shadowSettings.dirPcfEnabled = false;
                 this.shadowSettings.pcssEnabled = false;
             }
 
@@ -2462,6 +2436,7 @@ namespace HSSSS
             #endregion
 
             #region Contact Shadow
+            /*
             GUILayout.Label("Screen Space Shadow");
             GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
 
@@ -2490,10 +2465,14 @@ namespace HSSSS
             }
 
             GUILayout.Space(tetraSpace);
+            */
             #endregion
+        }
 
-            #region SSGI
-            GUILayout.Label("Screen Space Global Illumination");
+        private void PostEffectsSettings()
+        {
+            #region SSAO
+            GUILayout.Label("Ambient Occlusion");
             GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
 
             bool ssaoEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.ssaoSettings.enabled), new string[] { "Disable", "Enable" }) == 1;
@@ -2515,58 +2494,47 @@ namespace HSSSS
                 this.ssaoSettings.quality = (Quality)GUILayout.Toolbar((int)this.ssaoSettings.quality, new string[] { "Low", "Medium", "High", "Ultra" });
                 GUILayout.EndHorizontal();
 
-                GUILayout.Label("Resolution");
+                GUILayout.Label("AO Method");
                 GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
-                this.ssaoSettings.halfsize = GUILayout.Toolbar(Convert.ToUInt16(this.ssaoSettings.halfsize), new string[] { "Full", "Half" }) == 1;
+                this.ssaoSettings.usegtao = GUILayout.Toolbar(Convert.ToUInt16(this.ssaoSettings.usegtao), new string[] { "HBAO", "GTAO" }) == 1;
                 GUILayout.EndHorizontal();
 
-                GUILayout.Label("Occlusion Power");
-                this.ssaoSettings.power = this.SliderControls(this.ssaoSettings.power, 0.1f, 10.0f);
-                GUILayout.Label("Occlusion Radius");
-                this.ssaoSettings.rayLength = this.SliderControls(this.ssaoSettings.rayLength, 0.0f, 10.0f);
-                GUILayout.Label("AO Depth Bias");
-                this.ssaoSettings.depthBias = this.SliderControls(this.ssaoSettings.depthBias, 0.0f, 1.00f);
-                GUILayout.Label("AO Fade Depth");
-                this.ssaoSettings.depthFade = this.SliderControls(this.ssaoSettings.depthFade, 1.0f, 1000.0f);
-                GUILayout.Label("Temporal Reprojection");
+                GUILayout.Label("Bilateral Filter");
+                GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
+                this.ssaoSettings.denoise = GUILayout.Toolbar(Convert.ToUInt16(this.ssaoSettings.denoise), new string[] { "Off", "On" }) == 1;
+                GUILayout.EndHorizontal();
+
+                GUILayout.Label("Occlusion Intensity");
+                this.ssaoSettings.intensity = this.SliderControls(this.ssaoSettings.intensity, 0.1f, 10.0f);
+                GUILayout.Label("Occlusion Bias");
+                this.ssaoSettings.lightBias = this.SliderControls(this.ssaoSettings.lightBias, 0.0f, 1.0f);
+                GUILayout.Label("Raytrace Radius");
+                this.ssaoSettings.rayLength = this.SliderControls(this.ssaoSettings.rayLength, 0.01f, 1.0f);
+                GUILayout.Label("Raytrace Stride Degree");
+                this.ssaoSettings.stepPower = this.SliderControls(this.ssaoSettings.stepPower, 1, 4);
+                GUILayout.Label("Mean Depth");
+                this.ssaoSettings.meanDepth = this.SliderControls(this.ssaoSettings.meanDepth, 0.0f, 2.00f);
+                GUILayout.Label("Fade Depth");
+                this.ssaoSettings.fadeDepth = this.SliderControls(this.ssaoSettings.fadeDepth, 1.0f, 1000.0f);
+                GUILayout.Label("Temporal Filtering");
                 this.ssaoSettings.mixFactor = this.SliderControls(this.ssaoSettings.mixFactor, 0.0f, 0.90f);
+                GUILayout.Label("Jittering Block Size");
+                this.ssaoSettings.blockSize = this.SliderControls(this.ssaoSettings.blockSize, 1, 8);
             }
             #endregion
         }
 
         private void OtherSettings()
         {
-            // wet specgloss
-            GUILayout.Label("Wet Skin Glossiness");
-            GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
-            this.skinSettings.useWetSpecGloss = GUILayout.Toolbar(Convert.ToUInt16(this.skinSettings.useWetSpecGloss), new string[] { "Disable", "Enable" }) == 1;
-            GUILayout.EndHorizontal();
-
             // skin microdetails
-            GUILayout.Label("Skin Microdetails");
-            GUILayout.BeginHorizontal(GUILayout.Height(octaSpace));
-            bool useMicroDetails = GUILayout.Toolbar(Convert.ToUInt16(this.skinSettings.useMicroDetails), new string[] { "Disable", "Enable" }) == 1;
-            GUILayout.EndHorizontal();
+            GUILayout.Label("MicroDetail #1 Strength");
+            this.skinSettings.microDetailWeight_1 = this.SliderControls(this.skinSettings.microDetailWeight_1, 0.0f, 1.0f);
+            GUILayout.Label("MicroDetail #2 Strength");
+            this.skinSettings.microDetailWeight_2 = this.SliderControls(this.skinSettings.microDetailWeight_2, 0.0f, 1.0f);
+            GUILayout.Label("MicroDetails Tiling");
+            this.skinSettings.microDetailTiling = this.SliderControls(this.skinSettings.microDetailTiling, 0.0f, 100.0f);
 
-            if (this.skinSettings.useMicroDetails != useMicroDetails)
-            {
-                this.skinSettings.useMicroDetails = useMicroDetails;
-                this.UpdateWindowSize();
-            }
-
-            if (this.skinSettings.useMicroDetails)
-            {
-                GUILayout.Label("MicroDetail #1 Strength");
-                this.skinSettings.microDetailWeight_1 = this.SliderControls(this.skinSettings.microDetailWeight_1, 0.0f, 1.0f);
-
-                GUILayout.Label("MicroDetail #2 Strength");
-                this.skinSettings.microDetailWeight_2 = this.SliderControls(this.skinSettings.microDetailWeight_2, 0.0f, 1.0f);
-
-                GUILayout.Label("MicroDetails Tiling");
-                this.skinSettings.microDetailTiling = this.SliderControls(this.skinSettings.microDetailTiling, 0.0f, 100.0f);
-
-            }
-
+            // tessellation
             if (useTessellation)
             {
                 GUILayout.Label("Tessellation Phong Strength");
@@ -2574,6 +2542,12 @@ namespace HSSSS
 
                 GUILayout.Label("Tessellation Edge Length");
                 this.skinSettings.edgeLength = this.SliderControls(this.skinSettings.edgeLength, 2.0f, 50.0f);
+            }
+
+            if (fixAlphaShadow)
+            {
+                GUILayout.Label("Eyebrow Wrap Offset");
+                this.skinSettings.eyebrowoffset = this.SliderControls(this.skinSettings.eyebrowoffset, 0.0f, 0.5f);
             }
 
             GUILayout.Space(octaSpace);
@@ -2660,21 +2634,20 @@ namespace HSSSS
             skinRefresh = skinRefresh || (HSSSS.skinSettings.phongStrength != this.skinSettings.phongStrength);
             skinRefresh = skinRefresh || (HSSSS.skinSettings.edgeLength != this.skinSettings.edgeLength);
             skinRefresh = skinRefresh || (HSSSS.skinSettings.microDetailTiling != this.skinSettings.microDetailTiling);
+            skinRefresh = skinRefresh || (HSSSS.skinSettings.eyebrowoffset != this.skinSettings.eyebrowoffset);
 
             HSSSS.skinSettings = this.skinSettings;
             HSSSS.shadowSettings = this.shadowSettings;
 
             HSSSS.instance.RefreshConfig(softRefresh, skinRefresh);
 
-            //
-            if (HSSSS.ssaoSettings.enabled != this.ssaoSettings.enabled)
-            {
-                HSSSS.SSGIRenderer.enabled = this.ssaoSettings.enabled;
-            }
-
-            softRefresh = HSSSS.ssaoSettings.quality == this.ssaoSettings.quality && HSSSS.ssaoSettings.halfsize == this.ssaoSettings.halfsize;
+            softRefresh = HSSSS.ssaoSettings.quality == this.ssaoSettings.quality
+                && HSSSS.ssaoSettings.usegtao == this.ssaoSettings.usegtao
+                && HSSSS.ssaoSettings.denoise == this.ssaoSettings.denoise;
             HSSSS.ssaoSettings = this.ssaoSettings;
-            HSSSS.SSGIRenderer.UpdateSSAOSettings(softRefresh);
+            
+            HSSSS.SSAORenderer.UpdateSSAOSettings(softRefresh);
+            HSSSS.SSAORenderer.enabled = HSSSS.ssaoSettings.enabled;
         }
     }
 }

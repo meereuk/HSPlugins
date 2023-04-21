@@ -19,29 +19,13 @@ namespace HSSSS
         private static Material normalBlurMaterial;
         private static Material diffuseBlurMaterial;
 
-        private static Texture2D skinJitter;
-        private static Texture2D defaultSkinLUT;
-        private static Texture2D faceWorksSkinLUT;
-        private static Texture2D faceWorksShadowLUT;
-        private static Texture2D deepScatterLUT;
-
-        //private static SkinSettings skinSettings;
-
-        public static bool hsrCompatible = false;
+        //public static bool HSSSS.hsrCompatible = false;
 
         public void Awake()
         {
             copyMaterial = new Material(HSSSS.transmissionBlitShader);
             normalBlurMaterial = new Material(HSSSS.normalBlurShader);
             diffuseBlurMaterial = new Material(HSSSS.diffuseBlurShader);
-
-            skinJitter = HSSSS.skinJitter;
-            defaultSkinLUT = HSSSS.pennerSkinLUT;
-            faceWorksSkinLUT = HSSSS.faceWorksSkinLUT;
-            faceWorksShadowLUT = HSSSS.faceWorksShadowLUT;
-            deepScatterLUT = HSSSS.deepScatterLUT;
-
-            //skinSettings = HSSSS.skinSettings;
         }
 
         public void OnEnable()
@@ -79,7 +63,7 @@ namespace HSSSS
         {
             if (HSSSS.skinSettings.lutProfile == LUTProfile.jimenez)
             {
-                diffuseBlurMaterial.SetTexture("_SkinJitter", skinJitter);
+                diffuseBlurMaterial.SetTexture("_SkinJitter", HSSSS.skinJitter);
                 diffuseBlurMaterial.SetVector("_DeferredBlurredNormalsParams",
                     new Vector2(
                         HSSSS.skinSettings.normalBlurRadius,
@@ -89,7 +73,7 @@ namespace HSSSS
 
             else
             {
-                normalBlurMaterial.SetTexture("_SkinJitter", skinJitter);
+                normalBlurMaterial.SetTexture("_SkinJitter", HSSSS.skinJitter);
                 normalBlurMaterial.SetVector("_DeferredBlurredNormalsParams",
                     new Vector2(
                         HSSSS.skinSettings.normalBlurRadius,
@@ -109,18 +93,18 @@ namespace HSSSS
             {
                 case LUTProfile.penner:
                     
-                    Shader.SetGlobalTexture("_DeferredSkinLut", defaultSkinLUT);
+                    Shader.SetGlobalTexture("_DeferredSkinLut", HSSSS.pennerSkinLUT);
                     break;
 
                 case LUTProfile.nvidia1:
                     Shader.EnableKeyword("_FACEWORKS_TYPE1");
-                    Shader.SetGlobalTexture("_DeferredSkinLut", faceWorksSkinLUT);
+                    Shader.SetGlobalTexture("_DeferredSkinLut", HSSSS.faceWorksSkinLUT);
                     break;
 
                 case LUTProfile.nvidia2:
                     Shader.EnableKeyword("_FACEWORKS_TYPE2");
-                    Shader.SetGlobalTexture("_DeferredSkinLut", faceWorksSkinLUT);
-                    Shader.SetGlobalTexture("_DeferredShadowLut", faceWorksShadowLUT);
+                    Shader.SetGlobalTexture("_DeferredSkinLut", HSSSS.faceWorksSkinLUT);
+                    Shader.SetGlobalTexture("_DeferredShadowLut", HSSSS.faceWorksShadowLUT);
                     break;
 
                 case LUTProfile.jimenez:
@@ -140,7 +124,7 @@ namespace HSSSS
 
             else
             {
-                Shader.SetGlobalTexture("_DeferredTransmissionLut", deepScatterLUT);
+                Shader.SetGlobalTexture("_DeferredTransmissionLut", HSSSS.deepScatterLUT);
                 Shader.SetGlobalFloat("_DeferredThicknessBias", HSSSS.skinSettings.thicknessBias * 0.01f);
             }
 
@@ -163,7 +147,7 @@ namespace HSSSS
         #endregion
 
         #region Commandbuffer Control
-        private void InitDiffuseBlurBuffer()
+        private void SetupDiffuseBlurBuffer()
         {
             int ambiRT = Shader.PropertyToID("_AmbientDiffuseBuffer");
             int copyRT = Shader.PropertyToID("_DeferredTransmissionBuffer");
@@ -196,7 +180,7 @@ namespace HSSSS
             this.copyBuffer.ReleaseTemporaryRT(ambiRT);
 
             // add commandbuffer
-            this.mCamera.AddCommandBuffer(CameraEvent.AfterGBuffer, this.copyBuffer);
+            this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
 
             ///////////////////////////////////
             ///////////////////////////////////
@@ -210,8 +194,7 @@ namespace HSSSS
             this.diffuseBlurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
             this.diffuseBlurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
 
-            // get rid of ambient specular
-            this.diffuseBlurBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flipRT, diffuseBlurMaterial, 0);
+            this.diffuseBlurBuffer.Blit(BuiltinRenderTextureType.CurrentActive, flipRT);
 
             // separable blur
             for (int i = 0; i < HSSSS.skinSettings.normalBlurIter; i ++)
@@ -234,34 +217,45 @@ namespace HSSSS
             this.mCamera.AddCommandBuffer(CameraEvent.AfterLighting, this.diffuseBlurBuffer);
         }
 
-        private void InitNormalBlurBuffer()
+        private void SetupNormalBlurBuffer()
         {
+            int specRT = Shader.PropertyToID("_AmbientReflectionBuffer");
             int copyRT = Shader.PropertyToID("_DeferredTransmissionBuffer");
             int buffRT = Shader.PropertyToID("_DeferredBlurredNormalBuffer");
             int flipRT = Shader.PropertyToID("_TemporaryFlipRenderTexture");
             int flopRT = Shader.PropertyToID("_TemporaryFlopRenderTexture");
 
-            ///////////////////////////////////
-            // transmission & ambient lights //
-            ///////////////////////////////////
+            ///////////////////////////////////////
+            ///////////////////////////////////////
+            //// transmission & ambient lights ////
+            ///////////////////////////////////////
+            ///////////////////////////////////////
 
             this.copyBuffer = new CommandBuffer() { name = this.copyBufferName };
 
             // get temporary rendertextures
             this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RHalf);
+            this.copyBuffer.GetTemporaryRT(specRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
 
             // extract thickness map from gbuffer 3
             this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, copyMaterial, 0);
 
+            // ambient reflections
+            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, specRT, copyMaterial, 2);
+            this.copyBuffer.Blit(specRT, BuiltinRenderTextureType.CameraTarget);
+
             // release rendertexture
             this.copyBuffer.ReleaseTemporaryRT(copyRT);
+            this.copyBuffer.ReleaseTemporaryRT(specRT);
 
             // add commandbuffer
-            this.mCamera.AddCommandBuffer(CameraEvent.AfterGBuffer, this.copyBuffer);
+            this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
 
-            //////////////////////////////
-            // screen space normal blur //
-            //////////////////////////////
+            //////////////////////////////////
+            //////////////////////////////////
+            //// screen space normal blur ////
+            //////////////////////////////////
+            //////////////////////////////////
 
             this.normalBlurBuffer = new CommandBuffer() { name = this.blurBufferName };
 
@@ -321,7 +315,7 @@ namespace HSSSS
         private void InitializeBuffers()
         {
             // buffer 0: hsr compatible buffer
-            if (hsrCompatible)
+            if (HSSSS.hsrCompatible)
             {
                 this.InitDummyBuffer();
             }
@@ -331,13 +325,13 @@ namespace HSSSS
                 // buffer 1: screen space scattering
                 if (HSSSS.skinSettings.lutProfile == LUTProfile.jimenez)
                 {
-                    this.InitDiffuseBlurBuffer();
+                    this.SetupDiffuseBlurBuffer();
                 }
 
                 // buffer 2: pre-integrated scattering
                 else
                 {
-                    this.InitNormalBlurBuffer();
+                    this.SetupNormalBlurBuffer();
                 }
             }
         }
@@ -346,7 +340,7 @@ namespace HSSSS
         {
             if (this.copyBuffer != null)
             {
-                this.mCamera.RemoveCommandBuffer(CameraEvent.AfterGBuffer, this.copyBuffer);
+                this.mCamera.RemoveCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
             }
 
             if (this.normalBlurBuffer != null)
@@ -377,17 +371,16 @@ namespace HSSSS
         #endregion
     }
 
-    public class BackFaceDepthRenderer : MonoBehaviour
+    public class BackFaceRenderer : MonoBehaviour
     {
-        public Camera mainCamera;
+        private Camera mainCamera;
         private Camera depthCamera;
-        private Shader depthShader;
         private RenderTexture depthBuffer;
+        private GameObject depthCameraObj;
 
         public void OnEnable()
         {
             this.SetUpDepthCamera();
-            this.depthShader = HSSSS.backFaceDepthShader;
         }
 
         public void OnDisable()
@@ -395,6 +388,7 @@ namespace HSSSS
             DestroyObject(this.depthCamera);
             DestroyImmediate(this.depthBuffer);
 
+            this.mainCamera = null;
             this.depthCamera = null;
             this.depthBuffer = null;
         }
@@ -404,22 +398,18 @@ namespace HSSSS
             if (this.depthCamera && this.mainCamera)
             {
                 this.UpdateCameraParams();
-            }
-        }
-
-        public void OnPreRender()
-        {
-            if (this.depthCamera && this.mainCamera)
-            {
                 this.CaptureDepthBuffer();
             }
         }
 
         private void SetUpDepthCamera()
         {
+            this.mainCamera = GetComponent<Camera>();
+
             if (this.depthCamera == null)
             {
-                this.depthCamera = this.gameObject.AddComponent<Camera>();
+                this.depthCameraObj = new GameObject("HSSSS.BackFaceDepthCamera");
+                this.depthCamera = this.depthCameraObj.AddComponent<Camera>();
             }
 
             this.depthCamera.name = "HSSSS.BackFaceDepthCamera";
@@ -444,194 +434,195 @@ namespace HSSSS
 
         private void CaptureDepthBuffer()
         {
-            this.depthBuffer = RenderTexture.GetTemporary(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.depthBuffer = RenderTexture.GetTemporary(
+                Screen.width, Screen.height, 24,
+                RenderTextureFormat.Depth, RenderTextureReadWrite.Linear
+                );
             this.depthCamera.targetTexture = this.depthBuffer;
-            this.depthCamera.RenderWithShader(this.depthShader, "");
+            this.depthCamera.RenderWithShader(HSSSS.backFaceDepthShader, "");
             Shader.SetGlobalTexture("_BackFaceDepthBuffer", this.depthBuffer);
             RenderTexture.ReleaseTemporary(this.depthBuffer);
         }
     }
 
-    public class ScreenSpaceGlobalIllumination : MonoBehaviour
+    public class SSAORenderer : MonoBehaviour
     {
         private Camera mCamera;
         private Material mMaterial;
-
-        private CommandBuffer aoBuffer;
-        private CommandBuffer giBuffer;
-
-        private RenderTexture aoTexture;
-        private RenderTexture giTexture;
-
-        private int rtSizeW;
-        private int rtSizeH;
+        private CommandBuffer mBuffer;
+        private RenderTexture mTexture;
 
         private void Awake()
         {
-            if (HSSSS.ssaoSettings.halfsize)
-            {
-                this.rtSizeW = Screen.width / 2;
-                this.rtSizeH = Screen.height / 2;
-            }
-
-            else
-            {
-                this.rtSizeW = Screen.width;
-                this.rtSizeH = Screen.height;
-            }
+            this.mCamera = GetComponent<Camera>();
+            this.mMaterial = new Material(HSSSS.ssaoShader);
         }
 
         private void OnEnable()
         {
-            this.mMaterial = new Material(HSSSS.ssgiShader);
-            this.mCamera = GetComponent<Camera>();
             this.UpdateSSAOSettings(true);
 
-            if (this.mCamera)
+            if (this.mCamera && HSSSS.ssaoSettings.enabled)
             {
                 this.SetupAOCommandBuffer();
             }
+
+            Shader.SetGlobalInt("_SSGIDirectOcclusion", 1);
         }
 
         private void OnDisable()
         {
-            if (this.mCamera != null)
+            if (this.mCamera)
             {
-                if (this.aoBuffer != null)
+                if (this.mBuffer != null)
                 {
                     this.RemoveAOCommandBuffer();
                 }
             }
+
+            Shader.SetGlobalInt("_SSGIDirectOcclusion", 0);
         }
 
         private void OnPreRender()
         {
             this.UpdateMatrices();
-            this.mMaterial.SetTexture("_SSGITemporalAOBuffer", this.aoTexture);
-            Shader.SetGlobalTexture("_SSGITemporalAOBuffer", this.aoTexture);
+            this.mMaterial.SetTexture("_SSGITemporalAOBuffer", this.mTexture);
         }
 
         private void SetupAOCommandBuffer()
         {
-            this.aoTexture = new RenderTexture(rtSizeW, rtSizeH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
-            this.aoTexture.Create();
+            this.mTexture = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.mTexture.filterMode = FilterMode.Point;
+            this.mTexture.Create();
+            ClearTemporalTexture(this.mTexture);
 
-            ClearTemporalTexture();
+            RenderTargetIdentifier temp = new RenderTargetIdentifier(this.mTexture);
 
-            int flipRT = Shader.PropertyToID("_SSGITemporalFlipBuffer");
-            int flopRT = Shader.PropertyToID("_SSGITemporalFlopBuffer");
+            // SSAO command buffer
+            this.mBuffer = new CommandBuffer() { name = "HSSSS.SSAO" };
 
-            RenderTargetIdentifier tempAO = new RenderTargetIdentifier(this.aoTexture);
+            int flip = Shader.PropertyToID("_SSAOFlipRenderTexture");
+            int flop = Shader.PropertyToID("_SSAOFlopRenderTexture");
+            
+            this.mBuffer.GetTemporaryRT(flip, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(flop, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
-            this.aoBuffer = new CommandBuffer() { name = "HSSSS.SSAO" };
-            this.aoBuffer.GetTemporaryRT(flipRT, rtSizeW, rtSizeH, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.aoBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            // full resolution ssao
+            if (HSSSS.ssaoSettings.usegtao)
+            {
+                this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flip, this.mMaterial, (int)HSSSS.ssaoSettings.quality + 4);
+            }
+            
+            else
+            {
+                this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flip, this.mMaterial, (int)HSSSS.ssaoSettings.quality);
+            }
 
-            // ssao calculation
-            this.aoBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flipRT, this.mMaterial, (int)HSSSS.ssaoSettings.quality);
-            // temporal filtering
-            this.aoBuffer.Blit(flipRT, tempAO);
-            // apply occlusion
-            this.aoBuffer.Blit(tempAO, flopRT, this.mMaterial, 4);
-            this.aoBuffer.Blit(flopRT, BuiltinRenderTextureType.GBuffer0);
-            this.aoBuffer.Blit(tempAO, flopRT, this.mMaterial, 5);
-            this.aoBuffer.Blit(flopRT, BuiltinRenderTextureType.CameraTarget);
+            // spatio noise filtering
+            if (HSSSS.ssaoSettings.denoise)
+            {
+                this.mBuffer.Blit(flip, flop, this.mMaterial, 9);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 10);
+            }
 
-            this.aoBuffer.ReleaseTemporaryRT(flipRT);
+            this.mBuffer.Blit(flip, temp);
+            // diffuse occlusion
+            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flip, this.mMaterial, 12);
+            this.mBuffer.Blit(flip, BuiltinRenderTextureType.CameraTarget);
+            // specular occlusion
+            this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flop, this.mMaterial, 13);
+            this.mBuffer.Blit(flop, BuiltinRenderTextureType.Reflections);
 
-            this.mCamera.AddCommandBuffer(CameraEvent.BeforeReflections, this.aoBuffer);
+            this.mBuffer.SetGlobalTexture("_SSGITemporalAOBuffer", temp);
+
+            this.mBuffer.ReleaseTemporaryRT(flip);
+            this.mBuffer.ReleaseTemporaryRT(flop);
+
+            this.mCamera.AddCommandBuffer(CameraEvent.AfterReflections, this.mBuffer);
         }
 
         private void RemoveAOCommandBuffer()
         {
-            this.mCamera.RemoveCommandBuffer(CameraEvent.BeforeReflections, this.aoBuffer);
-            this.aoBuffer = null;
-            this.aoTexture.Release();
+            this.mCamera.RemoveCommandBuffer(CameraEvent.AfterReflections, this.mBuffer);
+            this.mTexture.Release();
+            this.mTexture = null;
+            this.mBuffer = null;
         }
 
-        private void ClearTemporalTexture()
+        private void ClearTemporalTexture(RenderTexture tex)
         {
             RenderTexture rt = RenderTexture.active;
-            RenderTexture.active = this.aoTexture;
+            RenderTexture.active = tex;
             GL.Clear(true, true, Color.white);
             RenderTexture.active = rt;
         }
 
         private void UpdateMatrices()
         {
-            this.mMaterial.SetMatrix("_WorldToViewMatrix", HSSSS.CameraProjector.WorldToView);
-            this.mMaterial.SetMatrix("_ViewToWorldMatrix", HSSSS.CameraProjector.ViewToWorld);
+            this.mMaterial.SetMatrix("_WorldToViewMatrix", HSSSS.CameraProjector.CurrentWorldToView);
+            this.mMaterial.SetMatrix("_ViewToWorldMatrix", HSSSS.CameraProjector.CurrentViewToWorld);
 
-            this.mMaterial.SetMatrix("_ViewToClipMatrix", HSSSS.CameraProjector.ViewToClip);
-            this.mMaterial.SetMatrix("_ClipToViewMatrix", HSSSS.CameraProjector.ClipToView);
+            this.mMaterial.SetMatrix("_ViewToClipMatrix", HSSSS.CameraProjector.CurrentViewToClip);
+            this.mMaterial.SetMatrix("_ClipToViewMatrix", HSSSS.CameraProjector.CurrentClipToView);
 
-            this.mMaterial.SetMatrix("_PrevWorldToViewMatrix", HSSSS.CameraProjector.TemporalWorldToView);
-            this.mMaterial.SetMatrix("_PrevViewToWorldMatrix", HSSSS.CameraProjector.TemporalViewToWorld);
+            this.mMaterial.SetMatrix("_PrevWorldToViewMatrix", HSSSS.CameraProjector.PreviousWorldToView);
+            this.mMaterial.SetMatrix("_PrevViewToWorldMatrix", HSSSS.CameraProjector.PreviousViewToWorld);
 
-            this.mMaterial.SetMatrix("_PrevViewToClipMatrix", HSSSS.CameraProjector.TemporalViewToClip);
-            this.mMaterial.SetMatrix("_PrevClipToViewMatrix", HSSSS.CameraProjector.TemporalClipToView);
+            this.mMaterial.SetMatrix("_PrevViewToClipMatrix", HSSSS.CameraProjector.PreviousViewToClip);
+            this.mMaterial.SetMatrix("_PrevClipToViewMatrix", HSSSS.CameraProjector.PreviousClipToView);
         }
 
         public void UpdateSSAOSettings(bool soft = true)
         {
             if (this.enabled)
             {
-                this.mMaterial.SetFloat("_SSAODepthBias", HSSSS.ssaoSettings.depthBias);
-                this.mMaterial.SetFloat("_SSAODepthFade", HSSSS.ssaoSettings.depthFade);
+                this.mMaterial.SetFloat("_SSAOFadeDepth", HSSSS.ssaoSettings.fadeDepth);
                 this.mMaterial.SetFloat("_SSAOMixFactor", HSSSS.ssaoSettings.mixFactor);
                 this.mMaterial.SetFloat("_SSAORayLength", HSSSS.ssaoSettings.rayLength);
-                this.mMaterial.SetFloat("_SSAOIndirectP", HSSSS.ssaoSettings.power);
+                this.mMaterial.SetFloat("_SSAOIntensity", HSSSS.ssaoSettings.intensity);
+                this.mMaterial.SetFloat("_SSAOLightBias", HSSSS.ssaoSettings.lightBias);
+                this.mMaterial.SetFloat("_SSAOMeanDepth", HSSSS.ssaoSettings.meanDepth);
+                this.mMaterial.SetInt(  "_SSAOStepPower", HSSSS.ssaoSettings.stepPower);
+                this.mMaterial.SetInt(  "_SSAOBlockSize", HSSSS.ssaoSettings.blockSize);
             }
 
             if (!soft)
             {
-                if (HSSSS.ssaoSettings.halfsize)
-                {
-                    this.rtSizeW = Screen.width / 2;
-                    this.rtSizeH = Screen.height / 2;
-                }
-
-                else
-                {
-                    this.rtSizeW = Screen.width;
-                    this.rtSizeH = Screen.height;
-                }
-
                 this.RemoveAOCommandBuffer();
                 this.SetupAOCommandBuffer();
             }
         }
     }
-
-    public class CameraHelper : MonoBehaviour
+    
+    public class CameraProjector : MonoBehaviour
     {
         private Camera mCamera;
 
-        public Matrix4x4 WorldToView;
-        public Matrix4x4 ViewToWorld;
+        public Matrix4x4 CurrentWorldToView;
+        public Matrix4x4 CurrentViewToWorld;
 
-        public Matrix4x4 ViewToClip;
-        public Matrix4x4 ClipToView;
+        public Matrix4x4 CurrentViewToClip;
+        public Matrix4x4 CurrentClipToView;
 
-        public Matrix4x4 TemporalWorldToView;
-        public Matrix4x4 TemporalViewToWorld;
+        public Matrix4x4 PreviousWorldToView;
+        public Matrix4x4 PreviousViewToWorld;
 
-        public Matrix4x4 TemporalViewToClip;
-        public Matrix4x4 TemporalClipToView;
+        public Matrix4x4 PreviousViewToClip;
+        public Matrix4x4 PreviousClipToView;
 
         private void Awake()
         {
-            this.WorldToView = Matrix4x4.identity;
-            this.ViewToWorld = Matrix4x4.identity;
+            this.CurrentWorldToView = Matrix4x4.identity;
+            this.CurrentViewToWorld = Matrix4x4.identity;
 
-            this.ViewToClip = Matrix4x4.identity;
-            this.ClipToView = Matrix4x4.identity;
+            this.CurrentViewToClip = Matrix4x4.identity;
+            this.CurrentClipToView = Matrix4x4.identity;
 
-            this.TemporalWorldToView = Matrix4x4.identity;
-            this.TemporalViewToWorld = Matrix4x4.identity;
+            this.PreviousWorldToView = Matrix4x4.identity;
+            this.PreviousViewToWorld = Matrix4x4.identity;
 
-            this.TemporalViewToClip = Matrix4x4.identity;
-            this.TemporalClipToView = Matrix4x4.identity;
+            this.PreviousViewToClip = Matrix4x4.identity;
+            this.PreviousClipToView = Matrix4x4.identity;
         }
 
         private void OnEnable()
@@ -655,18 +646,18 @@ namespace HSSSS
         private void UpdateMatrices()
         {
             // previous frame
-            this.TemporalWorldToView = this.WorldToView;
-            this.TemporalViewToWorld = this.ViewToWorld;
+            this.PreviousWorldToView = this.CurrentWorldToView;
+            this.PreviousViewToWorld = this.CurrentViewToWorld;
 
-            this.TemporalViewToClip = this.ViewToClip;
-            this.TemporalClipToView = this.ClipToView;
+            this.PreviousViewToClip = this.CurrentViewToClip;
+            this.PreviousClipToView = this.CurrentClipToView;
 
             // current frame
-            this.WorldToView = this.mCamera.worldToCameraMatrix;
-            this.ViewToWorld = this.WorldToView.inverse;
+            this.CurrentWorldToView = this.mCamera.worldToCameraMatrix;
+            this.CurrentViewToWorld = this.CurrentWorldToView.inverse;
 
-            this.ViewToClip = this.mCamera.projectionMatrix;
-            this.ClipToView = this.ViewToClip.inverse;
+            this.CurrentViewToClip = this.mCamera.projectionMatrix;
+            this.CurrentClipToView = this.CurrentViewToClip.inverse;
         }
     }
 }
