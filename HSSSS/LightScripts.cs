@@ -130,6 +130,7 @@ namespace HSSSS
         }
     }
 
+    /*
     public class ContactShadowSampler : MonoBehaviour
     {
         private Light mLight;
@@ -210,4 +211,5 @@ namespace HSSSS
             }
         }
     }
+    */
 }

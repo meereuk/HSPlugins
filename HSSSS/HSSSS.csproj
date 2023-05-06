@@ -37,6 +37,7 @@
     <Compile Include="LightScripts.cs" />
     <Compile Include="PostEffect.cs" />
     <Compile Include="HSSSS.cs" />
+    <Compile Include="Properties.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Resources.Designer.cs">
       <AutoGen>True</AutoGen>
