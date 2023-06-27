@@ -19,8 +19,6 @@ namespace HSSSS
         private static Material normalBlurMaterial;
         private static Material diffuseBlurMaterial;
 
-        //public static bool HSSSS.hsrCompatible = false;
-
         public void Awake()
         {
             copyMaterial = new Material(HSSSS.transmissionBlitShader);
@@ -356,18 +354,19 @@ namespace HSSSS
         #endregion
 
         #region Interfaces
-        public void Refresh()
+        public void UpdateSkinSettings(bool soft = true)
         {
-            this.RefreshProperties();
-        }
+            this.RefreshSkinProperties();
+            this.RefreshBlurProperties();
+            this.RefreshLookupProperties();
+            this.RefreshTransmissionProperties();
 
-        public void ForceRefresh()
-        {
-            this.RefreshProperties();
-            this.DestroyBuffers();
-            this.InitializeBuffers();
+            if (!soft)
+            {
+                this.DestroyBuffers();
+                this.InitializeBuffers();
+            }
         }
-
         #endregion
     }
 
@@ -452,12 +451,12 @@ namespace HSSSS
         private Camera mCamera;
         private Material mMaterial;
         private CommandBuffer mBuffer;
-        private RenderTexture mTexture;
 
         private void Awake()
         {
             this.mCamera = GetComponent<Camera>();
             this.mMaterial = new Material(HSSSS.ssaoShader);
+            this.mMaterial.SetTexture("_BlueNoise", HSSSS.blueNoise);
         }
 
         private void OnEnable()
@@ -468,8 +467,6 @@ namespace HSSSS
             {
                 this.SetupCommandBuffer();
             }
-
-            Shader.SetGlobalInt("_SSGIDirectOcclusion", 1);
         }
 
         private void OnDisable()
@@ -481,67 +478,64 @@ namespace HSSSS
                     this.RemoveCommandBuffer();
                 }
             }
-
-            Shader.SetGlobalInt("_SSGIDirectOcclusion", 0);
         }
 
         private void OnPreRender()
         {
             this.UpdateMatrices();
-            this.mMaterial.SetTexture("_SSGITemporalAOBuffer", this.mTexture);
+            this.mMaterial.SetInt("_FrameCount", Time.frameCount);
         }
 
         private void SetupCommandBuffer()
         {
-            this.mTexture = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.mTexture.filterMode = FilterMode.Point;
-            this.mTexture.Create();
-            ClearTemporalTexture(this.mTexture);
-
-            RenderTargetIdentifier temp = new RenderTargetIdentifier(this.mTexture);
-
             // SSAO command buffer
             this.mBuffer = new CommandBuffer() { name = "HSSSS.SSAO" };
 
+            int zbuf = Shader.PropertyToID("_FuckingMoronsUnityDev");
             int flip = Shader.PropertyToID("_SSAOFlipRenderTexture");
             int flop = Shader.PropertyToID("_SSAOFlopRenderTexture");
 
+            this.mBuffer.GetTemporaryRT(zbuf, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(flip, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(flop, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-
-
+            
+            // z-buffer prepass
+            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, zbuf, this.mMaterial, 0);
+            
             // full resolution ssao
             if (Properties.ssao.usegtao)
             {
-                this.mBuffer.Blit(temp, flip, this.mMaterial, (int)Properties.ssao.quality + 5);
+                this.mBuffer.Blit(zbuf, flip, this.mMaterial, (int)Properties.ssao.quality + 5);
             }
             
+            // full resolution gtao
             else
             {
-                this.mBuffer.Blit(temp, flip, this.mMaterial, (int)Properties.ssao.quality + 1);
+                this.mBuffer.Blit(zbuf, flip, this.mMaterial, (int)Properties.ssao.quality + 1);
             }
+
+            // decode pass
+            this.mBuffer.Blit(flip, flop, this.mMaterial, 9);
 
             // spatio noise filtering
             if (Properties.ssao.denoise)
             {
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 9);
                 this.mBuffer.Blit(flop, flip, this.mMaterial, 10);
+                this.mBuffer.Blit(flip, flop, this.mMaterial, 11);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 12);
+                this.mBuffer.Blit(flip, flop);
             }
 
-            this.mBuffer.Blit(flip, flop, this.mMaterial, 11);
-            this.mBuffer.Blit(flop, temp);
-
             // diffuse occlusion
-            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flip, this.mMaterial, 13);
+            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flip, this.mMaterial, 15);
             this.mBuffer.Blit(flip, BuiltinRenderTextureType.CameraTarget);
             // specular occlusion
-            this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flip, this.mMaterial, 14);
+            this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flip, this.mMaterial, 16);
             this.mBuffer.Blit(flip, BuiltinRenderTextureType.Reflections);
-
-            this.mBuffer.SetGlobalTexture("_SSGITemporalAOBuffer", temp);
 
             this.mBuffer.ReleaseTemporaryRT(flip);
             this.mBuffer.ReleaseTemporaryRT(flop);
+            this.mBuffer.ReleaseTemporaryRT(zbuf);
 
             this.mCamera.AddCommandBuffer(CameraEvent.AfterReflections, this.mBuffer);
         }
@@ -549,17 +543,7 @@ namespace HSSSS
         private void RemoveCommandBuffer()
         {
             this.mCamera.RemoveCommandBuffer(CameraEvent.AfterReflections, this.mBuffer);
-            this.mTexture.Release();
-            this.mTexture = null;
             this.mBuffer = null;
-        }
-
-        private void ClearTemporalTexture(RenderTexture tex)
-        {
-            RenderTexture rt = RenderTexture.active;
-            RenderTexture.active = tex;
-            GL.Clear(true, true, Color.white);
-            RenderTexture.active = rt;
         }
 
         private void UpdateMatrices()
@@ -582,12 +566,12 @@ namespace HSSSS
             if (this.enabled)
             {
                 this.mMaterial.SetFloat("_SSAOFadeDepth", Properties.ssao.fadeDepth);
-                this.mMaterial.SetFloat("_SSAOMixFactor", Properties.ssao.mixWeight);
                 this.mMaterial.SetFloat("_SSAORayLength", Properties.ssao.rayRadius);
                 this.mMaterial.SetFloat("_SSAOIntensity", Properties.ssao.intensity);
                 this.mMaterial.SetFloat("_SSAOLightBias", Properties.ssao.lightBias);
                 this.mMaterial.SetFloat("_SSAOMeanDepth", Properties.ssao.meanDepth);
-                this.mMaterial.SetInt(  "_SSAOStepPower", Properties.ssao.rayStride);
+                this.mMaterial.SetInt(  "_SSAORayStride", Properties.ssao.rayStride);
+                this.mMaterial.SetInt(  "_SSAOScreenDiv", Properties.ssao.screenDiv);
             }
 
             if (!soft)
@@ -604,11 +588,13 @@ namespace HSSSS
         private Material mMaterial;
         private CommandBuffer mBuffer;
         private RenderTexture giHistory;
+        private RenderTexture zbHistory;
 
         private void Awake()
         {
             this.mCamera = GetComponent<Camera>();
             this.mMaterial = new Material(HSSSS.ssgiShader);
+            this.mMaterial.SetTexture("_BlueNoise", HSSSS.blueNoise);
         }
 
         private void OnEnable()
@@ -629,7 +615,7 @@ namespace HSSSS
                 if (this.mBuffer != null)
                 {
                     this.RemoveCommandBuffer();
-                    this.SetupHistoryBuffer();
+                    this.RemoveHistoryBuffer();
                 }
             }
         }
@@ -637,29 +623,34 @@ namespace HSSSS
         private void OnPreRender()
         {
             this.UpdateMatrices();
+
+            this.mMaterial.SetTexture("_SSGITemporalGIBuffer", this.giHistory);
+            this.mMaterial.SetTexture("_CameraDepthHistory", this.zbHistory);
+            this.mMaterial.SetInt("_FrameCount", Time.frameCount);
         }
 
         private void SetupCommandBuffer()
         {
-            RenderTargetIdentifier temp = new RenderTargetIdentifier(this.giHistory);
+            RenderTargetIdentifier hist = new RenderTargetIdentifier(this.giHistory);
+            RenderTargetIdentifier zbuf = new RenderTargetIdentifier(this.zbHistory);
 
             this.mBuffer = new CommandBuffer() { name = "HSSSS.SSGI" };
 
-            int ilum = Shader.PropertyToID("_SSGIIlumRenderTexture");
+            int ilum = Shader.PropertyToID("_SSGIIrradianceTexture");
             int flip = Shader.PropertyToID("_SSGIFlipRenderTexture");
             int flop = Shader.PropertyToID("_SSGIFlopRenderTexture");
 
-            switch (Properties.ssgi.resolution)
+            switch (Properties.ssgi.samplescale)
             {
-                case Properties.ResolveResolution.quarter:
+                case Properties.RenderScale.quarter:
                     this.mBuffer.GetTemporaryRT(ilum, Screen.width / 4, Screen.height / 4, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
                     break;
 
-                case Properties.ResolveResolution.half:
+                case Properties.RenderScale.half:
                     this.mBuffer.GetTemporaryRT(ilum, Screen.width / 2, Screen.height / 2, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
                     break;
 
-                case Properties.ResolveResolution.full:
+                case Properties.RenderScale.full:
                     this.mBuffer.GetTemporaryRT(ilum, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
                     break;
             }
@@ -667,23 +658,34 @@ namespace HSSSS
             this.mBuffer.GetTemporaryRT(flip, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(flop, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
-            this.mBuffer.SetGlobalTexture("_SSGITemporalGIBuffer", this.giHistory);
+            // prepass
+            this.mBuffer.Blit(hist, ilum, this.mMaterial, 0);
 
-            this.mBuffer.Blit(temp, ilum, this.mMaterial, 0);
+            // main pass
             this.mBuffer.Blit(ilum, flip, this.mMaterial, (int)Properties.ssgi.quality + 1);
 
+            // temporal
+            this.mBuffer.Blit(flip, flop, this.mMaterial, 5);
+
+            // store
+            this.mBuffer.Blit(flop, hist);
+            this.mBuffer.Blit(hist, zbuf, this.mMaterial, 12);
+
+            // median filter
+            this.mBuffer.Blit(flop, flip, this.mMaterial, 10);
+            this.mBuffer.Blit(flip, flop);
+
+            // spatial
             if (Properties.ssgi.denoise)
             {
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 6);
+                this.mBuffer.Blit(flip, flop, this.mMaterial, 7);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
                 this.mBuffer.Blit(flip, flop, this.mMaterial, 9);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 10);
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 11);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 12);
             }
 
-            this.mBuffer.Blit(flip, flop, this.mMaterial, 13);
-            this.mBuffer.Blit(flop, flip, this.mMaterial, 14);
-
-            this.mBuffer.Blit(flop, temp);
+            // collect
+            this.mBuffer.Blit(flop, flip, this.mMaterial, 11);
             this.mBuffer.Blit(flip, BuiltinRenderTextureType.CameraTarget);
 
             this.mBuffer.ReleaseTemporaryRT(ilum);
@@ -705,8 +707,13 @@ namespace HSSSS
             this.giHistory.filterMode = FilterMode.Bilinear;
             this.giHistory.Create();
 
+            this.zbHistory = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.zbHistory.Create();
+
             RenderTexture rt = RenderTexture.active;
             RenderTexture.active = this.giHistory;
+            GL.Clear(true, true, Color.clear);
+            RenderTexture.active = this.zbHistory;
             GL.Clear(true, true, Color.clear);
             RenderTexture.active = rt;
         }
@@ -715,14 +722,9 @@ namespace HSSSS
         {
             this.giHistory.Release();
             this.giHistory = null;
-        }
 
-        private void ClearTemporalTexture(RenderTexture tex)
-        {
-            RenderTexture rt = RenderTexture.active;
-            RenderTexture.active = tex;
-            GL.Clear(true, true, Color.black);
-            RenderTexture.active = rt;
+            this.zbHistory.Release();
+            this.zbHistory = null;
         }
 
         private void UpdateMatrices()
@@ -748,12 +750,15 @@ namespace HSSSS
                 this.mMaterial.SetFloat("_SSGIMixFactor", Properties.ssgi.mixWeight);
                 this.mMaterial.SetFloat("_SSGIRayLength", Properties.ssgi.rayRadius);
                 this.mMaterial.SetFloat("_SSGIIntensity", Properties.ssgi.intensity);
+                this.mMaterial.SetFloat("_SSGISecondary", Properties.ssgi.secondary);
                 this.mMaterial.SetInt("_SSGIStepPower", Properties.ssgi.rayStride);
             }
 
             if (!soft)
             {
                 this.RemoveCommandBuffer();
+                this.RemoveHistoryBuffer();
+                this.SetupHistoryBuffer();
                 this.SetupCommandBuffer();
             }
         }

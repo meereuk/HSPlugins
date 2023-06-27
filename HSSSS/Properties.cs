@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Studio;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -33,7 +34,7 @@ namespace HSSSS
             ultra
         }
 
-        public enum ResolveResolution
+        public enum RenderScale
         {
             quarter,
             half,
@@ -100,15 +101,14 @@ namespace HSSSS
             public bool denoise;
 
             public QualityPreset quality;
-            public ResolveResolution resolution;
 
             public float intensity;
             public float lightBias;
             public float rayRadius;
             public float meanDepth;
             public float fadeDepth;
-            public float mixWeight;
             public int rayStride;
+            public int screenDiv;
         }
 
         public struct SSGIProperties
@@ -117,9 +117,11 @@ namespace HSSSS
             public bool denoise;
 
             public QualityPreset quality;
-            public ResolveResolution resolution;
+            public RenderScale samplescale;
+            public RenderScale renderscale;
 
             public float intensity;
+            public float secondary;
             public float rayRadius;
             public float fadeDepth;
             public float mixWeight;
@@ -185,15 +187,14 @@ namespace HSSSS
             denoise = false,
 
             quality = QualityPreset.medium,
-            resolution = ResolveResolution.half,
 
             intensity = 1.0f,
             lightBias = 0.0f,
             rayRadius = 0.1f,
             meanDepth = 0.5f,
             fadeDepth = 100.0f,
-            mixWeight = 0.5f,
-            rayStride = 2
+            rayStride = 2,
+            screenDiv = 1
         };
 
         public static SSGIProperties ssgi = new SSGIProperties()
@@ -202,34 +203,175 @@ namespace HSSSS
             denoise = false,
 
             quality = QualityPreset.medium,
-            resolution = ResolveResolution.half,
+            samplescale = RenderScale.half,
 
             intensity = 1.0f,
+            secondary = 1.0f,
             rayRadius = 1.0f,
             fadeDepth = 100.0f,
             mixWeight = 0.5f,
             rayStride = 2
         };
 
-        public static void UpdateSSAO(SSAOProperties update)
-        {
-            bool soft = ssao.quality == update.quality
-                && ssao.usegtao == update.usegtao
-                && ssao.denoise == update.denoise;
+        public static SkinProperties skinUpdate;
+        public static ShadowProperties shadowUpdate;
+        public static SSAOProperties ssaoUpdate;
+        public static SSGIProperties ssgiUpdate;
 
-            ssao = update;
+        public static void UpdateSkin()
+        {
+            bool soft = skin.lutProfile == skinUpdate.lutProfile
+                && skin.normalBlurIter == skinUpdate.normalBlurIter;
+
+            bool detail = skin.microDetailWeight_1 == skinUpdate.microDetailWeight_1
+                && skin.microDetailWeight_2 == skinUpdate.microDetailWeight_2
+                && skin.microDetailTiling == skinUpdate.microDetailTiling
+                && skin.eyebrowoffset == skinUpdate.eyebrowoffset
+                && skin.phongStrength == skinUpdate.phongStrength
+                && skin.edgeLength == skinUpdate.edgeLength;
+
+            skin = skinUpdate;
+
+            HSSSS.DeferredRenderer.UpdateSkinSettings(soft);
+
+            if (!detail)
+            {
+                var CharacterManager = Singleton<Manager.Character>.Instance;
+
+                foreach (KeyValuePair<int, CharFemale> female in CharacterManager.dictFemale)
+                {
+                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjSkinBody);
+                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjSkinFace);
+                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjUnderHair);
+                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjNail);
+                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjEyebrow);
+                }
+
+                foreach (KeyValuePair<int, CharMale> male in CharacterManager.dictMale)
+                {
+                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjSkinBody);
+                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjSkinFace);
+                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjUnderHair);
+                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjNail);
+                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjEyebrow);
+                }
+            }
+        }
+
+        private static void UpdateSkinLoop(CharInfo chaInfo, CharReference.TagObjKey key)
+        {
+            foreach (GameObject body in chaInfo.GetTagInfo(key))
+            {
+                foreach (Renderer rend in body.GetComponents<Renderer>())
+                {
+                    foreach (Material mat in rend.sharedMaterials)
+                    {
+                        if (mat.HasProperty("_DetailNormalMapScale_2"))
+                        {
+                            mat.SetFloat("_DetailNormalMapScale_2", Properties.skin.microDetailWeight_1);
+                        }
+
+                        if (mat.HasProperty("_DetailNormalMapScale_3"))
+                        {
+                            mat.SetFloat("_DetailNormalMapScale_3", Properties.skin.microDetailWeight_2);
+                        }
+
+                        if (mat.HasProperty("_DetailNormalMap_2"))
+                        {
+                            mat.SetTextureScale("_DetailNormalMap_2", new Vector2(Properties.skin.microDetailTiling, Properties.skin.microDetailTiling));
+                        }
+
+                        if (mat.HasProperty("_DetailNormalMap_3"))
+                        {
+                            mat.SetTextureScale("_DetailNormalMap_3", new Vector2(Properties.skin.microDetailTiling, Properties.skin.microDetailTiling));
+                        }
+
+                        if (mat.HasProperty("_DetailSkinPoreMap"))
+                        {
+                            mat.SetTextureScale("_DetailSkinPoreMap", new Vector2(Properties.skin.microDetailTiling, Properties.skin.microDetailTiling));
+                        }
+
+                        if (mat.HasProperty("_Phong"))
+                        {
+                            mat.SetFloat("_Phong", Properties.skin.phongStrength);
+                        }
+
+                        if (mat.HasProperty("_EdgeLength"))
+                        {
+                            mat.SetFloat("_EdgeLength", Properties.skin.edgeLength);
+                        }
+
+                        if (mat.HasProperty("_VertexWrapOffset"))
+                        {
+                            mat.SetFloat("_VertexWrapOffset", Properties.skin.eyebrowoffset);
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void UpdateShadow()
+        {
+            shadow = shadowUpdate;
+
+            Shader.DisableKeyword("_PCSS_ON");
+            Shader.DisableKeyword("_PCF_TAPS_8");
+            Shader.DisableKeyword("_PCF_TAPS_16");
+            Shader.DisableKeyword("_PCF_TAPS_32");
+            Shader.DisableKeyword("_PCF_TAPS_64");
+
+            if (HSSSS.isStudio)
+            {
+                if (shadow.pcfState == PCFState.disable)
+                {
+                    shadow.pcssEnabled = false;
+                }
+
+                else
+                {
+                    switch (shadow.pcfState)
+                    {
+                        case PCFState.poisson8x: Shader.EnableKeyword("_PCF_TAPS_8"); break;
+                        case PCFState.poisson16x: Shader.EnableKeyword("_PCF_TAPS_16"); break;
+                        case PCFState.poisson32x: Shader.EnableKeyword("_PCF_TAPS_32"); break;
+                        case PCFState.poisson64x: Shader.EnableKeyword("_PCF_TAPS_64"); break;
+                    }
+
+                    Shader.SetGlobalTexture("_ShadowJitterTexture", HSSSS.shadowJitter);
+                }
+
+                if (shadow.pcssEnabled)
+                {
+                    Shader.EnableKeyword("_PCSS_ON");
+                }
+
+                // pcf & pcss
+                Shader.SetGlobalVector("_DirLightPenumbra", shadow.dirLightPenumbra);
+                Shader.SetGlobalVector("_SpotLightPenumbra", shadow.spotLightPenumbra);
+                Shader.SetGlobalVector("_PointLightPenumbra", shadow.pointLightPenumbra);
+            }
+        }
+
+        public static void UpdateSSAO()
+        {
+            bool soft = ssao.quality == ssaoUpdate.quality
+                && ssao.usegtao == ssaoUpdate.usegtao
+                && ssao.denoise == ssaoUpdate.denoise;
+
+            ssao = ssaoUpdate;
 
             HSSSS.SSAORenderer.UpdateSSAOSettings(soft);
             HSSSS.SSAORenderer.enabled = ssao.enabled;
         }
 
-        public static void UpdateSSGI(SSGIProperties update)
+        public static void UpdateSSGI()
         {
-            bool soft = ssgi.quality == update.quality
-                && ssgi.denoise == update.denoise
-                && ssgi.resolution == update.resolution;
+            bool soft = ssgi.quality == ssgiUpdate.quality
+                && ssgi.denoise == ssgiUpdate.denoise
+                && ssgi.samplescale == ssgiUpdate.samplescale
+                && ssgi.renderscale == ssgiUpdate.renderscale;
 
-            ssgi = update;
+            ssgi = ssgiUpdate;
 
             HSSSS.SSGIRenderer.UpdateSSGISettings(soft);
             HSSSS.SSGIRenderer.enabled = ssgi.enabled;
