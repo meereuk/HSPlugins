@@ -165,6 +165,20 @@ namespace HSSSS
                 writer.WriteElementString("MixWeight", XmlConvert.ToString(Properties.ssgi.mixWeight));
             }
             writer.WriteEndElement();
+            // contact shadow
+            writer.WriteStartElement("ContactShadow");
+            {
+                writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.sscs.enabled));
+                // quality
+                writer.WriteElementString("Quality", Convert.ToString(Properties.sscs.quality));
+                // ray radius
+                writer.WriteElementString("RayRadius", XmlConvert.ToString(Properties.sscs.rayRadius));
+                // depth bias
+                writer.WriteElementString("DepthBias", XmlConvert.ToString(Properties.sscs.depthBias));
+                // mean depth
+                writer.WriteElementString("MeanDepth", XmlConvert.ToString(Properties.sscs.meanDepth));
+            }
+            writer.WriteEndElement();
             // miscellaneous
             writer.WriteStartElement("Miscellaneous");
             {
@@ -373,6 +387,20 @@ namespace HSSSS
                                 case "FadeDepth": Properties.ssgiUpdate.fadeDepth = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "Denoiser": Properties.ssgiUpdate.denoise = XmlConvert.ToBoolean(child1.InnerText); break;
                                 case "MixWeight": Properties.ssgiUpdate.mixWeight = XmlConvert.ToSingle(child1.InnerText); break;
+                            }
+                        }
+                        break;
+
+                    case "ContactShadow":
+                        Properties.sscsUpdate.enabled = XmlConvert.ToBoolean(child0.Attributes["Enabled"].Value);
+                        foreach (XmlNode child1 in child0.ChildNodes)
+                        {
+                            switch (child1.Name)
+                            {
+                                case "Quality": Properties.sscsUpdate.quality = (Properties.QualityPreset)Enum.Parse(typeof(Properties.QualityPreset), child1.InnerText); break;
+                                case "RayRadius": Properties.sscsUpdate.rayRadius = XmlConvert.ToSingle(child1.InnerText); break;
+                                case "DepthBias": Properties.sscsUpdate.depthBias = XmlConvert.ToSingle(child1.InnerText); break;
+                                case "MeanDepth": Properties.sscsUpdate.meanDepth = XmlConvert.ToSingle(child1.InnerText); break;
                             }
                         }
                         break;

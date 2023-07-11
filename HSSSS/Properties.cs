@@ -128,6 +128,15 @@ namespace HSSSS
             public int rayStride;
         }
 
+        public struct SSCSProperties
+        {
+            public bool enabled;
+            public QualityPreset quality;
+            public float rayRadius;
+            public float depthBias;
+            public float meanDepth;
+        }
+
         public static SkinProperties skin = new SkinProperties()
         {
             sssEnabled = true,
@@ -213,10 +222,20 @@ namespace HSSSS
             rayStride = 2
         };
 
+        public static SSCSProperties sscs = new SSCSProperties()
+        {
+            enabled = false,
+            quality = QualityPreset.medium,
+            rayRadius = 10.0f,
+            depthBias = 0.2f,
+            meanDepth = 1.0f
+        };
+
         public static SkinProperties skinUpdate;
-        public static ShadowProperties shadowUpdate;
         public static SSAOProperties ssaoUpdate;
         public static SSGIProperties ssgiUpdate;
+        public static SSCSProperties sscsUpdate;
+        public static ShadowProperties shadowUpdate;
 
         public static void UpdateSkin()
         {
@@ -313,15 +332,15 @@ namespace HSSSS
         public static void UpdateShadow()
         {
             shadow = shadowUpdate;
+            sscs = sscsUpdate;
 
+            Shader.DisableKeyword("_PCF_ON");
             Shader.DisableKeyword("_PCSS_ON");
-            Shader.DisableKeyword("_PCF_TAPS_8");
-            Shader.DisableKeyword("_PCF_TAPS_16");
-            Shader.DisableKeyword("_PCF_TAPS_32");
-            Shader.DisableKeyword("_PCF_TAPS_64");
+            Shader.DisableKeyword("_SSCS_ON");
 
             if (HSSSS.isStudio)
             {
+                // pcf & pcss shadow
                 if (shadow.pcfState == PCFState.disable)
                 {
                     shadow.pcssEnabled = false;
@@ -329,27 +348,36 @@ namespace HSSSS
 
                 else
                 {
-                    switch (shadow.pcfState)
-                    {
-                        case PCFState.poisson8x: Shader.EnableKeyword("_PCF_TAPS_8"); break;
-                        case PCFState.poisson16x: Shader.EnableKeyword("_PCF_TAPS_16"); break;
-                        case PCFState.poisson32x: Shader.EnableKeyword("_PCF_TAPS_32"); break;
-                        case PCFState.poisson64x: Shader.EnableKeyword("_PCF_TAPS_64"); break;
-                    }
-
+                    Shader.EnableKeyword("_PCF_ON");
+                    Shader.SetGlobalInt("_SoftShadowNumIter", (int)shadow.pcfState + 2);
                     Shader.SetGlobalTexture("_ShadowJitterTexture", HSSSS.shadowJitter);
                 }
 
                 if (shadow.pcssEnabled)
                 {
+                    Shader.DisableKeyword("_PCF_ON");
                     Shader.EnableKeyword("_PCSS_ON");
                 }
 
-                // pcf & pcss
                 Shader.SetGlobalVector("_DirLightPenumbra", shadow.dirLightPenumbra);
                 Shader.SetGlobalVector("_SpotLightPenumbra", shadow.spotLightPenumbra);
                 Shader.SetGlobalVector("_PointLightPenumbra", shadow.pointLightPenumbra);
+
+                // sscs shadow
+                if (sscs.enabled)
+                {
+                    Shader.EnableKeyword("_SSCS_ON");
+                }
+
+                Shader.SetGlobalFloat("_SSCSRayLength", sscs.rayRadius);
+                Shader.SetGlobalFloat("_SSCSMeanDepth", sscs.meanDepth);
+                Shader.SetGlobalFloat("_SSCSDepthBias", sscs.depthBias);
+                Shader.SetGlobalFloat("_SSCSMeanDepth", sscs.meanDepth);
+                Shader.SetGlobalInt(  "_SSCSRayStride", (int)sscs.quality + 4);
             }
+
+            //Shader.SetGlobalTexture("_AreaLightLUT", HSSSS.areaLightLUT);
+            //Shader.SetGlobalFloat("_AreaLightScale", 0.1f);
         }
 
         public static void UpdateSSAO()
@@ -360,8 +388,12 @@ namespace HSSSS
 
             ssao = ssaoUpdate;
 
-            HSSSS.SSAORenderer.UpdateSSAOSettings(soft);
             HSSSS.SSAORenderer.enabled = ssao.enabled;
+
+            if (ssao.enabled)
+            {
+                HSSSS.SSAORenderer.UpdateSSAOSettings(soft);
+            }
         }
 
         public static void UpdateSSGI()
@@ -373,8 +405,12 @@ namespace HSSSS
 
             ssgi = ssgiUpdate;
 
-            HSSSS.SSGIRenderer.UpdateSSGISettings(soft);
             HSSSS.SSGIRenderer.enabled = ssgi.enabled;
+
+            if (ssgi.enabled)
+            {
+                HSSSS.SSGIRenderer.UpdateSSGISettings(soft);
+            }
         }
     }
 }

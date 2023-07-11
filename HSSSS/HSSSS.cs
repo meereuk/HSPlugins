@@ -15,7 +15,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.5.0"; } }
+        public string Version { get { return "1.6.0"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -54,6 +54,7 @@ namespace HSSSS
         public static Shader ssgiShader;
 
         // textures
+        public static Texture2D areaLightLUT;
         public static Texture2D pennerSkinLUT;
         public static Texture2D faceWorksSkinLUT;
         public static Texture2D faceWorksShadowLUT;
@@ -457,6 +458,9 @@ namespace HSSSS
                 maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
             }
 
+            // area light lookup texture
+            areaLightLUT = assetBundle.LoadAsset<Texture2D>("AreaLightLUT");
+
             // sss lookup textures
             pennerSkinLUT = assetBundle.LoadAsset<Texture2D>("DefaultSkinLUT");
             faceWorksSkinLUT = assetBundle.LoadAsset<Texture2D>("FaceWorksSkinLUT");
@@ -485,6 +489,11 @@ namespace HSSSS
             if (null == maleBodyThickness || null == maleHeadThickness)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Male Thickness Textures");
+            }
+
+            if (null == areaLightLUT)
+            {
+                Console.WriteLine("#### HSSSS: Failed to Load Area Light Lookup Texture");
             }
 
             if (null == pennerSkinLUT || null == faceWorksSkinLUT || null == faceWorksShadowLUT || null == deepScatterLUT)
@@ -1221,6 +1230,7 @@ namespace HSSSS
         private Properties.ShadowProperties shadow;
         private Properties.SSAOProperties ssao;
         private Properties.SSGIProperties ssgi;
+        private Properties.SSCSProperties sscs;
 
         private enum TabState
         {
@@ -1254,9 +1264,10 @@ namespace HSSSS
             this.tabState = TabState.skinScattering;
 
             this.skin = Properties.skin;
-            this.shadow = Properties.shadow;
             this.ssao = Properties.ssao;
             this.ssgi = Properties.ssgi;
+            this.sscs = Properties.sscs;
+            this.shadow = Properties.shadow;
         }
 
         public void OnGUI()
@@ -1347,6 +1358,7 @@ namespace HSSSS
                     this.skin = Properties.skinUpdate;
                     this.ssao = Properties.ssaoUpdate;
                     this.ssgi = Properties.ssgiUpdate;
+                    this.sscs = Properties.sscsUpdate;
                     this.shadow = Properties.shadowUpdate;
                     Console.WriteLine("#### HSSSS: Loaded Configurations");
                 }
@@ -1364,6 +1376,7 @@ namespace HSSSS
                 Properties.skin = this.skin;
                 Properties.ssao = this.ssao;
                 Properties.ssgi = this.ssgi;
+                Properties.sscs = this.sscs;
                 Properties.shadow = this.shadow;
 
                 if (XmlParser.SaveExternalFile())
@@ -1582,16 +1595,16 @@ namespace HSSSS
                 // directional lights
                 if (this.shadow.pcssEnabled)
                 {
-                    GUILayout.Label("Directional Light / Blocker Search Radius");
+                    GUILayout.Label("Directional Light / Blocker Search Radius (cm)");
                     this.shadow.dirLightPenumbra.x = this.SliderControls(this.shadow.dirLightPenumbra.x, 0.0f, 20.0f);
-                    GUILayout.Label("Directional Light / Light Radius");
+                    GUILayout.Label("Directional Light / Light Radius (cm)");
                     this.shadow.dirLightPenumbra.y = this.SliderControls(this.shadow.dirLightPenumbra.y, 0.0f, 20.0f);
-                    GUILayout.Label("Directional Light / Minimum Penumbra");
+                    GUILayout.Label("Directional Light / Minimum Penumbra (cm)");
                 }
 
                 else
                 {
-                    GUILayout.Label("Directional Light / Penumbra Scale");
+                    GUILayout.Label("Directional Light / Penumbra Scale (cm)");
                 }
 
                 this.shadow.dirLightPenumbra.z = this.SliderControls(this.shadow.dirLightPenumbra.z, 0.0f, 20.0f);
@@ -1601,16 +1614,16 @@ namespace HSSSS
                 // spot lights
                 if (this.shadow.pcssEnabled)
                 {
-                    GUILayout.Label("Spot Light / Blocker Search Radius");
+                    GUILayout.Label("Spot Light / Blocker Search Radius (cm)");
                     this.shadow.spotLightPenumbra.x = this.SliderControls(this.shadow.spotLightPenumbra.x, 0.0f, 20.0f);
-                    GUILayout.Label("Spot Light / Light Radius");
+                    GUILayout.Label("Spot Light / Light Radius (cm)");
                     this.shadow.spotLightPenumbra.y = this.SliderControls(this.shadow.spotLightPenumbra.y, 0.0f, 20.0f);
-                    GUILayout.Label("Spot Light / Minimum Penumbra");
+                    GUILayout.Label("Spot Light / Minimum Penumbra (cm)");
                 }
 
                 else
                 {
-                    GUILayout.Label("Spot Light / Penumbra Scale");
+                    GUILayout.Label("Spot Light / Penumbra Scale (cm)");
                 }
 
                 this.shadow.spotLightPenumbra.z = this.SliderControls(this.shadow.spotLightPenumbra.z, 0.0f, 20.0f);
@@ -1620,16 +1633,16 @@ namespace HSSSS
                 // point lights
                 if (this.shadow.pcssEnabled)
                 {
-                    GUILayout.Label("Point Light / Blocker Search Radius");
+                    GUILayout.Label("Point Light / Blocker Search Radius (cm)");
                     this.shadow.pointLightPenumbra.x = this.SliderControls(this.shadow.pointLightPenumbra.x, 0.0f, 20.0f);
-                    GUILayout.Label("Point Light / Light Radius");
+                    GUILayout.Label("Point Light / Light Radius (cm)");
                     this.shadow.pointLightPenumbra.y = this.SliderControls(this.shadow.pointLightPenumbra.y, 0.0f, 20.0f);
-                    GUILayout.Label("Point Light / Minimum Penumbra");
+                    GUILayout.Label("Point Light / Minimum Penumbra (cm)");
                 }
 
                 else
                 {
-                    GUILayout.Label("Point Light / Penumbra Scale");
+                    GUILayout.Label("Point Light / Penumbra Scale (cm)");
                 }
 
                 this.shadow.pointLightPenumbra.z = this.SliderControls(this.shadow.pointLightPenumbra.z, 0.0f, 20.0f);
@@ -1638,6 +1651,32 @@ namespace HSSSS
             else
             {
                 this.shadow.pcssEnabled = false;
+            }
+            #endregion
+
+            #region SSCS
+            this.Separator();
+            GUILayout.Label("<b>Contact Shadow</b>");
+            bool sscsEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.sscs.enabled), new string[] { "Disable", "Enable" }) == 1;
+
+            if (this.sscs.enabled != sscsEnabled)
+            {
+                this.sscs.enabled = sscsEnabled;
+                this.RefreshWindowSize();
+            }
+
+            if (this.sscs.enabled)
+            {
+                GUILayout.Label("Contact Shadow Quality");
+                this.sscs.quality = (Properties.QualityPreset)GUILayout.Toolbar((int)this.sscs.quality, new string[] { "Low", "Medium", "High", "Ultra" });
+                this.Separator();
+
+                GUILayout.Label("Raytrace Radius (cm)");
+                this.sscs.rayRadius = this.SliderControls(this.sscs.rayRadius, 0.0f, 50.0f);
+                GUILayout.Label("Raytrace Depth Bias (cm)");
+                this.sscs.depthBias = this.SliderControls(this.sscs.depthBias, 0.0f, 1.0f);
+                GUILayout.Label("Mean Depth (m)");
+                this.sscs.meanDepth = this.SliderControls(this.sscs.meanDepth, 0.0f, 2.0f);
             }
             #endregion
         }
@@ -1678,16 +1717,16 @@ namespace HSSSS
 
                 this.Separator();
 
-                GUILayout.Label("Raytrace Radius");
+                GUILayout.Label("Raytrace Radius (m)");
                 this.ssao.rayRadius = this.SliderControls(this.ssao.rayRadius, 0.0f, 1.0f);
                 GUILayout.Label("Raytrace Stride");
                 this.ssao.rayStride = this.SliderControls(this.ssao.rayStride, 1, 4);
 
                 this.Separator();
 
-                GUILayout.Label("Mean Depth");
+                GUILayout.Label("Mean Depth (m)");
                 this.ssao.meanDepth = this.SliderControls(this.ssao.meanDepth, 0.0f, 2.00f);
-                GUILayout.Label("Fade Depth");
+                GUILayout.Label("Fade Depth (m)");
                 this.ssao.fadeDepth = this.SliderControls(this.ssao.fadeDepth, 1.0f, 1000.0f);
 
                 this.Separator();
@@ -1730,14 +1769,14 @@ namespace HSSSS
 
                 this.Separator();
 
-                GUILayout.Label("Raytrace Radius");
+                GUILayout.Label("Raytrace Radius (m)");
                 this.ssgi.rayRadius = this.SliderControls(this.ssgi.rayRadius, 0.0f, 4.0f);
                 GUILayout.Label("Raytrace Stride");
                 this.ssgi.rayStride = this.SliderControls(this.ssgi.rayStride, 1, 4);
 
                 this.Separator();
 
-                GUILayout.Label("Fade Depth");
+                GUILayout.Label("Fade Depth (m)");
                 this.ssgi.fadeDepth = this.SliderControls(this.ssgi.fadeDepth, 1.0f, 1000.0f);
 
                 this.Separator();
@@ -1868,6 +1907,7 @@ namespace HSSSS
             Properties.skinUpdate = this.skin;
             Properties.ssaoUpdate = this.ssao;
             Properties.ssgiUpdate = this.ssgi;
+            Properties.sscsUpdate = this.sscs;
             Properties.shadowUpdate = this.shadow;
 
             Properties.UpdateSkin();

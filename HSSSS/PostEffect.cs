@@ -370,82 +370,6 @@ namespace HSSSS
         #endregion
     }
 
-    /*
-    public class BackFaceRenderer : MonoBehaviour
-    {
-        private Camera mainCamera;
-        private Camera depthCamera;
-        private RenderTexture depthBuffer;
-        private GameObject depthCameraObj;
-
-        public void OnEnable()
-        {
-            this.SetUpDepthCamera();
-        }
-
-        public void OnDisable()
-        {
-            DestroyObject(this.depthCamera);
-            DestroyImmediate(this.depthBuffer);
-
-            this.mainCamera = null;
-            this.depthCamera = null;
-            this.depthBuffer = null;
-        }
-
-        public void OnPreCull()
-        {
-            if (this.depthCamera && this.mainCamera)
-            {
-                this.UpdateCameraParams();
-                this.CaptureDepthBuffer();
-            }
-        }
-
-        private void SetUpDepthCamera()
-        {
-            this.mainCamera = GetComponent<Camera>();
-
-            if (this.depthCamera == null)
-            {
-                this.depthCameraObj = new GameObject("HSSSS.BackFaceDepthCamera");
-                this.depthCamera = this.depthCameraObj.AddComponent<Camera>();
-            }
-
-            this.depthCamera.name = "HSSSS.BackFaceDepthCamera";
-            this.depthCamera.enabled = false;
-            this.depthCamera.backgroundColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
-            this.depthCamera.clearFlags = CameraClearFlags.SolidColor;
-            this.depthCamera.renderingPath = RenderingPath.VertexLit;
-
-            this.depthCamera.cullingMask = 0;
-            this.depthCamera.cullingMask |= 1 << LayerMask.NameToLayer("Chara");
-            this.depthCamera.cullingMask |= 1 << LayerMask.NameToLayer("Map");
-        }
-
-        private void UpdateCameraParams()
-        {
-            this.depthCamera.transform.position = this.mainCamera.transform.position;
-            this.depthCamera.transform.rotation = this.mainCamera.transform.rotation;
-            this.depthCamera.fieldOfView = this.mainCamera.fieldOfView;
-            this.depthCamera.nearClipPlane = this.mainCamera.nearClipPlane;
-            this.depthCamera.farClipPlane = this.mainCamera.farClipPlane;
-        }
-
-        private void CaptureDepthBuffer()
-        {
-            this.depthBuffer = RenderTexture.GetTemporary(
-                Screen.width, Screen.height, 24,
-                RenderTextureFormat.Depth, RenderTextureReadWrite.Linear
-                );
-            this.depthCamera.targetTexture = this.depthBuffer;
-            this.depthCamera.RenderWithShader(HSSSS.backFaceDepthShader, "");
-            Shader.SetGlobalTexture("_BackFaceDepthBuffer", this.depthBuffer);
-            RenderTexture.ReleaseTemporary(this.depthBuffer);
-        }
-    }
-    */
-
     public class SSAORenderer : MonoBehaviour
     {
         private Camera mCamera;
@@ -614,8 +538,8 @@ namespace HSSSS
             {
                 if (this.mBuffer != null)
                 {
-                    this.RemoveCommandBuffer();
                     this.RemoveHistoryBuffer();
+                    this.RemoveCommandBuffer();
                 }
             }
         }
@@ -704,7 +628,6 @@ namespace HSSSS
         private void SetupHistoryBuffer()
         {
             this.giHistory = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.giHistory.filterMode = FilterMode.Bilinear;
             this.giHistory.Create();
 
             this.zbHistory = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
@@ -720,11 +643,17 @@ namespace HSSSS
 
         private void RemoveHistoryBuffer()
         {
-            this.giHistory.Release();
-            this.giHistory = null;
+            if (this.giHistory)
+            {
+                this.giHistory.Release();
+                this.giHistory = null;
+            }
 
-            this.zbHistory.Release();
-            this.zbHistory = null;
+            if (this.zbHistory)
+            {
+                this.zbHistory.Release();
+                this.zbHistory = null;
+            }
         }
 
         private void UpdateMatrices()
