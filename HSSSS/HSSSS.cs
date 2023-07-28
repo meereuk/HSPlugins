@@ -15,7 +15,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.6.1"; } }
+        public string Version { get { return "1.6.3"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -1675,7 +1675,7 @@ namespace HSSSS
                 this.sscs.rayRadius = this.SliderControls(this.sscs.rayRadius, 0.0f, 50.0f);
                 GUILayout.Label("Raytrace Depth Bias (cm)");
                 this.sscs.depthBias = this.SliderControls(this.sscs.depthBias, 0.0f, 1.0f);
-                GUILayout.Label("Mean Depth (m)");
+                GUILayout.Label("Mean Thickness (m)");
                 this.sscs.meanDepth = this.SliderControls(this.sscs.meanDepth, 0.0f, 2.0f);
             }
             #endregion
@@ -1724,11 +1724,16 @@ namespace HSSSS
 
                 this.Separator();
 
-                GUILayout.Label("Mean Depth (m)");
+                GUILayout.Label("Mean Thickness (m)");
                 this.ssao.meanDepth = this.SliderControls(this.ssao.meanDepth, 0.0f, 2.00f);
                 GUILayout.Label("Fade Depth (m)");
                 this.ssao.fadeDepth = this.SliderControls(this.ssao.fadeDepth, 1.0f, 1000.0f);
 
+                this.Separator();
+                GUILayout.Label("SSDO");
+                this.ssao.usessdo = GUILayout.Toolbar(Convert.ToUInt16(this.ssao.usessdo), new string[] { "Off", "On" }) == 1;
+                GUILayout.Label("SSDO Light Apature");
+                this.ssao.doApature = this.SliderControls(this.ssao.doApature, 0.0f, 1.0f);
                 this.Separator();
 
                 GUILayout.Label("Spatial Denoiser");

@@ -98,6 +98,7 @@ namespace HSSSS
         {
             public bool enabled;
             public bool usegtao;
+            public bool usessdo;
             public bool denoise;
 
             public QualityPreset quality;
@@ -107,6 +108,7 @@ namespace HSSSS
             public float rayRadius;
             public float meanDepth;
             public float fadeDepth;
+            public float doApature;
             public int rayStride;
             public int screenDiv;
         }
@@ -193,6 +195,7 @@ namespace HSSSS
         {
             enabled = false,
             usegtao = false,
+            usessdo = false,
             denoise = false,
 
             quality = QualityPreset.medium,
@@ -202,6 +205,7 @@ namespace HSSSS
             rayRadius = 0.1f,
             meanDepth = 0.5f,
             fadeDepth = 100.0f,
+            doApature = 0.5f,
             rayStride = 2,
             screenDiv = 1
         };
@@ -231,11 +235,11 @@ namespace HSSSS
             meanDepth = 1.0f
         };
 
-        public static SkinProperties skinUpdate;
-        public static SSAOProperties ssaoUpdate;
-        public static SSGIProperties ssgiUpdate;
-        public static SSCSProperties sscsUpdate;
-        public static ShadowProperties shadowUpdate;
+        public static SkinProperties skinUpdate = skin;
+        public static SSAOProperties ssaoUpdate = ssao;
+        public static SSGIProperties ssgiUpdate = ssgi;
+        public static SSCSProperties sscsUpdate = sscs;
+        public static ShadowProperties shadowUpdate = shadow;
 
         public static void UpdateSkin()
         {
@@ -393,6 +397,11 @@ namespace HSSSS
             if (ssao.enabled)
             {
                 HSSSS.SSAORenderer.UpdateSSAOSettings(soft);
+            }
+
+            else
+            {
+                Shader.SetGlobalInt("_UseDirectOcclusion", 0);
             }
         }
 

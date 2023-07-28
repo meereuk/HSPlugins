@@ -119,6 +119,8 @@ namespace HSSSS
                 writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.ssao.enabled));
                 // visibility function
                 writer.WriteElementString("UseGTAO", XmlConvert.ToString(Properties.ssao.usegtao));
+                // direct occlusion
+                writer.WriteElementString("UseSSDO", XmlConvert.ToString(Properties.ssao.usessdo));
                 // quality
                 writer.WriteElementString("Quality", Convert.ToString(Properties.ssao.quality));
                 // deinterleaving
@@ -135,6 +137,8 @@ namespace HSSSS
                 writer.WriteElementString("MeanDepth", XmlConvert.ToString(Properties.ssao.meanDepth));
                 // fade depth
                 writer.WriteElementString("FadeDepth", XmlConvert.ToString(Properties.ssao.fadeDepth));
+                // ssdo apature
+                writer.WriteElementString("DOApature", XmlConvert.ToString(Properties.ssao.doApature));
                 // spatial denoiser
                 writer.WriteElementString("Denoiser", XmlConvert.ToString(Properties.ssao.denoise));
             }
@@ -358,6 +362,7 @@ namespace HSSSS
                             switch (child1.Name)
                             {
                                 case "UseGTAO": Properties.ssaoUpdate.usegtao = XmlConvert.ToBoolean(child1.InnerText); break;
+                                case "UseSSDO": Properties.ssaoUpdate.usessdo = XmlConvert.ToBoolean(child1.InnerText); break;
                                 case "Quality": Properties.ssaoUpdate.quality = (Properties.QualityPreset)Enum.Parse(typeof(Properties.QualityPreset), child1.InnerText); break;
                                 case "ScreenDiv": Properties.ssaoUpdate.screenDiv = XmlConvert.ToUInt16(child1.InnerText); break;
                                 case "Intensity": Properties.ssaoUpdate.intensity = XmlConvert.ToSingle(child1.InnerText); break;
@@ -366,6 +371,7 @@ namespace HSSSS
                                 case "RayStride": Properties.ssaoUpdate.rayStride = XmlConvert.ToUInt16(child1.InnerText); break;
                                 case "MeanDepth": Properties.ssaoUpdate.meanDepth = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "FadeDepth": Properties.ssaoUpdate.fadeDepth = XmlConvert.ToSingle(child1.InnerText); break;
+                                case "DOApature": Properties.ssaoUpdate.doApature = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "Denoiser": Properties.ssaoUpdate.denoise = XmlConvert.ToBoolean(child1.InnerText); break;
                             }
                         }

@@ -415,27 +415,40 @@ namespace HSSSS
             // SSAO command buffer
             this.mBuffer = new CommandBuffer() { name = "HSSSS.SSAO" };
 
-            int zbuf = Shader.PropertyToID("_FuckingMoronsUnityDev");
+            int zbf0 = Shader.PropertyToID("_HierachicalZBuffer0");
+            int zbf1 = Shader.PropertyToID("_HierachicalZBuffer1");
+            int zbf2 = Shader.PropertyToID("_HierachicalZBuffer2");
+            int zbf3 = Shader.PropertyToID("_HierachicalZBuffer3");
+
             int flip = Shader.PropertyToID("_SSAOFlipRenderTexture");
             int flop = Shader.PropertyToID("_SSAOFlopRenderTexture");
 
-            this.mBuffer.GetTemporaryRT(zbuf, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf0, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf1, Screen.width / 2, Screen.height / 2, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf2, Screen.width / 4, Screen.height / 4, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf3, Screen.width / 8, Screen.height / 8, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+
             this.mBuffer.GetTemporaryRT(flip, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(flop, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             
             // z-buffer prepass
-            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, zbuf, this.mMaterial, 0);
-            
-            // full resolution ssao
+            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, zbf0, this.mMaterial, 0);
+
+            // hierachical z buffers
+            this.mBuffer.Blit(zbf0, zbf1);
+            this.mBuffer.Blit(zbf1, zbf2);
+            this.mBuffer.Blit(zbf2, zbf3);
+
+            // gtao
             if (Properties.ssao.usegtao)
             {
-                this.mBuffer.Blit(zbuf, flip, this.mMaterial, (int)Properties.ssao.quality + 5);
+                this.mBuffer.Blit(zbf0, flip, this.mMaterial, (int)Properties.ssao.quality + 5);
             }
             
-            // full resolution gtao
+            // hbao
             else
             {
-                this.mBuffer.Blit(zbuf, flip, this.mMaterial, (int)Properties.ssao.quality + 1);
+                this.mBuffer.Blit(zbf0, flip, this.mMaterial, (int)Properties.ssao.quality + 1);
             }
 
             // decode pass
@@ -456,10 +469,15 @@ namespace HSSSS
             // specular occlusion
             this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flip, this.mMaterial, 16);
             this.mBuffer.Blit(flip, BuiltinRenderTextureType.Reflections);
+            // direct occlusion
+            this.mBuffer.SetGlobalTexture("_SSDOBentNormalTexture", flop);
 
             this.mBuffer.ReleaseTemporaryRT(flip);
             this.mBuffer.ReleaseTemporaryRT(flop);
-            this.mBuffer.ReleaseTemporaryRT(zbuf);
+            this.mBuffer.ReleaseTemporaryRT(zbf0);
+            this.mBuffer.ReleaseTemporaryRT(zbf1);
+            this.mBuffer.ReleaseTemporaryRT(zbf2);
+            this.mBuffer.ReleaseTemporaryRT(zbf3);
 
             this.mCamera.AddCommandBuffer(CameraEvent.AfterReflections, this.mBuffer);
         }
@@ -496,6 +514,9 @@ namespace HSSSS
                 this.mMaterial.SetFloat("_SSAOMeanDepth", Properties.ssao.meanDepth);
                 this.mMaterial.SetInt(  "_SSAORayStride", Properties.ssao.rayStride);
                 this.mMaterial.SetInt(  "_SSAOScreenDiv", Properties.ssao.screenDiv);
+
+                Shader.SetGlobalInt("_UseDirectOcclusion", Properties.ssao.usessdo ? 1 : 0);
+                Shader.SetGlobalFloat("_SSDOLightApatureScale", Properties.ssao.doApature);
             }
 
             if (!soft)
