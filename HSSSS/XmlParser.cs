@@ -209,6 +209,15 @@ namespace HSSSS
 
         public static void LoadXml(XmlNode node)
         {
+            string version = node.Attributes["version"].Value;
+
+            Console.WriteLine("#### HSSSS: Saved configurations from version... " + version);
+
+            if (version != HSSSS.pluginVersion)
+            {
+                Console.WriteLine("#### HSSSS: Saved configurations do not match the version (this message may be harmless)");
+            }
+
             foreach (XmlNode child0 in node.ChildNodes)
             {
                 switch (child0.Name)

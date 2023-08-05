@@ -103,17 +103,24 @@ namespace HSSSS
 
         private void InitializeCommandBuffer()
         {
+            RenderTargetIdentifier sourceID = BuiltinRenderTextureType.CurrentActive;
+            int targetID = Shader.PropertyToID("_CustomShadowMap");
+            this.mBuffer = new CommandBuffer() { name = this.bufferName };
+            this.mBuffer.SetShadowSamplingMode(sourceID, ShadowSamplingMode.RawDepth);
+
             if (this.mLight.type == LightType.Directional)
             {
-                RenderTargetIdentifier sourceID = BuiltinRenderTextureType.CurrentActive;
-                int targetID = Shader.PropertyToID("_CustomShadowMap");
-                this.mBuffer = new CommandBuffer() { name = this.bufferName };
-                this.mBuffer.SetShadowSamplingMode(sourceID, ShadowSamplingMode.RawDepth);
-                this.mBuffer.GetTemporaryRT(targetID, 4096, 4096, 0, FilterMode.Bilinear, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
-                this.mBuffer.Blit(sourceID, targetID);
-                this.mBuffer.ReleaseTemporaryRT(targetID);
-                this.mLight.AddCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
+                this.mBuffer.GetTemporaryRT(targetID, 4096, 4096, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             }
+
+            else if (this.mLight.type == LightType.Spot)
+            {
+                this.mBuffer.GetTemporaryRT(targetID, 2048, 2048, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            }
+
+            this.mBuffer.Blit(sourceID, targetID);
+            this.mBuffer.ReleaseTemporaryRT(targetID);
+            this.mLight.AddCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
         }
 
         private bool HasCommandBuffer()
@@ -129,87 +136,4 @@ namespace HSSSS
             return false;
         }
     }
-
-    /*
-    public class ContactShadowSampler : MonoBehaviour
-    {
-        private Light mLight;
-        private Shader mShader;
-        private Material mMaterial;
-        private CommandBuffer mBuffer;
-
-        private static Matrix4x4 WorldToViewMatrix;
-        private static Matrix4x4 ViewToWorldMatrix;
-
-        private static Camera mainCamera;
-
-        private void Awake()
-        {
-        }
-
-        private void OnEnable()
-        {
-            this.mLight = GetComponent<Light>();
-            this.mShader = HSSSS.contactShadowShader;
-            this.mMaterial = new Material(this.mShader);
-            this.mMaterial.SetTexture("_ShadowJitterTexture", HSSSS.shadowJitter);
-
-            if (this.mLight)
-            {
-                this.SetupCommandBuffer();
-            }
-        }
-
-        private void OnDisable()
-        {
-            if (this.mLight)
-            {
-                this.DestroyCommandBuffer();
-            }
-        }
-
-        private void Update()
-        {
-            this.mMaterial.SetMatrix("_WorldToViewMatrix", WorldToViewMatrix);
-            this.mMaterial.SetMatrix("_ViewToWorldMatrix", ViewToWorldMatrix);
-
-            this.mMaterial.SetVector("_LightPosition", this.mLight.gameObject.transform.position);
-        }
-
-        private void SetupCommandBuffer()
-        {
-            int shadowMap = Shader.PropertyToID("_ScreenSpaceShadowMap");
-
-            this.mBuffer = new CommandBuffer();
-            this.mBuffer.name = "SSCSSampler";
-            this.mBuffer.GetTemporaryRT(shadowMap, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
-            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, shadowMap, this.mMaterial, 0);
-            this.mBuffer.ReleaseTemporaryRT(shadowMap);
-            this.mLight.AddCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
-        }
-
-        private void DestroyCommandBuffer()
-        {
-            this.mLight.RemoveCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
-            this.mBuffer = null;
-        }
-
-        public static void SetMainCamera(Camera camera)
-        {
-            if (camera)
-            {
-                mainCamera = camera;
-            }
-        }
-
-        public static void UpdateViewMatrix()
-        {
-            if (mainCamera)
-            {
-                WorldToViewMatrix = mainCamera.worldToCameraMatrix;
-                ViewToWorldMatrix = WorldToViewMatrix.inverse;
-            }
-        }
-    }
-    */
 }

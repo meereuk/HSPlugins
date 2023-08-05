@@ -161,8 +161,8 @@ namespace HSSSS
             this.copyBuffer = new CommandBuffer() { name = this.copyBufferName };
 
             // get temporary rendertextures
-            this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8);
-            this.copyBuffer.GetTemporaryRT(ambiRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
+            this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
+            this.copyBuffer.GetTemporaryRT(ambiRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
             // extract thickness map from gbuffer 3
             this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, copyMaterial, 0);
@@ -189,10 +189,10 @@ namespace HSSSS
             this.diffuseBlurBuffer = new CommandBuffer() { name = this.blurBufferName };
 
             // get temporary rendertextures
-            this.diffuseBlurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
-            this.diffuseBlurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
+            this.diffuseBlurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.diffuseBlurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
-            this.diffuseBlurBuffer.Blit(BuiltinRenderTextureType.CurrentActive, flipRT);
+            this.diffuseBlurBuffer.Blit(BuiltinRenderTextureType.CurrentActive, flipRT, diffuseBlurMaterial, 0);
 
             // separable blur
             for (int i = 0; i < Properties.skin.normalBlurIter; i ++)
@@ -232,8 +232,8 @@ namespace HSSSS
             this.copyBuffer = new CommandBuffer() { name = this.copyBufferName };
 
             // get temporary rendertextures
-            this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RHalf);
-            this.copyBuffer.GetTemporaryRT(specRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
+            this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
+            this.copyBuffer.GetTemporaryRT(specRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
             // extract thickness map from gbuffer 3
             this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, copyMaterial, 0);
@@ -257,9 +257,9 @@ namespace HSSSS
 
             this.normalBlurBuffer = new CommandBuffer() { name = this.blurBufferName };
 
-            this.normalBlurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010);
-            this.normalBlurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010);
-            this.normalBlurBuffer.GetTemporaryRT(buffRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010);
+            this.normalBlurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear);
+            this.normalBlurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear);
+            this.normalBlurBuffer.GetTemporaryRT(buffRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear);
 
             if (Properties.skin.normalBlurIter > 0)
             {
@@ -298,7 +298,7 @@ namespace HSSSS
             this.copyBuffer = new CommandBuffer() { name = this.copyBufferName };
 
             // get temporary rendertextures
-            this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8);
+            this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
 
             // extract thickness map from gbuffer 3
             this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, copyMaterial, 0);
@@ -581,22 +581,36 @@ namespace HSSSS
 
             this.mBuffer = new CommandBuffer() { name = "HSSSS.SSGI" };
 
-            int ilum = Shader.PropertyToID("_SSGIIrradianceTexture");
+            int ibf0 = Shader.PropertyToID("_HierachicalIrradianceBuffer0");
+            int ibf1 = Shader.PropertyToID("_HierachicalIrradianceBuffer1");
+            int ibf2 = Shader.PropertyToID("_HierachicalIrradianceBuffer2");
+            int ibf3 = Shader.PropertyToID("_HierachicalIrradianceBuffer3");
+
+            //int ilum = Shader.PropertyToID("_SSGIIrradianceTexture");
             int flip = Shader.PropertyToID("_SSGIFlipRenderTexture");
             int flop = Shader.PropertyToID("_SSGIFlopRenderTexture");
 
             switch (Properties.ssgi.samplescale)
             {
                 case Properties.RenderScale.quarter:
-                    this.mBuffer.GetTemporaryRT(ilum, Screen.width / 4, Screen.height / 4, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf0, Screen.width / 4, Screen.height / 4, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf1, Screen.width / 8, Screen.height / 8, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf2, Screen.width / 16, Screen.height / 16, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf3, Screen.width / 32, Screen.height / 32, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
                     break;
 
                 case Properties.RenderScale.half:
-                    this.mBuffer.GetTemporaryRT(ilum, Screen.width / 2, Screen.height / 2, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf0, Screen.width / 2, Screen.height / 2, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf1, Screen.width / 4, Screen.height / 4, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf2, Screen.width / 8, Screen.height / 8, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf3, Screen.width / 16, Screen.height / 16, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
                     break;
 
                 case Properties.RenderScale.full:
-                    this.mBuffer.GetTemporaryRT(ilum, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf0, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf1, Screen.width / 2, Screen.height / 2, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf2, Screen.width / 4, Screen.height / 4, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                    this.mBuffer.GetTemporaryRT(ibf3, Screen.width / 8, Screen.height / 8, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
                     break;
             }
 
@@ -604,10 +618,15 @@ namespace HSSSS
             this.mBuffer.GetTemporaryRT(flop, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
             // prepass
-            this.mBuffer.Blit(hist, ilum, this.mMaterial, 0);
+            this.mBuffer.Blit(hist, ibf0, this.mMaterial, 0);
+            this.mBuffer.Blit(ibf0, ibf1);
+            this.mBuffer.Blit(ibf1, ibf2);
+            this.mBuffer.Blit(ibf2, ibf3);
+
+            //this.mBuffer.Blit(hist, ilum, this.mMaterial, 0);
 
             // main pass
-            this.mBuffer.Blit(ilum, flip, this.mMaterial, (int)Properties.ssgi.quality + 1);
+            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, flip, this.mMaterial, (int)Properties.ssgi.quality + 1);
 
             // temporal
             this.mBuffer.Blit(flip, flop, this.mMaterial, 5);
@@ -633,7 +652,12 @@ namespace HSSSS
             this.mBuffer.Blit(flop, flip, this.mMaterial, 11);
             this.mBuffer.Blit(flip, BuiltinRenderTextureType.CameraTarget);
 
-            this.mBuffer.ReleaseTemporaryRT(ilum);
+            this.mBuffer.ReleaseTemporaryRT(ibf0);
+            this.mBuffer.ReleaseTemporaryRT(ibf1);
+            this.mBuffer.ReleaseTemporaryRT(ibf2);
+            this.mBuffer.ReleaseTemporaryRT(ibf3);
+
+            //this.mBuffer.ReleaseTemporaryRT(ilum);
             this.mBuffer.ReleaseTemporaryRT(flip);
             this.mBuffer.ReleaseTemporaryRT(flop);
 

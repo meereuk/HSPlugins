@@ -15,7 +15,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.6.3"; } }
+        public string Version { get { return "1.6.4"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -48,7 +48,6 @@ namespace HSSSS
         public static Shader initSpecularShader;
         public static Shader transmissionBlitShader;
         public static Shader backFaceDepthShader;
-        public static Shader contactShadowShader;
         public static Shader temporalBlendShader;
         public static Shader ssaoShader;
         public static Shader ssgiShader;
@@ -549,7 +548,6 @@ namespace HSSSS
             initSpecularShader = assetBundle.LoadAsset<Shader>("InitSpecularBuffer");
             transmissionBlitShader = assetBundle.LoadAsset<Shader>("TransmissionBlit");
             backFaceDepthShader = assetBundle.LoadAsset<Shader>("BackFaceDepth");
-            contactShadowShader = assetBundle.LoadAsset<Shader>("ScreenSpaceShadow");
             temporalBlendShader = assetBundle.LoadAsset<Shader>("TemporalBlend");
             ssaoShader = assetBundle.LoadAsset<Shader>("SSAO");
             ssgiShader = assetBundle.LoadAsset<Shader>("SSGI");
@@ -576,11 +574,6 @@ namespace HSSSS
             if (null == deferredShading || null == deferredReflections)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Deferred Internal Shaders");
-            }
-
-            if (null == contactShadowShader)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Contact Shadow Shader");
             }
 
             if (null == ssaoShader)
@@ -749,50 +742,18 @@ namespace HSSSS
                 {
                     __instance.light.gameObject.AddComponent<CookieUpdater>();
                 }
-
-                /*
-                Renderer rend = __instance.light.gameObject.GetComponent<Renderer>();
-
-                if (null == __instance.light.cookie)
-                {
-                    __instance.light.cookie = spotCookie;
-                }
-
-                Renderer rend = __instance.light.gameObject.GetComponent<Renderer>();
-
-                if (rend == null)
-                {
-                    rend = __instance.light.gameObject.AddComponent<MeshRenderer>();
-                    rend.material = new Material(Shader.Find("Standard"));
-                    rend.material.SetTexture("_MainTex", spotCookie);
-
-                    __instance.light.cookie = spotCookie;
-                }
-
-                else
-                {
-                    __instance.light.cookie = rend.material.GetTexture("_MainTex");
-                }
-                */
             }
         }
 
         private static void ShadowMapPatcher(OCILight __instance)
         {
-            if (__instance.lightType == LightType.Directional)
+            if (__instance.lightType == LightType.Directional || __instance.lightType == LightType.Spot)
             {
                 if (__instance.light.gameObject.GetComponent<ShadowMapDispatcher>() == null)
                 {
                     __instance.light.gameObject.AddComponent<ShadowMapDispatcher>();
                 }
             }
-
-            /*
-            if (__instance.light.gameObject.GetComponent<ContactShadowSampler>() == null)
-            {
-                __instance.light.gameObject.AddComponent<ContactShadowSampler>();
-            }
-            */
         }
 
         private class SkinReplacer
