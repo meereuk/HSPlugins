@@ -243,6 +243,7 @@ namespace HSSSS
                                         {
                                             case "Scale": Properties.skinUpdate.skinLutScale = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "Bias": Properties.skinUpdate.skinLutBias = XmlConvert.ToSingle(child2.InnerText); break;
+                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
                                         }
                                     }
                                     break;
@@ -254,6 +255,7 @@ namespace HSSSS
                                         {
                                             case "Scale": Properties.skinUpdate.shadowLutScale = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "Bias": Properties.skinUpdate.shadowLutBias = XmlConvert.ToSingle(child2.InnerText); break;
+                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
                                         }
                                     }
                                     break;
@@ -267,6 +269,7 @@ namespace HSSSS
                                             case "Radius": Properties.skinUpdate.normalBlurRadius = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "CorrectionDepth": Properties.skinUpdate.normalBlurDepthRange = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "Iterations": Properties.skinUpdate.normalBlurIter = XmlConvert.ToInt32(child2.InnerText); break;
+                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
                                         }
                                     }
                                     break;
@@ -279,6 +282,7 @@ namespace HSSSS
                                             case "Red": Properties.skinUpdate.colorBleedWeights.x = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "Green": Properties.skinUpdate.colorBleedWeights.y = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "Blue": Properties.skinUpdate.colorBleedWeights.z = XmlConvert.ToSingle(child2.InnerText); break;
+                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
                                         }
                                     }
                                     break;
@@ -291,9 +295,12 @@ namespace HSSSS
                                             case "Red": Properties.skinUpdate.transAbsorption.x = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "Green": Properties.skinUpdate.transAbsorption.y = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "Blue": Properties.skinUpdate.transAbsorption.z = XmlConvert.ToSingle(child2.InnerText); break;
+                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
                                         }
                                     }
                                     break;
+
+                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
                             }
                         }
                         break;
@@ -312,6 +319,7 @@ namespace HSSSS
                                 case "ShadowWeight": Properties.skinUpdate.transShadowWeight = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "FallOff": Properties.skinUpdate.transFalloff = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "ThicknessBias": Properties.skinUpdate.thicknessBias = XmlConvert.ToSingle(child1.InnerText); break;
+                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
                             }
                         }
                         break;
@@ -333,6 +341,7 @@ namespace HSSSS
                                             case "SearchRadius": Properties.shadowUpdate.dirLightPenumbra.x = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "LightRadius": Properties.shadowUpdate.dirLightPenumbra.y = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "MinPenumbra": Properties.shadowUpdate.dirLightPenumbra.z = XmlConvert.ToSingle(child2.InnerText); break;
+                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
                                         }
                                     }
                                     break;
@@ -345,6 +354,7 @@ namespace HSSSS
                                             case "SearchRadius": Properties.shadowUpdate.spotLightPenumbra.x = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "LightRadius": Properties.shadowUpdate.spotLightPenumbra.y = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "MinPenumbra": Properties.shadowUpdate.spotLightPenumbra.z = XmlConvert.ToSingle(child2.InnerText); break;
+                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
                                         }
                                     }
                                     break;
@@ -357,9 +367,12 @@ namespace HSSSS
                                             case "SearchRadius": Properties.shadowUpdate.pointLightPenumbra.x = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "LightRadius": Properties.shadowUpdate.pointLightPenumbra.y = XmlConvert.ToSingle(child2.InnerText); break;
                                             case "MinPenumbra": Properties.shadowUpdate.pointLightPenumbra.z = XmlConvert.ToSingle(child2.InnerText); break;
+                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
                                         }
                                     }
                                     break;
+
+                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
                             }
                         }
                         break;
@@ -382,6 +395,7 @@ namespace HSSSS
                                 case "FadeDepth": Properties.ssaoUpdate.fadeDepth = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "DOApature": Properties.ssaoUpdate.doApature = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "Denoiser": Properties.ssaoUpdate.denoise = XmlConvert.ToBoolean(child1.InnerText); break;
+                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
                             }
                         }
                         break;
@@ -402,6 +416,7 @@ namespace HSSSS
                                 case "FadeDepth": Properties.ssgiUpdate.fadeDepth = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "Denoiser": Properties.ssgiUpdate.denoise = XmlConvert.ToBoolean(child1.InnerText); break;
                                 case "MixWeight": Properties.ssgiUpdate.mixWeight = XmlConvert.ToSingle(child1.InnerText); break;
+                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
                             }
                         }
                         break;
@@ -416,6 +431,7 @@ namespace HSSSS
                                 case "RayRadius": Properties.sscsUpdate.rayRadius = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "DepthBias": Properties.sscsUpdate.depthBias = XmlConvert.ToSingle(child1.InnerText); break;
                                 case "MeanDepth": Properties.sscsUpdate.meanDepth = XmlConvert.ToSingle(child1.InnerText); break;
+                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "is; ignored"); break;
                             }
                         }
                         break;
@@ -454,6 +470,8 @@ namespace HSSSS
                             }
                         }
                         break;
+
+                    default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "is; ignored"); break;
                 }
             }
         }

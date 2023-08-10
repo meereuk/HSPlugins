@@ -354,7 +354,7 @@ namespace HSSSS
                 {
                     Shader.EnableKeyword("_PCF_ON");
                     Shader.SetGlobalInt("_SoftShadowNumIter", (int)shadow.pcfState + 2);
-                    Shader.SetGlobalTexture("_ShadowJitterTexture", HSSSS.shadowJitter);
+                    Shader.SetGlobalTexture("_ShadowJitterTexture", HSSSS.blueNoise);
                 }
 
                 if (shadow.pcssEnabled)
@@ -379,9 +379,6 @@ namespace HSSSS
                 Shader.SetGlobalFloat("_SSCSMeanDepth", sscs.meanDepth);
                 Shader.SetGlobalInt(  "_SSCSRayStride", (int)sscs.quality + 4);
             }
-
-            //Shader.SetGlobalTexture("_AreaLightLUT", HSSSS.areaLightLUT);
-            //Shader.SetGlobalFloat("_AreaLightScale", 0.1f);
         }
 
         public static void UpdateSSAO()

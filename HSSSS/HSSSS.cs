@@ -15,7 +15,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.6.4"; } }
+        public string Version { get { return "1.6.4-canary"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -58,9 +58,8 @@ namespace HSSSS
         public static Texture2D faceWorksSkinLUT;
         public static Texture2D faceWorksShadowLUT;
         public static Texture2D deepScatterLUT;
-        public static Texture2D blueNoise;
         public static Texture2D skinJitter;
-        public static Texture2D shadowJitter;
+        public static Texture2D blueNoise;
 
         // body materials
         private static Material skinMaterial;
@@ -296,6 +295,7 @@ namespace HSSSS
                     Console.WriteLine("#### HSSSS: Failed to Load Configurations in the Scene File");
                 }
             }
+
             else
             {
                 Console.WriteLine("#### HSSSS: Could not Find Configurations in the Scene File");
@@ -467,9 +467,8 @@ namespace HSSSS
             deepScatterLUT = assetBundle.LoadAsset<Texture2D>("DeepScatterLUT");
 
             // jitter texture
-            blueNoise = assetBundle.LoadAsset<Texture2D>("BlueNoise");
             skinJitter = assetBundle.LoadAsset<Texture2D>("SkinJitter");
-            shadowJitter = assetBundle.LoadAsset<Texture2D>("ShadowJitter");
+            blueNoise = assetBundle.LoadAsset<Texture2D>("BlueNoise");
             
             // spotlight cookie
             spotCookie = assetBundle.LoadAsset<Texture2D>("DefaultSpotCookie");
@@ -508,11 +507,6 @@ namespace HSSSS
             if (null == skinJitter)
             {
                 Console.WriteLine("#### HSSSS: Failed to Load Skin Jitter Texture");
-            }
-
-            if (null == shadowJitter)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Shadow Jitter Texture");
             }
 
             if (null == spotCookie)
@@ -899,19 +893,21 @@ namespace HSSSS
                 }
 
                 // microdetails tiling
+                Vector2 tiling = new Vector2(Math.Max(Properties.skin.microDetailTiling, 0.01f), Math.Max(Properties.skin.microDetailTiling, 0.01f));
+
                 if (targetMaterial.HasProperty("_DetailNormalMap_2"))
                 {
-                    targetMaterial.SetTextureScale("_DetailNormalMap_2", new Vector2(Properties.skin.microDetailTiling, Properties.skin.microDetailTiling));
+                    targetMaterial.SetTextureScale("_DetailNormalMap_2", tiling);
                 }
 
                 if (targetMaterial.HasProperty("_DetailNormalMap_3"))
                 {
-                    targetMaterial.SetTextureScale("_DetailNormalMap_3", new Vector2(Properties.skin.microDetailTiling, Properties.skin.microDetailTiling));
+                    targetMaterial.SetTextureScale("_DetailNormalMap_3", tiling);
                 }
 
                 if (targetMaterial.HasProperty("_DetailSkinPoreMap"))
                 {
-                    targetMaterial.SetTextureScale("_DetailSkinPoreMap", new Vector2(Properties.skin.microDetailTiling, Properties.skin.microDetailTiling));
+                    targetMaterial.SetTextureScale("_DetailSkinPoreMap", tiling);
                 }
 
                 // tessellation
@@ -1766,7 +1762,7 @@ namespace HSSSS
             GUILayout.Label("MicroDetail #2 Strength");
             this.skin.microDetailWeight_2 = this.SliderControls(this.skin.microDetailWeight_2, 0.0f, 1.0f);
             GUILayout.Label("MicroDetails Tiling");
-            this.skin.microDetailTiling = this.SliderControls(this.skin.microDetailTiling, 0.0f, 100.0f);
+            this.skin.microDetailTiling = this.SliderControls(this.skin.microDetailTiling, 0.1f, 100.0f);
 
             // tessellation
             if (useTessellation)

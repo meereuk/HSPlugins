@@ -175,7 +175,7 @@ namespace HSSSS
 
             // release rendertexture
             this.copyBuffer.ReleaseTemporaryRT(copyRT);
-            this.copyBuffer.ReleaseTemporaryRT(ambiRT);
+            //this.copyBuffer.ReleaseTemporaryRT(ambiRT);
 
             // add commandbuffer
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
@@ -210,6 +210,7 @@ namespace HSSSS
             // release rendertextures
             this.diffuseBlurBuffer.ReleaseTemporaryRT(flipRT);
             this.diffuseBlurBuffer.ReleaseTemporaryRT(flopRT);
+            this.diffuseBlurBuffer.ReleaseTemporaryRT(ambiRT);
 
             // add commandbuffer
             this.mCamera.AddCommandBuffer(CameraEvent.AfterLighting, this.diffuseBlurBuffer);
@@ -423,10 +424,10 @@ namespace HSSSS
             int flip = Shader.PropertyToID("_SSAOFlipRenderTexture");
             int flop = Shader.PropertyToID("_SSAOFlopRenderTexture");
 
-            this.mBuffer.GetTemporaryRT(zbf0, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(zbf1, Screen.width / 2, Screen.height / 2, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(zbf2, Screen.width / 4, Screen.height / 4, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(zbf3, Screen.width / 8, Screen.height / 8, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf0, this.mCamera.pixelWidth / 1, this.mCamera.pixelHeight / 1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf1, this.mCamera.pixelWidth / 2, this.mCamera.pixelHeight / 2, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf2, this.mCamera.pixelWidth / 4, this.mCamera.pixelHeight / 4, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf3, this.mCamera.pixelWidth / 8, this.mCamera.pixelHeight / 8, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
 
             this.mBuffer.GetTemporaryRT(flip, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(flop, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
@@ -534,6 +535,7 @@ namespace HSSSS
         private CommandBuffer mBuffer;
         private RenderTexture giHistory;
         private RenderTexture zbHistory;
+        private static Mesh mrtMesh = null;
 
         private void Awake()
         {
@@ -545,6 +547,7 @@ namespace HSSSS
         private void OnEnable()
         {
             this.UpdateSSGISettings(true);
+            this.SetupFullScreenMesh();
 
             if(this.mCamera && Properties.ssgi.enabled)
             {
@@ -579,87 +582,90 @@ namespace HSSSS
             RenderTargetIdentifier hist = new RenderTargetIdentifier(this.giHistory);
             RenderTargetIdentifier zbuf = new RenderTargetIdentifier(this.zbHistory);
 
+            int[] irad = new int[]
+            {
+                Shader.PropertyToID("_HierachicalIrradianceBuffer0"),
+                Shader.PropertyToID("_HierachicalIrradianceBuffer1"),
+                Shader.PropertyToID("_HierachicalIrradianceBuffer2"),
+                Shader.PropertyToID("_HierachicalIrradianceBuffer3")
+            };
+
+            int[] flip = new int[]
+            {
+                Shader.PropertyToID("_SSGIFlipDiffuseBuffer"),
+                Shader.PropertyToID("_SSGIFlipSpecularBuffer")
+            };
+
+            int[] flop = new int[]
+            {
+                Shader.PropertyToID("_SSGIFlopDiffuseBuffer"),
+                Shader.PropertyToID("_SSGIFlopSpecularBuffer")
+            };
+
+            RenderTargetIdentifier[] flipMRT = { flip[0], flip[1] };
+            RenderTargetIdentifier[] flopMRT = { flop[0], flop[1] };
+
             this.mBuffer = new CommandBuffer() { name = "HSSSS.SSGI" };
 
-            int ibf0 = Shader.PropertyToID("_HierachicalIrradianceBuffer0");
-            int ibf1 = Shader.PropertyToID("_HierachicalIrradianceBuffer1");
-            int ibf2 = Shader.PropertyToID("_HierachicalIrradianceBuffer2");
-            int ibf3 = Shader.PropertyToID("_HierachicalIrradianceBuffer3");
+            int div = 1;
 
-            //int ilum = Shader.PropertyToID("_SSGIIrradianceTexture");
-            int flip = Shader.PropertyToID("_SSGIFlipRenderTexture");
-            int flop = Shader.PropertyToID("_SSGIFlopRenderTexture");
-
-            switch (Properties.ssgi.samplescale)
+            for (int i = 0; i < irad.Length; i ++)
             {
-                case Properties.RenderScale.quarter:
-                    this.mBuffer.GetTemporaryRT(ibf0, Screen.width / 4, Screen.height / 4, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    this.mBuffer.GetTemporaryRT(ibf1, Screen.width / 8, Screen.height / 8, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    this.mBuffer.GetTemporaryRT(ibf2, Screen.width / 16, Screen.height / 16, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    this.mBuffer.GetTemporaryRT(ibf3, Screen.width / 32, Screen.height / 32, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    break;
-
-                case Properties.RenderScale.half:
-                    this.mBuffer.GetTemporaryRT(ibf0, Screen.width / 2, Screen.height / 2, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    this.mBuffer.GetTemporaryRT(ibf1, Screen.width / 4, Screen.height / 4, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    this.mBuffer.GetTemporaryRT(ibf2, Screen.width / 8, Screen.height / 8, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    this.mBuffer.GetTemporaryRT(ibf3, Screen.width / 16, Screen.height / 16, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    break;
-
-                case Properties.RenderScale.full:
-                    this.mBuffer.GetTemporaryRT(ibf0, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    this.mBuffer.GetTemporaryRT(ibf1, Screen.width / 2, Screen.height / 2, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    this.mBuffer.GetTemporaryRT(ibf2, Screen.width / 4, Screen.height / 4, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    this.mBuffer.GetTemporaryRT(ibf3, Screen.width / 8, Screen.height / 8, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                    break;
+                this.mBuffer.GetTemporaryRT(irad[i], this.mCamera.pixelWidth / div, this.mCamera.pixelHeight / div, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                div = div * 2;
             }
 
-            this.mBuffer.GetTemporaryRT(flip, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(flop, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            for (int i = 0; i < 2; i ++)
+            {
+                this.mBuffer.GetTemporaryRT(flip[i], this.mCamera.pixelWidth, this.mCamera.pixelHeight, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                this.mBuffer.GetTemporaryRT(flop[i], this.mCamera.pixelWidth, this.mCamera.pixelHeight, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            }
 
             // prepass
-            this.mBuffer.Blit(hist, ibf0, this.mMaterial, 0);
-            this.mBuffer.Blit(ibf0, ibf1);
-            this.mBuffer.Blit(ibf1, ibf2);
-            this.mBuffer.Blit(ibf2, ibf3);
-
-            //this.mBuffer.Blit(hist, ilum, this.mMaterial, 0);
+            this.mBuffer.Blit(hist, irad[0], this.mMaterial, 0);
+            this.mBuffer.Blit(irad[0], irad[1]);
+            this.mBuffer.Blit(irad[1], irad[2]);
+            this.mBuffer.Blit(irad[2], irad[3]);
 
             // main pass
-            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, flip, this.mMaterial, (int)Properties.ssgi.quality + 1);
+            this.mBuffer.SetRenderTarget(flipMRT, BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, (int)Properties.ssgi.quality + 1);
 
-            // temporal
-            this.mBuffer.Blit(flip, flop, this.mMaterial, 5);
-
-            // store
-            this.mBuffer.Blit(flop, hist);
-            this.mBuffer.Blit(hist, zbuf, this.mMaterial, 12);
-
-            // median filter
-            this.mBuffer.Blit(flop, flip, this.mMaterial, 10);
-            this.mBuffer.Blit(flip, flop);
-
-            // spatial
             if (Properties.ssgi.denoise)
             {
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 6);
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 7);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 9);
+                this.mBuffer.SetRenderTarget(flopMRT, BuiltinRenderTextureType.CameraTarget);
+                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 6);
+                this.mBuffer.SetRenderTarget(flipMRT, BuiltinRenderTextureType.CameraTarget);
+                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 7);
+                /*
+                this.mBuffer.SetRenderTarget(flopMRT, BuiltinRenderTextureType.CameraTarget);
+                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 8);
+                this.mBuffer.SetRenderTarget(flipMRT, BuiltinRenderTextureType.CameraTarget);
+                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 9);
+                */
             }
 
+            // temporal
+            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, flop[0], this.mMaterial, 5);
+
+            // store
+            this.mBuffer.Blit(flop[0], hist);
+            this.mBuffer.Blit(hist, zbuf, this.mMaterial, 12);
+
             // collect
-            this.mBuffer.Blit(flop, flip, this.mMaterial, 11);
-            this.mBuffer.Blit(flip, BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.Blit(flop[0], flip[0], this.mMaterial, 11);
+            this.mBuffer.Blit(flip[0], BuiltinRenderTextureType.CameraTarget);
 
-            this.mBuffer.ReleaseTemporaryRT(ibf0);
-            this.mBuffer.ReleaseTemporaryRT(ibf1);
-            this.mBuffer.ReleaseTemporaryRT(ibf2);
-            this.mBuffer.ReleaseTemporaryRT(ibf3);
+            for (int i = 0; i < 4; i ++)
+            {
+                this.mBuffer.ReleaseTemporaryRT(irad[i]);
+            }
 
-            //this.mBuffer.ReleaseTemporaryRT(ilum);
-            this.mBuffer.ReleaseTemporaryRT(flip);
-            this.mBuffer.ReleaseTemporaryRT(flop);
+            for (int i = 0; i < 2; i ++)
+            {
+                this.mBuffer.ReleaseTemporaryRT(flip[i]);
+                this.mBuffer.ReleaseTemporaryRT(flop[i]);
+            }
 
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, this.mBuffer);
         }
@@ -714,6 +720,36 @@ namespace HSSSS
 
             this.mMaterial.SetMatrix("_PrevViewToClipMatrix", HSSSS.CameraProjector.PreviousViewToClip);
             this.mMaterial.SetMatrix("_PrevClipToViewMatrix", HSSSS.CameraProjector.PreviousClipToView);
+        }
+
+        private void SetupFullScreenMesh()
+        {
+            if (mrtMesh == null)
+            {
+                mrtMesh = new Mesh()
+                {
+                    vertices = new Vector3[]
+                    {
+                        new Vector3(-1.0f, -1.0f, 0.0f),
+                        new Vector3(-1.0f,  3.0f, 0.0f),
+                        new Vector3( 3.0f, -1.0f, 0.0f)
+                    },
+
+                    triangles = new int[] { 0, 1, 2 }
+                };
+            }
+
+            else
+            {
+                mrtMesh.vertices = new Vector3[]
+                {
+                    new Vector3(-1.0f, -1.0f, 0.0f),
+                    new Vector3(-1.0f,  3.0f, 0.0f),
+                    new Vector3( 3.0f, -1.0f, 0.0f)
+                };
+
+                mrtMesh.triangles = new int[] { 0, 1, 2 };
+            }
         }
 
         public void UpdateSSGISettings(bool soft = true)
