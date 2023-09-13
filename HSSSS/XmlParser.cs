@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Xml;
+using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace HSSSS
 {
     public static class XmlParser
     {
+        private static XDocument doc = null;
+        private static string prefix = null;
+
         public static void SaveXml(XmlWriter writer)
         {
             writer.WriteAttributeString("version", HSSSS.pluginVersion);
@@ -161,6 +166,8 @@ namespace HSSSS
                 writer.WriteElementString("RayRadius", XmlConvert.ToString(Properties.ssgi.rayRadius));
                 // ray stride
                 writer.WriteElementString("RayStride", XmlConvert.ToString(Properties.ssgi.rayStride));
+                // mean depth
+                writer.WriteElementString("MeanDepth", XmlConvert.ToString(Properties.ssgi.meanDepth));
                 // fade depth
                 writer.WriteElementString("FadeDepth", XmlConvert.ToString(Properties.ssgi.fadeDepth));
                 // spatial denoiser
@@ -209,271 +216,169 @@ namespace HSSSS
 
         public static void LoadXml(XmlNode node)
         {
-            string version = node.Attributes["version"].Value;
+            if (node == null)
+            {
+                return;
+            }
 
-            Console.WriteLine("#### HSSSS: Saved configurations from version... " + version);
+            doc = XDocument.Load(new XmlNodeReader(node));
 
+            // version check
+            prefix = null;
+            string version = "UNKNOWN";
+            XmlQuery<string>("HSSSS", "version", ref version);
+
+            Console.WriteLine("#### HSSSS: Loaded configurations from version... " + version);
+
+            // mismatch warning
             if (version != HSSSS.pluginVersion)
             {
-                Console.WriteLine("#### HSSSS: Saved configurations do not match the version (this message may be harmless)");
+                Console.WriteLine("#### HSSSS: Loaded configurations do not match the current version (this message may be harmless)");
             }
 
-            foreach (XmlNode child0 in node.ChildNodes)
-            {
-                switch (child0.Name)
-                {
-                    // skin scattering
-                    case "SkinScattering":
-                        // enabled?
-                        Properties.skinUpdate.sssEnabled = XmlConvert.ToBoolean(child0.Attributes["Enabled"].Value);
+            ///////////////////////////
+            // subsurface scattering //
+            ///////////////////////////
+            
+            prefix = "HSSSS/SkinScattering";
 
-                        foreach (XmlNode child1 in child0.ChildNodes)
-                        {
-                            switch (child1.Name)
-                            {
-                                // scattering weight
-                                case "Weight": Properties.skinUpdate.sssWeight = XmlConvert.ToSingle(child1.InnerText); break;
-                                // pre-integrated brdf
-                                case "BRDF": Properties.skinUpdate.lutProfile = (Properties.LUTProfile)Enum.Parse(typeof(Properties.LUTProfile), child1.InnerText); break;
-                                // skin lookup
-                                case "Diffusion":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "Scale": Properties.skinUpdate.skinLutScale = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Bias": Properties.skinUpdate.skinLutBias = XmlConvert.ToSingle(child2.InnerText); break;
-                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
-                                        }
-                                    }
-                                    break;
-                                // shadow lookup
-                                case "Shadow":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "Scale": Properties.skinUpdate.shadowLutScale = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Bias": Properties.skinUpdate.shadowLutBias = XmlConvert.ToSingle(child2.InnerText); break;
-                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
-                                        }
-                                    }
-                                    break;
-                                // screen-space normal blur
-                                case "NormalBlur":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "Weight": Properties.skinUpdate.normalBlurWeight = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Radius": Properties.skinUpdate.normalBlurRadius = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "CorrectionDepth": Properties.skinUpdate.normalBlurDepthRange = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Iterations": Properties.skinUpdate.normalBlurIter = XmlConvert.ToInt32(child2.InnerText); break;
-                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
-                                        }
-                                    }
-                                    break;
-                                // ao color bleeding
-                                case "AOBleeding":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "Red": Properties.skinUpdate.colorBleedWeights.x = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Green": Properties.skinUpdate.colorBleedWeights.y = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Blue": Properties.skinUpdate.colorBleedWeights.z = XmlConvert.ToSingle(child2.InnerText); break;
-                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
-                                        }
-                                    }
-                                    break;
-                                // skin transmission absorption
-                                case "Absorption":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "Red": Properties.skinUpdate.transAbsorption.x = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Green": Properties.skinUpdate.transAbsorption.y = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Blue": Properties.skinUpdate.transAbsorption.z = XmlConvert.ToSingle(child2.InnerText); break;
-                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
-                                        }
-                                    }
-                                    break;
+            XmlQuery<bool>(null, "Enabled", ref Properties.skin.sssEnabled);
+            XmlQuery<Properties.LUTProfile>("/BRDF", ref Properties.skin.lutProfile);
+            XmlQuery<float>("/Weight", ref Properties.skin.sssWeight);
 
-                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
-                            }
-                        }
-                        break;
+            // pre-integrated skin lookup
+            XmlQuery<float>("/Diffusion/Scale", ref Properties.skin.skinLutScale);
+            XmlQuery<float>("/Diffusion/Bias", ref Properties.skin.skinLutBias);
+            // pre-integrated shadow lookup
+            XmlQuery<float>("/Shadow/Scale", ref Properties.skin.shadowLutScale);
+            XmlQuery<float>("/Shadow/Bias", ref Properties.skin.shadowLutBias);
+            // normal/diffuse blur
+            XmlQuery<float>("/NormalBlur/Weight", ref Properties.skin.normalBlurWeight);
+            XmlQuery<float>("/NormalBlur/Radius", ref Properties.skin.normalBlurRadius);
+            XmlQuery<float>("/NormalBlur/CorrectionDepth", ref Properties.skin.normalBlurDepthRange);
+            XmlQuery<int>("/NormalBlur/Iterations", ref Properties.skin.normalBlurIter);
+            // color bleeding ao
+            XmlQuery<float>("/AOBleeding/Red", ref Properties.skin.colorBleedWeights.x);
+            XmlQuery<float>("/AOBleeding/Green", ref Properties.skin.colorBleedWeights.y);
+            XmlQuery<float>("/AOBleeding/Blue", ref Properties.skin.colorBleedWeights.z);
+            // absorption
+            XmlQuery<float>("/Absorption/Red", ref Properties.skin.transAbsorption.x);
+            XmlQuery<float>("/Absorption/Green", ref Properties.skin.transAbsorption.y);
+            XmlQuery<float>("/Absorption/Blue", ref Properties.skin.transAbsorption.z);
 
-                    case "Transmission":
-                        // enabled?
-                        Properties.skinUpdate.transEnabled = XmlConvert.ToBoolean(child0.Attributes["Enabled"].Value);
+            /////////////////////
+            // deep scattering //
+            /////////////////////
+            
+            prefix = "HSSSS/Transmission";
 
-                        foreach (XmlNode child1 in child0.ChildNodes)
-                        {
-                            switch (child1.Name)
-                            {
-                                case "BakedThickness": Properties.skinUpdate.bakedThickness = XmlConvert.ToBoolean(child1.InnerText); break;
-                                case "Weight": Properties.skinUpdate.transWeight = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "NormalDistortion": Properties.skinUpdate.transDistortion = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "ShadowWeight": Properties.skinUpdate.transShadowWeight = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "FallOff": Properties.skinUpdate.transFalloff = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "ThicknessBias": Properties.skinUpdate.thicknessBias = XmlConvert.ToSingle(child1.InnerText); break;
-                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
-                            }
-                        }
-                        break;
+            XmlQuery<bool>(null, "Enabled", ref Properties.skin.transEnabled);
+            XmlQuery<bool>("/BakedThickness", ref Properties.skin.bakedThickness);
+            XmlQuery<float>("/Weight", ref Properties.skin.transWeight);
+            XmlQuery<float>("/NormalDistortion", ref Properties.skin.transDistortion);
+            XmlQuery<float>("/ShadowWeight", ref Properties.skin.transShadowWeight);
+            XmlQuery<float>("/FallOff", ref Properties.skin.transFalloff);
+            XmlQuery<float>("/ThicknessBias", ref Properties.skin.thicknessBias);
 
-                    case "SoftShadow":
-                        // pcf kernel size
-                        Properties.shadowUpdate.pcfState = (Properties.PCFState)Enum.Parse(typeof(Properties.PCFState), child0.Attributes["State"].Value);
+            /////////////////
+            // soft shadow //
+            /////////////////
+            
+            prefix = "HSSSS/SoftShadow";
 
-                        foreach (XmlNode child1 in child0.ChildNodes)
-                        {
-                            switch (child1.Name)
-                            {
-                                case "PCSS": Properties.shadowUpdate.pcssEnabled = XmlConvert.ToBoolean(child1.InnerText); break;
-                                case "Directional":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "SearchRadius": Properties.shadowUpdate.dirLightPenumbra.x = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "LightRadius": Properties.shadowUpdate.dirLightPenumbra.y = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "MinPenumbra": Properties.shadowUpdate.dirLightPenumbra.z = XmlConvert.ToSingle(child2.InnerText); break;
-                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
-                                        }
-                                    }
-                                    break;
+            XmlQuery<Properties.PCFState>(null, "State", ref Properties.shadow.pcfState);
+            XmlQuery<bool>("/PCSS", ref Properties.shadow.pcssEnabled);
 
-                                case "Spot":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "SearchRadius": Properties.shadowUpdate.spotLightPenumbra.x = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "LightRadius": Properties.shadowUpdate.spotLightPenumbra.y = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "MinPenumbra": Properties.shadowUpdate.spotLightPenumbra.z = XmlConvert.ToSingle(child2.InnerText); break;
-                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
-                                        }
-                                    }
-                                    break;
+            XmlQuery<float>("/Directional/SearchRadius", ref Properties.shadow.dirLightPenumbra.x);
+            XmlQuery<float>("/Directional/LightRadius", ref Properties.shadow.dirLightPenumbra.y);
+            XmlQuery<float>("/Directional/MinPenumbra", ref Properties.shadow.dirLightPenumbra.z);
 
-                                case "Point":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "SearchRadius": Properties.shadowUpdate.pointLightPenumbra.x = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "LightRadius": Properties.shadowUpdate.pointLightPenumbra.y = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "MinPenumbra": Properties.shadowUpdate.pointLightPenumbra.z = XmlConvert.ToSingle(child2.InnerText); break;
-                                            default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "/" + child2.Name + "; ignored"); break;
-                                        }
-                                    }
-                                    break;
+            XmlQuery<float>("/Spot/SearchRadius", ref Properties.shadow.spotLightPenumbra.x);
+            XmlQuery<float>("/Spot/LightRadius", ref Properties.shadow.spotLightPenumbra.y);
+            XmlQuery<float>("/Spot/MinPenumbra", ref Properties.shadow.spotLightPenumbra.z);
 
-                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
-                            }
-                        }
-                        break;
+            XmlQuery<float>("/Point/SearchRadius", ref Properties.shadow.pointLightPenumbra.x);
+            XmlQuery<float>("/Point/LightRadius", ref Properties.shadow.pointLightPenumbra.y);
+            XmlQuery<float>("/Point/MinPenumbra", ref Properties.shadow.pointLightPenumbra.z);
 
-                    case "AmbientOcclusion":
-                        Properties.ssaoUpdate.enabled = XmlConvert.ToBoolean(child0.Attributes["Enabled"].Value);
-                        foreach (XmlNode child1 in child0.ChildNodes)
-                        {
-                            switch (child1.Name)
-                            {
-                                case "UseGTAO": Properties.ssaoUpdate.usegtao = XmlConvert.ToBoolean(child1.InnerText); break;
-                                case "UseSSDO": Properties.ssaoUpdate.usessdo = XmlConvert.ToBoolean(child1.InnerText); break;
-                                case "Quality": Properties.ssaoUpdate.quality = (Properties.QualityPreset)Enum.Parse(typeof(Properties.QualityPreset), child1.InnerText); break;
-                                case "ScreenDiv": Properties.ssaoUpdate.screenDiv = XmlConvert.ToUInt16(child1.InnerText); break;
-                                case "Intensity": Properties.ssaoUpdate.intensity = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "LightBias": Properties.ssaoUpdate.lightBias = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "RayRadius": Properties.ssaoUpdate.rayRadius = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "RayStride": Properties.ssaoUpdate.rayStride = XmlConvert.ToUInt16(child1.InnerText); break;
-                                case "MeanDepth": Properties.ssaoUpdate.meanDepth = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "FadeDepth": Properties.ssaoUpdate.fadeDepth = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "DOApature": Properties.ssaoUpdate.doApature = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "Denoiser": Properties.ssaoUpdate.denoise = XmlConvert.ToBoolean(child1.InnerText); break;
-                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
-                            }
-                        }
-                        break;
+            ///////////////////////
+            // ambient occlusion //
+            ///////////////////////
+            
+            prefix = "HSSSS/AmbientOcclusion";
 
-                    case "GlobalIllumination":
-                        Properties.ssgiUpdate.enabled = XmlConvert.ToBoolean(child0.Attributes["Enabled"].Value);
-                        foreach (XmlNode child1 in child0.ChildNodes)
-                        {
-                            switch (child1.Name)
-                            {
-                                case "Quality": Properties.ssgiUpdate.quality = (Properties.QualityPreset)Enum.Parse(typeof(Properties.QualityPreset), child1.InnerText); break;
-                                case "SampleScale": Properties.ssgiUpdate.samplescale = (Properties.RenderScale)Enum.Parse(typeof(Properties.RenderScale), child1.InnerText); break;
-                                case "RenderScale": Properties.ssgiUpdate.renderscale = (Properties.RenderScale)Enum.Parse(typeof(Properties.RenderScale), child1.InnerText); break;
-                                case "Intensity": Properties.ssgiUpdate.intensity = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "Secondary": Properties.ssgiUpdate.secondary = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "RayRadius": Properties.ssgiUpdate.rayRadius = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "RayStride": Properties.ssgiUpdate.rayStride = XmlConvert.ToUInt16(child1.InnerText); break;
-                                case "FadeDepth": Properties.ssgiUpdate.fadeDepth = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "Denoiser": Properties.ssgiUpdate.denoise = XmlConvert.ToBoolean(child1.InnerText); break;
-                                case "MixWeight": Properties.ssgiUpdate.mixWeight = XmlConvert.ToSingle(child1.InnerText); break;
-                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "; ignored"); break;
-                            }
-                        }
-                        break;
+            XmlQuery<bool>("", "Enabled", ref Properties.ssao.enabled);
+            XmlQuery<bool>("/UseGTAO", ref Properties.ssao.usegtao);
 
-                    case "ContactShadow":
-                        Properties.sscsUpdate.enabled = XmlConvert.ToBoolean(child0.Attributes["Enabled"].Value);
-                        foreach (XmlNode child1 in child0.ChildNodes)
-                        {
-                            switch (child1.Name)
-                            {
-                                case "Quality": Properties.sscsUpdate.quality = (Properties.QualityPreset)Enum.Parse(typeof(Properties.QualityPreset), child1.InnerText); break;
-                                case "RayRadius": Properties.sscsUpdate.rayRadius = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "DepthBias": Properties.sscsUpdate.depthBias = XmlConvert.ToSingle(child1.InnerText); break;
-                                case "MeanDepth": Properties.sscsUpdate.meanDepth = XmlConvert.ToSingle(child1.InnerText); break;
-                                default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "/" + child1.Name + "is; ignored"); break;
-                            }
-                        }
-                        break;
+            XmlQuery<Properties.QualityPreset>("/Quality", ref Properties.ssao.quality);
+            XmlQuery<int>("/ScreenDiv", ref Properties.ssao.screenDiv);
 
-                    case "Miscellaneous":
-                        foreach (XmlNode child1 in child0.ChildNodes)
-                        {
-                            switch (child1.Name)
-                            {
-                                case "MicroDetails":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "Weight_1": Properties.skinUpdate.microDetailWeight_1 = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Weight_2": Properties.skinUpdate.microDetailWeight_2 = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "Tiling": Properties.skinUpdate.microDetailTiling = XmlConvert.ToSingle(child2.InnerText); break;
-                                        }
-                                    }
-                                    break;
+            XmlQuery<float>("/Intensity", ref Properties.ssao.intensity);
+            XmlQuery<float>("/LightBias", ref Properties.ssao.lightBias);
 
-                                // tessellation
-                                case "Tessellation":
-                                    foreach (XmlNode child2 in child1.ChildNodes)
-                                    {
-                                        switch (child2.Name)
-                                        {
-                                            case "Phong": Properties.skinUpdate.phongStrength = XmlConvert.ToSingle(child2.InnerText); break;
-                                            case "EdgeLength": Properties.skinUpdate.edgeLength = XmlConvert.ToSingle(child2.InnerText); break;
-                                        }
-                                    }
-                                    break;
+            XmlQuery<float>("/RayRadius", ref Properties.ssao.rayRadius);
+            XmlQuery<int>("/RayStride", ref Properties.ssao.rayStride);
 
-                                // eyebrow wrap
-                                case "EyebrowOffset": Properties.skinUpdate.eyebrowoffset = XmlConvert.ToSingle(child1.InnerText); break;
-                            }
-                        }
-                        break;
+            XmlQuery<float>("/MeanDepth", ref Properties.ssao.meanDepth);
+            XmlQuery<float>("/FadeDepth", ref Properties.ssao.fadeDepth);
 
-                    default: Console.WriteLine("#### HSSSS: Unknown XML entry " + child0.Name + "is; ignored"); break;
-                }
-            }
+            XmlQuery<bool>("/UseSSDO", ref Properties.ssao.usessdo);
+            XmlQuery<float>("/DOApature", ref Properties.ssao.doApature);
+
+            XmlQuery<bool>("/Denoiser", ref Properties.ssao.denoise);
+
+            /////////////////////////
+            // global illumination //
+            /////////////////////////
+            
+            prefix = "HSSSS/GlobalIllumination";
+
+            XmlQuery<bool>("", "Enabled", ref Properties.ssgi.enabled);
+            XmlQuery<Properties.QualityPreset>("/Quality", ref Properties.ssgi.quality);
+            XmlQuery<Properties.RenderScale>("/SampleScale", ref Properties.ssgi.samplescale);
+            XmlQuery<Properties.RenderScale>("/RenderScale", ref Properties.ssgi.renderscale);
+
+            XmlQuery<float>("/Intensity", ref Properties.ssgi.intensity);
+            XmlQuery<float>("/Secondary", ref Properties.ssgi.secondary);
+
+            XmlQuery<float>("/RayRadius", ref Properties.ssgi.rayRadius);
+            XmlQuery<int>("/RayStride", ref Properties.ssgi.rayStride);
+
+            XmlQuery<float>("/MeanDepth", ref Properties.ssgi.meanDepth);
+            XmlQuery<float>("/FadeDepth", ref Properties.ssgi.fadeDepth);
+
+            XmlQuery<bool>("/Denoiser", ref Properties.ssgi.denoise);
+            XmlQuery<float>("/MixWeight", ref Properties.ssgi.mixWeight);
+
+            ////////////////////
+            // contact shadow //
+            ////////////////////
+            
+            prefix = "HSSSS/ContactShadow";
+
+            XmlQuery<bool>("", "Enabled", ref Properties.sscs.enabled);
+            XmlQuery<Properties.QualityPreset>("/Quality", ref Properties.sscs.quality);
+            XmlQuery<float>("/RayRadius", ref Properties.sscs.rayRadius);
+            XmlQuery<float>("/DepthBias", ref Properties.sscs.depthBias);
+            XmlQuery<float>("/MeanDepth", ref Properties.sscs.meanDepth);
+
+            ///////////////////
+            // miscellaneous //
+            ///////////////////
+            
+            prefix = "HSSSS/Miscellaneous";
+
+            XmlQuery<float>("/MicroDetails/Weight_1", ref Properties.skin.microDetailWeight_1);
+            XmlQuery<float>("/MicroDetails/Weight_2", ref Properties.skin.microDetailWeight_2);
+            XmlQuery<float>("/MicroDetails/Tiling", ref Properties.skin.microDetailTiling);
+
+            XmlQuery<float>("/Tessellation/Phong", ref Properties.skin.phongStrength);
+            XmlQuery<float>("/Tessellation/EdgeLength", ref Properties.skin.edgeLength);
+
+            XmlQuery<float>("/EyebrowOffset", ref Properties.skin.eyebrowoffset);
+
+            prefix = null;
+
         }
 
         public static bool SaveExternalFile()
@@ -509,6 +414,81 @@ namespace HSSSS
             catch
             {
                 return false;
+            }
+        }
+
+        private static void XmlQuery<T>(string path, ref T value)
+        {
+            XElement element = doc.XPathSelectElement(prefix + path);
+
+            if (element == null)
+            {
+                Console.WriteLine("#### HSSSS: Could not find xpath " + prefix + path);
+                return;
+            }
+
+            else
+            {
+                try
+                {
+                    if (typeof(T).IsEnum)
+                    {
+                        value = (T)Enum.Parse(typeof(T), element.Value);
+                    }
+
+                    else
+                    {
+                        value = (T)Convert.ChangeType(element.Value, typeof(T));
+                    }
+                }
+
+                catch (InvalidCastException)
+                {
+                    Console.WriteLine("#### HSSSS: Could not cast from " + prefix + path);
+                }
+            }
+        }
+
+        private static void XmlQuery<T>(string path, string attr, ref T value)
+        {
+            XElement element = doc.XPathSelectElement(prefix + path);
+
+            if (element == null)
+            {
+                Console.WriteLine("#### HSSSS: Could not find xpath " + prefix + path);
+                return;
+            }
+
+            else
+            {
+                XAttribute attribute = element.Attribute(attr);
+
+                if (attribute == null)
+                {
+                    Console.WriteLine("#### HSSSS: Could not find attribute " + attr + " at xpath " + prefix + path);
+                    return;
+                }
+
+                else
+                {
+                    try
+                    {
+                        if (typeof(T).IsEnum)
+                        {
+                            value = (T)Enum.Parse(typeof(T), attribute.Value);
+                        }
+
+                        else
+                        {
+                            value = (T)Convert.ChangeType(attribute.Value, typeof(T));
+                        }
+                    }
+
+                    catch (InvalidCastException)
+                    {
+                        Console.WriteLine("#### HSSSS: Coult not cast from " + attr + " at " + prefix + path);
+                    }
+                }
             }
         }
     }

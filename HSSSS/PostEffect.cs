@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.Rendering;
-using static HMapInfo;
 
 namespace HSSSS
 {
@@ -36,6 +35,11 @@ namespace HSSSS
         public void OnDisable()
         {
             this.DestroyBuffers();
+        }
+
+        private void OnPreRender()
+        {
+            Shader.SetGlobalInt("_FrameCount", Time.frameCount);
         }
 
         #region Properties Control
@@ -337,36 +341,38 @@ namespace HSSSS
 
         private void DestroyBuffers()
         {
-            if (this.copyBuffer != null)
+            foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(CameraEvent.BeforeLighting))
             {
-                this.mCamera.RemoveCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
+                if (buffer.name == this.copyBufferName || buffer.name == this.blurBufferName)
+                {
+                    this.mCamera.RemoveCommandBuffer(CameraEvent.BeforeLighting, buffer);
+                }
             }
 
-            if (this.normalBlurBuffer != null)
+            foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(CameraEvent.AfterLighting))
             {
-                this.mCamera.RemoveCommandBuffer(CameraEvent.BeforeLighting, this.normalBlurBuffer);
+                if (buffer.name == this.blurBufferName)
+                {
+                    this.mCamera.RemoveCommandBuffer(CameraEvent.AfterLighting, buffer);
+                }
             }
 
-            if (this.diffuseBlurBuffer != null)
-            {
-                this.mCamera.RemoveCommandBuffer(CameraEvent.AfterLighting, this.diffuseBlurBuffer);
-            }
+            this.copyBuffer = null;
+            this.normalBlurBuffer = null;
+            this.diffuseBlurBuffer = null;
         }
         #endregion
 
         #region Interfaces
-        public void UpdateSkinSettings(bool soft = true)
+        public void UpdateSkinSettings()
         {
             this.RefreshSkinProperties();
             this.RefreshBlurProperties();
             this.RefreshLookupProperties();
             this.RefreshTransmissionProperties();
 
-            if (!soft)
-            {
-                this.DestroyBuffers();
-                this.InitializeBuffers();
-            }
+            this.DestroyBuffers();
+            this.InitializeBuffers();
         }
         #endregion
     }
@@ -376,6 +382,7 @@ namespace HSSSS
         private Camera mCamera;
         private Material mMaterial;
         private CommandBuffer mBuffer;
+        private readonly string bufferName = "HSSSS.SSAO";
 
         private void Awake()
         {
@@ -386,7 +393,7 @@ namespace HSSSS
 
         private void OnEnable()
         {
-            this.UpdateSSAOSettings(true);
+            this.UpdateSSAOSettings();
 
             if (this.mCamera && Properties.ssao.enabled)
             {
@@ -398,10 +405,7 @@ namespace HSSSS
         {
             if (this.mCamera)
             {
-                if (this.mBuffer != null)
-                {
-                    this.RemoveCommandBuffer();
-                }
+                this.RemoveCommandBuffer();
             }
         }
 
@@ -414,7 +418,7 @@ namespace HSSSS
         private void SetupCommandBuffer()
         {
             // SSAO command buffer
-            this.mBuffer = new CommandBuffer() { name = "HSSSS.SSAO" };
+            this.mBuffer = new CommandBuffer() { name = this.bufferName };
 
             int zbf0 = Shader.PropertyToID("_HierachicalZBuffer0");
             int zbf1 = Shader.PropertyToID("_HierachicalZBuffer1");
@@ -424,7 +428,7 @@ namespace HSSSS
             int flip = Shader.PropertyToID("_SSAOFlipRenderTexture");
             int flop = Shader.PropertyToID("_SSAOFlopRenderTexture");
 
-            this.mBuffer.GetTemporaryRT(zbf0, this.mCamera.pixelWidth / 1, this.mCamera.pixelHeight / 1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf0, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(zbf1, this.mCamera.pixelWidth / 2, this.mCamera.pixelHeight / 2, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(zbf2, this.mCamera.pixelWidth / 4, this.mCamera.pixelHeight / 4, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(zbf3, this.mCamera.pixelWidth / 8, this.mCamera.pixelHeight / 8, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
@@ -485,7 +489,14 @@ namespace HSSSS
 
         private void RemoveCommandBuffer()
         {
-            this.mCamera.RemoveCommandBuffer(CameraEvent.AfterReflections, this.mBuffer);
+            foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(CameraEvent.AfterReflections))
+            {
+                if (buffer.name == this.bufferName)
+                {
+                    this.mCamera.RemoveCommandBuffer(CameraEvent.AfterReflections, buffer);
+                }
+            }
+
             this.mBuffer = null;
         }
 
@@ -504,7 +515,7 @@ namespace HSSSS
             this.mMaterial.SetMatrix("_PrevClipToViewMatrix", HSSSS.CameraProjector.PreviousClipToView);
         }
 
-        public void UpdateSSAOSettings(bool soft = true)
+        public void UpdateSSAOSettings()
         {
             if (this.enabled)
             {
@@ -518,10 +529,7 @@ namespace HSSSS
 
                 Shader.SetGlobalInt("_UseDirectOcclusion", Properties.ssao.usessdo ? 1 : 0);
                 Shader.SetGlobalFloat("_SSDOLightApatureScale", Properties.ssao.doApature);
-            }
 
-            if (!soft)
-            {
                 this.RemoveCommandBuffer();
                 this.SetupCommandBuffer();
             }
@@ -536,6 +544,7 @@ namespace HSSSS
         private RenderTexture giHistory;
         private RenderTexture zbHistory;
         private static Mesh mrtMesh = null;
+        private readonly string bufferName = "HSSSS.SSGI";
 
         private void Awake()
         {
@@ -546,7 +555,7 @@ namespace HSSSS
 
         private void OnEnable()
         {
-            this.UpdateSSGISettings(true);
+            this.UpdateSSGISettings(false);
             this.SetupFullScreenMesh();
 
             if(this.mCamera && Properties.ssgi.enabled)
@@ -609,6 +618,16 @@ namespace HSSSS
 
             int div = 1;
 
+            if (Properties.ssgi.samplescale == Properties.RenderScale.half)
+            {
+                div = 2;
+            }
+
+            else if (Properties.ssgi.samplescale == Properties.RenderScale.quarter)
+            {
+                div = 4;
+            }
+
             for (int i = 0; i < irad.Length; i ++)
             {
                 this.mBuffer.GetTemporaryRT(irad[i], this.mCamera.pixelWidth / div, this.mCamera.pixelHeight / div, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
@@ -645,16 +664,19 @@ namespace HSSSS
                 */
             }
 
-            // temporal
+            // temporal filter
             this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, flop[0], this.mMaterial, 5);
 
             // store
             this.mBuffer.Blit(flop[0], hist);
             this.mBuffer.Blit(hist, zbuf, this.mMaterial, 12);
 
+            // median filter
+            this.mBuffer.Blit(flop[0], flip[0], this.mMaterial, 10);
+
             // collect
-            this.mBuffer.Blit(flop[0], flip[0], this.mMaterial, 11);
-            this.mBuffer.Blit(flip[0], BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.Blit(flip[0], flop[0], this.mMaterial, 11);
+            this.mBuffer.Blit(flop[0], BuiltinRenderTextureType.CameraTarget);
 
             for (int i = 0; i < 4; i ++)
             {
@@ -672,7 +694,14 @@ namespace HSSSS
 
         private void RemoveCommandBuffer()
         {
-            this.mCamera.RemoveCommandBuffer(CameraEvent.BeforeForwardOpaque, this.mBuffer);
+            foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(CameraEvent.BeforeForwardOpaque))
+            {
+                if (buffer.name == this.bufferName)
+                {
+                    this.mCamera.RemoveCommandBuffer(CameraEvent.BeforeForwardOpaque, buffer);
+                }
+            }
+
             this.mBuffer = null;
         }
 
@@ -752,23 +781,22 @@ namespace HSSSS
             }
         }
 
-        public void UpdateSSGISettings(bool soft = true)
+        public void UpdateSSGISettings(bool hard = true)
         {
             if (this.enabled)
             {
+                this.mMaterial.SetFloat("_SSGIMeanDepth", Properties.ssgi.meanDepth);
                 this.mMaterial.SetFloat("_SSGIFadeDepth", Properties.ssgi.fadeDepth);
                 this.mMaterial.SetFloat("_SSGIMixFactor", Properties.ssgi.mixWeight);
                 this.mMaterial.SetFloat("_SSGIRayLength", Properties.ssgi.rayRadius);
                 this.mMaterial.SetFloat("_SSGIIntensity", Properties.ssgi.intensity);
                 this.mMaterial.SetFloat("_SSGISecondary", Properties.ssgi.secondary);
+                this.mMaterial.SetFloat("_SSGIRoughness", Properties.ssgi.roughness);
                 this.mMaterial.SetInt("_SSGIStepPower", Properties.ssgi.rayStride);
-            }
 
-            if (!soft)
-            {
                 this.RemoveCommandBuffer();
-                this.RemoveHistoryBuffer();
-                this.SetupHistoryBuffer();
+                //this.RemoveHistoryBuffer();
+                //this.SetupHistoryBuffer();
                 this.SetupCommandBuffer();
             }
         }

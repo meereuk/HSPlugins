@@ -15,7 +15,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.6.4-canary"; } }
+        public string Version { get { return "1.7.0"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -59,7 +59,7 @@ namespace HSSSS
         public static Texture2D faceWorksShadowLUT;
         public static Texture2D deepScatterLUT;
         public static Texture2D skinJitter;
-        public static Texture2D blueNoise;
+        public static Texture3D blueNoise;
 
         // body materials
         private static Material skinMaterial;
@@ -71,6 +71,9 @@ namespace HSSSS
         private static Material eyeCorneaMaterial;
         private static Material eyeScleraMaterial;
         private static Material eyeOverlayMaterial;
+
+        private static Material headWetMaterial;
+        private static Material bodyWetMaterial;
 
         // thickness textures
         private static Texture2D femaleBodyThickness;
@@ -468,7 +471,7 @@ namespace HSSSS
 
             // jitter texture
             skinJitter = assetBundle.LoadAsset<Texture2D>("SkinJitter");
-            blueNoise = assetBundle.LoadAsset<Texture2D>("BlueNoise");
+            blueNoise = assetBundle.LoadAsset<Texture3D>("BlueNoise");
             
             // spotlight cookie
             spotCookie = assetBundle.LoadAsset<Texture2D>("DefaultSpotCookie");
@@ -518,7 +521,10 @@ namespace HSSSS
 
         private void DeferredAssetLoader()
         {
-            liquidMaterial = assetBundle.LoadAsset<Material>("OverlayForward");
+            liquidMaterial = assetBundle.LoadAsset<Material>("Liquid");
+
+            headWetMaterial = assetBundle.LoadAsset<Material>("CondensationHead");
+            bodyWetMaterial = assetBundle.LoadAsset<Material>("CondensationBody");
 
             // tesellation materials
             if (useTessellation)
@@ -1003,9 +1009,33 @@ namespace HSSSS
                     {
                         if (WillReplaceShader(juiceMat.shader))
                         {
-                            ShaderReplacer(milkMaterial, juiceMat);
-                            juiceMat.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 0.2f));
-                            Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
+                            switch (juiceMat.name)
+                            {
+                                case "cf_M_k_kaosiru01":
+                                    juiceMat.shader = headWetMaterial.shader;
+                                    juiceMat.CopyPropertiesFromMaterial(headWetMaterial);
+                                    break;
+
+                                case "cf_M_k_munesiru01":
+                                    juiceMat.shader = bodyWetMaterial.shader;
+                                    juiceMat.CopyPropertiesFromMaterial(bodyWetMaterial);
+                                    break;
+
+                                default:
+                                    ShaderReplacer(milkMaterial, juiceMat);
+                                    juiceMat.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 0.2f));
+                                    Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
+                                    break;
+                            }
+
+                            /*
+                            else
+                            {
+                                ShaderReplacer(milkMaterial, juiceMat);
+                                juiceMat.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 0.2f));
+                                Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
+                            }
+                            */
                         }
                     }
                 }
@@ -1141,11 +1171,15 @@ namespace HSSSS
                                     {
                                         if (WillReplaceShader(material.shader))
                                         {
+                                            material.shader = liquidMaterial.shader;
+                                            material.CopyPropertiesFromMaterial(liquidMaterial);
+                                            /*
                                             ShaderReplacer(liquidMaterial, material);
                                             material.SetColor("_Color", new Color(0.6f, 0.6f, 0.6f, 0.6f));
                                             material.SetColor("_EmissionColor", new Color(0.0f, 0.0f, 0.0f, 1.0f));
                                             material.renderQueue = 2453;
                                             Console.WriteLine("#### HSSSS Replaced " + material.name);
+                                            */
                                         }
                                     }
                                 }
@@ -1161,721 +1195,5 @@ namespace HSSSS
             }
         }
         #endregion
-    }
-
-    public class ConfigWindow : MonoBehaviour
-    {
-        #region Global Fields
-        public static bool useTessellation;
-        public static bool fixAlphaShadow;
-        public static bool hsrCompatible;
-
-        public static int uiScale;
-
-        private static int singleSpace;
-        private static int doubleSpace;
-        private static int tetraSpace;
-        private static int hexaSpace;
-        private static int octaSpace;
-
-        private static Vector2 windowSize;
-        private static Vector2 windowPosition;
-
-        private Rect configWindow;
-
-        private Properties.SkinProperties skin;
-        private Properties.ShadowProperties shadow;
-        private Properties.SSAOProperties ssao;
-        private Properties.SSGIProperties ssgi;
-        private Properties.SSCSProperties sscs;
-
-        private enum TabState
-        {
-            skinScattering,
-            skinTransmission,
-            lightShadow,
-            ssao,
-            ssgi,
-            miscellaneous
-        };
-
-        private TabState tabState;
-
-        private readonly string[] tabLabels = new string[] { "Skin Scattering", "Transmission", "Soft Shadow", "Ambient Occlusion", "Global Illumination", "Miscellaneous" };
-        private readonly string[] lutLabels = new string[] { "Penner", "FaceWorks #1", "FaceWorks #2", "Jimenez" };
-        private readonly string[] pcfLabels = new string[] { "Off", "Low", "Medium", "High", "Ultra" };
-        private readonly string[] thkLabels = new string[] { "Pre-Baked", "On-the-Fly" };
-        #endregion
-
-        public void Awake()
-        {
-            windowSize = new Vector2(192.0f * uiScale, 192.0f);
-
-            singleSpace = uiScale;
-            doubleSpace = uiScale * 2;
-            tetraSpace = uiScale * 4;
-            hexaSpace = uiScale * 6;
-            octaSpace = uiScale * 8;
-
-            this.configWindow = new Rect(windowPosition, windowSize);
-            this.tabState = TabState.skinScattering;
-
-            this.skin = Properties.skin;
-            this.ssao = Properties.ssao;
-            this.ssgi = Properties.ssgi;
-            this.sscs = Properties.sscs;
-            this.shadow = Properties.shadow;
-        }
-
-        public void OnGUI()
-        {
-            this.RefreshGUISkin();
-            this.configWindow = GUILayout.Window(0, this.configWindow, this.WindowFunction, "");
-            Studio.Studio.Instance.cameraCtrl.enabled = !this.configWindow.Contains(Event.current.mousePosition);
-        }
-
-        private void WindowFunction(int WindowID)
-        {
-            if (hsrCompatible)
-            {
-                this.tabState = TabState.lightShadow;
-                this.SoftShadow();
-            }
-
-            else
-            {
-                GUILayout.BeginHorizontal();
-                {
-                    // left column
-                    GUILayout.BeginVertical(GUILayout.Width(octaSpace * 5));
-                    {
-                        GUILayout.BeginHorizontal(GUILayout.Height(octaSpace * tabLabels.Length));
-                        {
-                            TabState tmpState = (TabState) GUILayout.SelectionGrid((int) this.tabState, tabLabels, 1);
-
-                            if (this.tabState != tmpState)
-                            {
-                                this.tabState = tmpState;
-                                this.RefreshWindowSize();
-                            }
-                        }
-                        GUILayout.EndHorizontal();
-                    }
-                    GUILayout.EndVertical();
-
-                    //
-                    GUILayout.Space(tetraSpace);
-
-                    // right column
-                    GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
-                    {
-                        switch (this.tabState)
-                        {
-                            case TabState.skinScattering:
-                                this.SkinScattering();
-                                break;
-
-                            case TabState.skinTransmission:
-                                this.Transmission();
-                                break;
-
-                            case TabState.lightShadow:
-                                this.SoftShadow();
-                                break;
-
-                            case TabState.ssao:
-                                this.AmbientOcclusion();
-                                break;
-
-                            case TabState.ssgi:
-                                this.GlobalIllumination();
-                                break;
-
-                            case TabState.miscellaneous:
-                                this.Miscellaneous();
-                                break;
-                        }
-                    }
-                    GUILayout.EndVertical();
-                }
-                GUILayout.EndHorizontal();
-            }
-
-            GUILayout.Space(octaSpace);
-            GUILayout.Box("", GUILayout.Height(2));
-            GUILayout.Space(doubleSpace);
-
-            // save and load
-            GUILayout.BeginHorizontal();
-
-            if (GUILayout.Button("Load Preset"))
-            {
-                if (XmlParser.LoadExternalFile())
-                {
-                    this.skin = Properties.skinUpdate;
-                    this.ssao = Properties.ssaoUpdate;
-                    this.ssgi = Properties.ssgiUpdate;
-                    this.sscs = Properties.sscsUpdate;
-                    this.shadow = Properties.shadowUpdate;
-                    Console.WriteLine("#### HSSSS: Loaded Configurations");
-                }
-
-                else
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Load Configuration");
-                }
-
-                this.RefreshWindowSize();
-            }
-
-            if (GUILayout.Button("Save Preset"))
-            {
-                Properties.skin = this.skin;
-                Properties.ssao = this.ssao;
-                Properties.ssgi = this.ssgi;
-                Properties.sscs = this.sscs;
-                Properties.shadow = this.shadow;
-
-                if (XmlParser.SaveExternalFile())
-                {
-                    Console.WriteLine("#### HSSSS: Saved Configurations");
-                }
-
-                else
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Save Configurations");
-                }
-
-                this.RefreshWindowSize();
-            }
-
-            GUILayout.EndHorizontal();
-
-            // version
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            GUILayout.Label("HSSSS version " + HSSSS.pluginVersion);
-            GUILayout.EndHorizontal();
-
-            this.UpdateSettings();
-            GUI.DragWindow();
-
-            windowPosition = this.configWindow.position;
-        }
-
-        private void RefreshWindowSize()
-        {
-            this.configWindow.size = windowSize;
-        }
-
-        private void RefreshGUISkin()
-        {
-            GUI.skin = HSSSS.windowSkin;
-            // button
-            GUI.skin.button.margin.top = singleSpace;
-            GUI.skin.button.margin.left = singleSpace;
-            GUI.skin.button.margin.right = singleSpace;
-            GUI.skin.button.margin.bottom = singleSpace;
-            GUI.skin.button.fontSize = tetraSpace;
-            GUI.skin.button.fixedHeight = octaSpace;
-            // label
-            GUI.skin.label.fixedHeight = hexaSpace;
-            GUI.skin.label.fontSize = tetraSpace;
-            // text field
-            GUI.skin.textField.margin.top = singleSpace;
-            GUI.skin.textField.margin.left = singleSpace;
-            GUI.skin.textField.margin.right = singleSpace;
-            GUI.skin.textField.margin.bottom = singleSpace;
-            GUI.skin.textField.fontSize = tetraSpace;
-            GUI.skin.textField.fixedHeight = octaSpace;
-            // window
-            GUI.skin.window.padding.top = tetraSpace;
-            GUI.skin.window.padding.left = tetraSpace;
-            GUI.skin.window.padding.right = tetraSpace;
-            GUI.skin.window.padding.bottom = tetraSpace;
-            GUI.skin.window.fontSize = octaSpace;
-            // slider
-            GUI.skin.horizontalSlider.margin.top = singleSpace;
-            GUI.skin.horizontalSlider.margin.left = singleSpace;
-            GUI.skin.horizontalSlider.margin.right = singleSpace;
-            GUI.skin.horizontalSlider.margin.bottom = singleSpace;
-            GUI.skin.horizontalSlider.padding.top = singleSpace;
-            GUI.skin.horizontalSlider.padding.left = singleSpace;
-            GUI.skin.horizontalSlider.padding.right = singleSpace;
-            GUI.skin.horizontalSlider.padding.bottom = singleSpace;
-            GUI.skin.horizontalSlider.fontSize = tetraSpace;
-            GUI.skin.horizontalSlider.fixedHeight = octaSpace;
-            // slider thumb
-            GUI.skin.horizontalSliderThumb.fixedWidth = tetraSpace;
-        }
-
-        private void SkinScattering()
-        {
-            GUILayout.Label("<b>Skin Scattering</b>", new GUIStyle { fontSize = octaSpace });
-            GUILayout.Box("", GUILayout.Height(2));
-            GUILayout.Space(doubleSpace);
-
-            // weight
-            GUILayout.Label("Scattering Weight");
-            skin.sssWeight = this.SliderControls(skin.sssWeight, 0.0f, 1.0f);
-            // profiles
-            GUILayout.Label("Scattering Profile");
-            Properties.LUTProfile lutProfile = (Properties.LUTProfile) GUILayout.Toolbar((int) skin.lutProfile, lutLabels);
-
-            if (skin.lutProfile != lutProfile)
-            {
-                skin.lutProfile = lutProfile;
-                this.RefreshWindowSize();
-            }
-
-            this.Separator();
-
-            if (skin.lutProfile != Properties.LUTProfile.jimenez)
-            {
-                // skin diffusion brdf
-                GUILayout.Label("Skin BRDF Lookup Scale");
-                skin.skinLutScale = this.SliderControls(skin.skinLutScale, 0.0f, 1.0f);
-                GUILayout.Label("Skin BRDF Lookup Bias");
-                skin.skinLutBias = this.SliderControls(skin.skinLutBias, 0.0f, 1.0f);
-
-                // shadow penumbra brdf
-                if (skin.lutProfile == Properties.LUTProfile.nvidia2)
-                {
-                    this.Separator();
-
-                    GUILayout.Label("Shadow BRDF Lookup Scale");
-                    skin.shadowLutScale = this.SliderControls(skin.shadowLutScale, 0.0f, 1.0f);
-                    GUILayout.Label("Shadow BRDF Lookup Bias");
-                    skin.shadowLutBias = this.SliderControls(skin.shadowLutBias, 0.0f, 1.0f);
-                }
-
-                this.Separator();
-
-                GUILayout.Label("Blur Weight");
-                skin.normalBlurWeight = this.SliderControls(skin.normalBlurWeight, 0.0f, 1.0f);
-            }
-
-            GUILayout.Label("Blur Radius");
-            skin.normalBlurRadius = this.SliderControls(skin.normalBlurRadius, 0.0f, 4.0f);
-            GUILayout.Label("Blur Depth Correction");
-            skin.normalBlurDepthRange = this.SliderControls(skin.normalBlurDepthRange, 0.0f, 20.0f);
-            GUILayout.Label("Blur Iterations");
-            skin.normalBlurIter = this.SliderControls(skin.normalBlurIter, 0, 10);
-
-            this.Separator();
-
-            // ambient occlusion
-            GUILayout.Label("AO Color Bleeding");
-            skin.colorBleedWeights = this.RGBControls(skin.colorBleedWeights);
-        }
-
-        private void Transmission()
-        {
-            GUILayout.Label("<b>Transmission</b>", new GUIStyle { fontSize = octaSpace });
-            GUILayout.Box("", GUILayout.Height(2));
-            GUILayout.Space(doubleSpace);
-
-            GUILayout.Label("Thickness Sampling Method");
-
-            bool bakedThickness = GUILayout.Toolbar(Convert.ToUInt16(!this.skin.bakedThickness), thkLabels) == 0;
-
-            if (this.skin.bakedThickness != bakedThickness)
-            {
-                this.skin.bakedThickness = bakedThickness;
-                this.RefreshWindowSize();
-            }
-
-            if (!this.skin.bakedThickness && !this.shadow.pcssEnabled)
-            {
-                GUILayout.Label("<color=red>TURN ON PCSS SOFT SHADOW TO USE THIS OPTION!</color>");
-            }
-
-            GUILayout.Label("Transmission Weight");
-            skin.transWeight = this.SliderControls(skin.transWeight, 0.0f, 1.0f);
-
-            if (this.skin.bakedThickness)
-            {
-                GUILayout.Label("Transmission Distortion");
-                skin.transDistortion = this.SliderControls(skin.transDistortion, 0.0f, 1.0f);
-
-                GUILayout.Label("Transmission Shadow Weight");
-                skin.transShadowWeight = this.SliderControls(skin.transShadowWeight, 0.0f, 1.0f);
-            }
-
-            else
-            {
-                GUILayout.Label("Transmission Thickness Bias");
-                skin.thicknessBias = this.SliderControls(skin.thicknessBias, 0.0f, 5.0f);
-            }
-
-            GUILayout.Label("Transmission Falloff");
-            skin.transFalloff = this.SliderControls(skin.transFalloff, 1.0f, 20.0f);
-
-            if (this.skin.bakedThickness)
-            {
-                GUILayout.Label("Transmission Absorption");
-                skin.transAbsorption = this.RGBControls(skin.transAbsorption);
-            }
-        }
-
-        private void SoftShadow()
-        {
-            GUILayout.Label("<b>Soft Shadows</b>", new GUIStyle { fontSize = octaSpace });
-            GUILayout.Box("", GUILayout.Height(2));
-            GUILayout.Space(doubleSpace);
-
-            #region Soft Shadow
-            // pcf iterations count
-            GUILayout.Label("PCF Shadow Quality");
-            Properties.PCFState pcfState = (Properties.PCFState)GUILayout.Toolbar((int)this.shadow.pcfState, pcfLabels);
-
-            if (this.shadow.pcfState != pcfState)
-            {
-                this.shadow.pcfState = pcfState;
-                this.RefreshWindowSize();
-            }
-
-            if (this.shadow.pcfState != Properties.PCFState.disable)
-            {
-                // pcss soft shadow toggle
-                GUILayout.Label("Percentage Closer Soft Shadow");
-                bool pcssEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.shadow.pcssEnabled), new string[] { "Disable", "Enable" }) == 1;
-
-                if (this.shadow.pcssEnabled != pcssEnabled)
-                {
-                    this.shadow.pcssEnabled = pcssEnabled;
-                    this.RefreshWindowSize();
-                }
-
-                this.Separator();
-
-                // directional lights
-                if (this.shadow.pcssEnabled)
-                {
-                    GUILayout.Label("Directional Light / Blocker Search Radius (cm)");
-                    this.shadow.dirLightPenumbra.x = this.SliderControls(this.shadow.dirLightPenumbra.x, 0.0f, 20.0f);
-                    GUILayout.Label("Directional Light / Light Radius (cm)");
-                    this.shadow.dirLightPenumbra.y = this.SliderControls(this.shadow.dirLightPenumbra.y, 0.0f, 20.0f);
-                    GUILayout.Label("Directional Light / Minimum Penumbra (cm)");
-                }
-
-                else
-                {
-                    GUILayout.Label("Directional Light / Penumbra Scale (cm)");
-                }
-
-                this.shadow.dirLightPenumbra.z = this.SliderControls(this.shadow.dirLightPenumbra.z, 0.0f, 20.0f);
-
-                this.Separator();
-
-                // spot lights
-                if (this.shadow.pcssEnabled)
-                {
-                    GUILayout.Label("Spot Light / Blocker Search Radius (cm)");
-                    this.shadow.spotLightPenumbra.x = this.SliderControls(this.shadow.spotLightPenumbra.x, 0.0f, 20.0f);
-                    GUILayout.Label("Spot Light / Light Radius (cm)");
-                    this.shadow.spotLightPenumbra.y = this.SliderControls(this.shadow.spotLightPenumbra.y, 0.0f, 20.0f);
-                    GUILayout.Label("Spot Light / Minimum Penumbra (cm)");
-                }
-
-                else
-                {
-                    GUILayout.Label("Spot Light / Penumbra Scale (cm)");
-                }
-
-                this.shadow.spotLightPenumbra.z = this.SliderControls(this.shadow.spotLightPenumbra.z, 0.0f, 20.0f);
-
-                this.Separator();
-
-                // point lights
-                if (this.shadow.pcssEnabled)
-                {
-                    GUILayout.Label("Point Light / Blocker Search Radius (cm)");
-                    this.shadow.pointLightPenumbra.x = this.SliderControls(this.shadow.pointLightPenumbra.x, 0.0f, 20.0f);
-                    GUILayout.Label("Point Light / Light Radius (cm)");
-                    this.shadow.pointLightPenumbra.y = this.SliderControls(this.shadow.pointLightPenumbra.y, 0.0f, 20.0f);
-                    GUILayout.Label("Point Light / Minimum Penumbra (cm)");
-                }
-
-                else
-                {
-                    GUILayout.Label("Point Light / Penumbra Scale (cm)");
-                }
-
-                this.shadow.pointLightPenumbra.z = this.SliderControls(this.shadow.pointLightPenumbra.z, 0.0f, 20.0f);
-            }
-
-            else
-            {
-                this.shadow.pcssEnabled = false;
-            }
-            #endregion
-
-            #region SSCS
-            this.Separator();
-            GUILayout.Label("<b>Contact Shadow</b>");
-            bool sscsEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.sscs.enabled), new string[] { "Disable", "Enable" }) == 1;
-
-            if (this.sscs.enabled != sscsEnabled)
-            {
-                this.sscs.enabled = sscsEnabled;
-                this.RefreshWindowSize();
-            }
-
-            if (this.sscs.enabled)
-            {
-                GUILayout.Label("Contact Shadow Quality");
-                this.sscs.quality = (Properties.QualityPreset)GUILayout.Toolbar((int)this.sscs.quality, new string[] { "Low", "Medium", "High", "Ultra" });
-                this.Separator();
-
-                GUILayout.Label("Raytrace Radius (cm)");
-                this.sscs.rayRadius = this.SliderControls(this.sscs.rayRadius, 0.0f, 50.0f);
-                GUILayout.Label("Raytrace Depth Bias (cm)");
-                this.sscs.depthBias = this.SliderControls(this.sscs.depthBias, 0.0f, 1.0f);
-                GUILayout.Label("Mean Thickness (m)");
-                this.sscs.meanDepth = this.SliderControls(this.sscs.meanDepth, 0.0f, 2.0f);
-            }
-            #endregion
-        }
-
-        private void AmbientOcclusion()
-        {
-            GUILayout.Label("<b>Ambient Occlusion</b>", new GUIStyle { fontSize = octaSpace });
-            GUILayout.Box("", GUILayout.Height(2));
-            GUILayout.Space(doubleSpace);
-
-            bool ssaoEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.ssao.enabled), new string[] { "Disable", "Enable" }) == 1;
-
-            if (this.ssao.enabled != ssaoEnabled)
-            {
-                this.ssao.enabled = ssaoEnabled;
-                this.RefreshWindowSize();
-            }
-
-            if (this.ssao.enabled)
-            {
-                this.Separator();
-
-                GUILayout.Label("Visibility Function");
-                this.ssao.usegtao = GUILayout.Toolbar(Convert.ToUInt16(this.ssao.usegtao), new string[] { "HBAO", "GTAO" }) == 1;
-
-                GUILayout.Label("AO Quality");
-                this.ssao.quality = (Properties.QualityPreset)GUILayout.Toolbar((int)this.ssao.quality, new string[] { "Low", "Medium", "High", "Ultra" });
-
-                GUILayout.Label("Deinterleaved Sampling");
-                this.ssao.screenDiv = GUILayout.Toolbar(this.ssao.screenDiv, new string[] { "Off", "2x2", "4x4", "8x8" });
-
-                this.Separator();
-
-                GUILayout.Label("Occlusion Intensity");
-                this.ssao.intensity = this.SliderControls(this.ssao.intensity, 0.1f, 10.0f);
-                GUILayout.Label("Occlusion Bias");
-                this.ssao.lightBias = this.SliderControls(this.ssao.lightBias, 0.0f, 1.0f);
-
-                this.Separator();
-
-                GUILayout.Label("Raytrace Radius (m)");
-                this.ssao.rayRadius = this.SliderControls(this.ssao.rayRadius, 0.0f, 1.0f);
-                GUILayout.Label("Raytrace Stride");
-                this.ssao.rayStride = this.SliderControls(this.ssao.rayStride, 1, 4);
-
-                this.Separator();
-
-                GUILayout.Label("Mean Thickness (m)");
-                this.ssao.meanDepth = this.SliderControls(this.ssao.meanDepth, 0.0f, 2.00f);
-                GUILayout.Label("Fade Depth (m)");
-                this.ssao.fadeDepth = this.SliderControls(this.ssao.fadeDepth, 1.0f, 1000.0f);
-
-                this.Separator();
-                GUILayout.Label("SSDO");
-                this.ssao.usessdo = GUILayout.Toolbar(Convert.ToUInt16(this.ssao.usessdo), new string[] { "Off", "On" }) == 1;
-                GUILayout.Label("SSDO Light Apature");
-                this.ssao.doApature = this.SliderControls(this.ssao.doApature, 0.0f, 1.0f);
-                this.Separator();
-
-                GUILayout.Label("Spatial Denoiser");
-                this.ssao.denoise = GUILayout.Toolbar(Convert.ToUInt16(this.ssao.denoise), new string[] { "Off", "On" }) == 1;
-            }
-        }
-
-        private void GlobalIllumination()
-        {
-            GUILayout.Label("<b>Global Illumination</b>", new GUIStyle { fontSize = octaSpace });
-            GUILayout.Box("", GUILayout.Height(2));
-            GUILayout.Space(doubleSpace);
-
-            bool ssgiEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.ssgi.enabled), new string[] { "Disable", "Enable" }) == 1;
-
-            if (this.ssgi.enabled != ssgiEnabled)
-            {
-                this.ssgi.enabled = ssgiEnabled;
-                this.RefreshWindowSize();
-            }
-
-            if (this.ssgi.enabled)
-            {
-                this.Separator();
-
-                GUILayout.Label("GI Quality");
-                this.ssgi.quality = (Properties.QualityPreset)GUILayout.Toolbar((int)this.ssgi.quality, new string[] { "Low", "Medium", "High", "Ultra" });
-
-                GUILayout.Label("Sampling Resolution");
-                this.ssgi.samplescale = (Properties.RenderScale)GUILayout.Toolbar((int)this.ssgi.samplescale, new string[] { "Quarter", "Half", "Full" });
-
-                this.Separator();
-
-                GUILayout.Label("First Bounce Gain");
-                this.ssgi.intensity = this.SliderControls(this.ssgi.intensity, 0.1f, 100.0f);
-                GUILayout.Label("Second Bounce Gain");
-                this.ssgi.secondary = this.SliderControls(this.ssgi.secondary, 0.1f, 100.0f);
-
-                this.Separator();
-
-                GUILayout.Label("Raytrace Radius (m)");
-                this.ssgi.rayRadius = this.SliderControls(this.ssgi.rayRadius, 0.0f, 4.0f);
-                GUILayout.Label("Raytrace Stride");
-                this.ssgi.rayStride = this.SliderControls(this.ssgi.rayStride, 1, 4);
-
-                this.Separator();
-
-                GUILayout.Label("Fade Depth (m)");
-                this.ssgi.fadeDepth = this.SliderControls(this.ssgi.fadeDepth, 1.0f, 1000.0f);
-
-                this.Separator();
-
-                GUILayout.Label("Spatial Denoiser");
-                this.ssgi.denoise = GUILayout.Toolbar(Convert.ToUInt16(this.ssgi.denoise), new string[] { "Off", "On" }) == 1;
-                GUILayout.Label("Temporal Denoiser");
-                this.ssgi.mixWeight = this.SliderControls(this.ssgi.mixWeight, 0.0f, 1.0f);
-            }
-        }
-
-        private void Miscellaneous()
-        {
-            GUILayout.Label("<b>Miscellaneous</b>", new GUIStyle { fontSize = octaSpace });
-            GUILayout.Box("", GUILayout.Height(2));
-            GUILayout.Space(doubleSpace);
-
-            // skin microdetails
-            GUILayout.Label("MicroDetail #1 Strength");
-            this.skin.microDetailWeight_1 = this.SliderControls(this.skin.microDetailWeight_1, 0.0f, 1.0f);
-            GUILayout.Label("MicroDetail #2 Strength");
-            this.skin.microDetailWeight_2 = this.SliderControls(this.skin.microDetailWeight_2, 0.0f, 1.0f);
-            GUILayout.Label("MicroDetails Tiling");
-            this.skin.microDetailTiling = this.SliderControls(this.skin.microDetailTiling, 0.1f, 100.0f);
-
-            // tessellation
-            if (useTessellation)
-            {
-                this.Separator();
-
-                GUILayout.Label("Tessellation Phong Strength");
-                this.skin.phongStrength = this.SliderControls(this.skin.phongStrength, 0.0f, 1.0f);
-
-                GUILayout.Label("Tessellation Edge Length");
-                this.skin.edgeLength = this.SliderControls(this.skin.edgeLength, 2.0f, 50.0f);
-            }
-
-            if (fixAlphaShadow)
-            {
-                this.Separator();
-
-                GUILayout.Label("Eyebrow Wrap Offset");
-                this.skin.eyebrowoffset = this.SliderControls(this.skin.eyebrowoffset, 0.0f, 0.5f);
-            }
-        }
-
-        private float SliderControls(float sliderValue, float minValue, float maxValue)
-        {
-            GUILayout.BeginHorizontal();
-
-            sliderValue = GUILayout.HorizontalSlider(sliderValue, minValue, maxValue);
-
-            if (float.TryParse(GUILayout.TextField(sliderValue.ToString("0.00"), GUILayout.Width(2 * octaSpace)), out float fieldValue))
-            {
-                sliderValue = fieldValue;
-            }
-
-            GUILayout.EndHorizontal();
-
-            return sliderValue;
-        }
-
-        private int SliderControls(int sliderValue, int minValue, int maxValue)
-        {
-            GUILayout.BeginHorizontal();
-
-            sliderValue = (int) GUILayout.HorizontalSlider(sliderValue, minValue, maxValue);
-
-            if (int.TryParse(GUILayout.TextField(sliderValue.ToString(), GUILayout.Width(2 * octaSpace)), out int fieldValue))
-            {
-                sliderValue = fieldValue;
-            }
-
-            GUILayout.EndHorizontal();
-
-            return sliderValue;
-        }
-
-        private Vector3 RGBControls(Vector3 rgbValue)
-        {
-            GUILayout.BeginHorizontal();
-
-            GUILayout.Label("<color=red>Red</color>", new GUIStyle { alignment = TextAnchor.MiddleCenter, fixedHeight = octaSpace, fontSize = tetraSpace });
-            
-            if (float.TryParse(GUILayout.TextField(rgbValue.x.ToString("0.00"), GUILayout.Width(3 * octaSpace)), out float r))
-            {
-                rgbValue.x = r;
-            }
-
-            GUILayout.Label("<color=green>Green</color>", new GUIStyle { alignment = TextAnchor.MiddleCenter, fixedHeight = octaSpace, fontSize = tetraSpace });
-
-            if (float.TryParse(GUILayout.TextField(rgbValue.y.ToString("0.00"), GUILayout.Width(3 * octaSpace)), out float g))
-            {
-                rgbValue.y = g;
-            }
-
-            GUILayout.Label("<color=blue>Blue</color>", new GUIStyle { alignment = TextAnchor.MiddleCenter, fixedHeight = octaSpace, fontSize = tetraSpace });
-
-            if (float.TryParse(GUILayout.TextField(rgbValue.z.ToString("0.00"), GUILayout.Width(3 * octaSpace)), out float b))
-            {
-                rgbValue.z = b;
-            }
-
-            GUILayout.EndHorizontal();
-
-            return rgbValue;
-        }
-
-        private void Separator(bool vertical = false)
-        {
-            GUILayout.Space(doubleSpace);
-
-            if (vertical)
-            {
-                GUILayout.Box("", GUILayout.Width(1));
-            }
-
-            else
-            {
-                GUILayout.Box("", GUILayout.Height(1));
-            }
-            
-            GUILayout.Space(singleSpace);
-        }
-
-        private void UpdateSettings()
-        {
-            Properties.skinUpdate = this.skin;
-            Properties.ssaoUpdate = this.ssao;
-            Properties.ssgiUpdate = this.ssgi;
-            Properties.sscsUpdate = this.sscs;
-            Properties.shadowUpdate = this.shadow;
-
-            Properties.UpdateSkin();
-            Properties.UpdateSSAO();
-            Properties.UpdateSSGI();
-            Properties.UpdateShadow();
-        }
     }
 }

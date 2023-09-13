@@ -7,7 +7,7 @@ namespace HSSSS
 {
     public class AssetLoader
     {
-        internal static AssetBundle assetBundle;
+        private static AssetBundle assetBundle;
 
         // body materials
         public static Material skinMaterial;

@@ -34,6 +34,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssetLoader.cs" />
+    <Compile Include="ConfigWindow.cs" />
     <Compile Include="LightScripts.cs" />
     <Compile Include="PostEffect.cs" />
     <Compile Include="HSSSS.cs" />

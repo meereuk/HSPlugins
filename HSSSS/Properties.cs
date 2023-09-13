@@ -124,7 +124,9 @@ namespace HSSSS
 
             public float intensity;
             public float secondary;
+            public float roughness;
             public float rayRadius;
+            public float meanDepth;
             public float fadeDepth;
             public float mixWeight;
             public int rayStride;
@@ -220,7 +222,9 @@ namespace HSSSS
 
             intensity = 1.0f,
             secondary = 1.0f,
+            roughness = 0.3f,
             rayRadius = 1.0f,
+            meanDepth = 1.0f,
             fadeDepth = 100.0f,
             mixWeight = 0.5f,
             rayStride = 2
@@ -235,49 +239,28 @@ namespace HSSSS
             meanDepth = 1.0f
         };
 
-        public static SkinProperties skinUpdate = skin;
-        public static SSAOProperties ssaoUpdate = ssao;
-        public static SSGIProperties ssgiUpdate = ssgi;
-        public static SSCSProperties sscsUpdate = sscs;
-        public static ShadowProperties shadowUpdate = shadow;
-
         public static void UpdateSkin()
         {
-            bool soft = skin.lutProfile == skinUpdate.lutProfile
-                && skin.normalBlurIter == skinUpdate.normalBlurIter;
+            HSSSS.DeferredRenderer.UpdateSkinSettings();
 
-            bool detail = skin.microDetailWeight_1 == skinUpdate.microDetailWeight_1
-                && skin.microDetailWeight_2 == skinUpdate.microDetailWeight_2
-                && skin.microDetailTiling == skinUpdate.microDetailTiling
-                && skin.eyebrowoffset == skinUpdate.eyebrowoffset
-                && skin.phongStrength == skinUpdate.phongStrength
-                && skin.edgeLength == skinUpdate.edgeLength;
+            var CharacterManager = Singleton<Manager.Character>.Instance;
 
-            skin = skinUpdate;
-
-            HSSSS.DeferredRenderer.UpdateSkinSettings(soft);
-
-            if (!detail)
+            foreach (KeyValuePair<int, CharFemale> female in CharacterManager.dictFemale)
             {
-                var CharacterManager = Singleton<Manager.Character>.Instance;
+                UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjSkinBody);
+                UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjSkinFace);
+                UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjUnderHair);
+                UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjNail);
+                UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjEyebrow);
+            }
 
-                foreach (KeyValuePair<int, CharFemale> female in CharacterManager.dictFemale)
-                {
-                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjSkinBody);
-                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjSkinFace);
-                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjUnderHair);
-                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjNail);
-                    UpdateSkinLoop(female.Value, CharReference.TagObjKey.ObjEyebrow);
-                }
-
-                foreach (KeyValuePair<int, CharMale> male in CharacterManager.dictMale)
-                {
-                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjSkinBody);
-                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjSkinFace);
-                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjUnderHair);
-                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjNail);
-                    UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjEyebrow);
-                }
+            foreach (KeyValuePair<int, CharMale> male in CharacterManager.dictMale)
+            {
+                UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjSkinBody);
+                UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjSkinFace);
+                UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjUnderHair);
+                UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjNail);
+                UpdateSkinLoop(male.Value, CharReference.TagObjKey.ObjEyebrow);
             }
         }
 
@@ -335,9 +318,6 @@ namespace HSSSS
 
         public static void UpdateShadow()
         {
-            shadow = shadowUpdate;
-            sscs = sscsUpdate;
-
             Shader.DisableKeyword("_PCF_ON");
             Shader.DisableKeyword("_PCSS_ON");
             Shader.DisableKeyword("_SSCS_ON");
@@ -383,17 +363,11 @@ namespace HSSSS
 
         public static void UpdateSSAO()
         {
-            bool soft = ssao.quality == ssaoUpdate.quality
-                && ssao.usegtao == ssaoUpdate.usegtao
-                && ssao.denoise == ssaoUpdate.denoise;
-
-            ssao = ssaoUpdate;
-
             HSSSS.SSAORenderer.enabled = ssao.enabled;
 
             if (ssao.enabled)
             {
-                HSSSS.SSAORenderer.UpdateSSAOSettings(soft);
+                HSSSS.SSAORenderer.UpdateSSAOSettings();
             }
 
             else
@@ -404,18 +378,11 @@ namespace HSSSS
 
         public static void UpdateSSGI()
         {
-            bool soft = ssgi.quality == ssgiUpdate.quality
-                && ssgi.denoise == ssgiUpdate.denoise
-                && ssgi.samplescale == ssgiUpdate.samplescale
-                && ssgi.renderscale == ssgiUpdate.renderscale;
-
-            ssgi = ssgiUpdate;
-
             HSSSS.SSGIRenderer.enabled = ssgi.enabled;
 
             if (ssgi.enabled)
             {
-                HSSSS.SSGIRenderer.UpdateSSGISettings(soft);
+                HSSSS.SSGIRenderer.UpdateSSGISettings();
             }
         }
     }
