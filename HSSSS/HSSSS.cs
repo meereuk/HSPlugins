@@ -27,69 +27,18 @@ namespace HSSSS
         public static string configLocation;
         public static string configFile;
 
-        // assetbundle file
-        private static AssetBundle assetBundle;
-
-        // internal deferred shaders
-        private static Shader deferredShading;
-        private static Shader deferredReflections;
-
         // camera effects
         public static CameraProjector CameraProjector = null;
         public static DeferredRenderer DeferredRenderer = null;
         public static SSAORenderer SSAORenderer = null;
         public static SSGIRenderer SSGIRenderer = null;
-
         private static GameObject mainCamera = null;
-
-        // shaders
-        public static Shader normalBlurShader;
-        public static Shader diffuseBlurShader;
-        public static Shader initSpecularShader;
-        public static Shader transmissionBlitShader;
-        public static Shader backFaceDepthShader;
-        public static Shader temporalBlendShader;
-        public static Shader ssaoShader;
-        public static Shader ssgiShader;
-
-        // textures
-        public static Texture2D areaLightLUT;
-        public static Texture2D pennerSkinLUT;
-        public static Texture2D faceWorksSkinLUT;
-        public static Texture2D faceWorksShadowLUT;
-        public static Texture2D deepScatterLUT;
-        public static Texture2D skinJitter;
-        public static Texture3D blueNoise;
-
-        // body materials
-        private static Material skinMaterial;
-        private static Material milkMaterial;
-        private static Material liquidMaterial;
-        private static Material overlayMaterial;
-        private static Material eyeBrowMaterial;
-        private static Material eyeLashMaterial;
-        private static Material eyeCorneaMaterial;
-        private static Material eyeScleraMaterial;
-        private static Material eyeOverlayMaterial;
-
-        private static Material headWetMaterial;
-        private static Material bodyWetMaterial;
-
-        // thickness textures
-        private static Texture2D femaleBodyThickness;
-        private static Texture2D femaleHeadThickness;
-        private static Texture2D maleBodyThickness;
-        private static Texture2D maleHeadThickness;
-
-        // cookie for spotlight
-        public static Texture2D spotCookie;
 
         // modprefs.ini options
         public static bool isStudio;
         public static bool isEnabled;
         public static bool hsrCompatible;
         public static bool fixAlphaShadow;
-        public static bool useTessellation;
         public static bool useEyePOMShader;
         public static bool useCustomThickness;
 
@@ -102,7 +51,6 @@ namespace HSSSS
         private static int uiScale;
 
         // ui window
-        public static GUISkin windowSkin;
         public GameObject windowObj;
 
         // singleton
@@ -116,7 +64,7 @@ namespace HSSSS
 
             if (instance != this)
             {
-                Console.WriteLine("#### HSSSS: Could not initialize the singleton pattern");
+                Console.WriteLine("#### HSSSS: It seems HSSSS is totally fucked up :P");
             }
 
             isStudio = "StudioNEO" == Application.productName;
@@ -137,8 +85,27 @@ namespace HSSSS
 
             if (isEnabled)
             {
-                this.BaseAssetLoader();
-                this.DeferredAssetLoader();
+                if (XmlParser.LoadExternalFile())
+                {
+                    Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Could not load config.xml; writing a new one...");
+
+                    if (XmlParser.SaveExternalFile())
+                    {
+                        Console.WriteLine("#### HSSSS: Successfully wrote a new configuration file");
+                    }
+
+                    else
+                    {
+                        Console.WriteLine("#### HSSSS: Could not write config.xml. What the fuck?");
+                    }
+                }
+
+                AssetLoader.LoadEverything();
                 this.InternalShaderReplacer();
                 
                 // hsextsave compatibility
@@ -217,29 +184,18 @@ namespace HSSSS
             {
                 if (this.PostFxInitializer())
                 {
-                    if (XmlParser.LoadExternalFile())
-                    {
-                        Properties.UpdateSkin();
-                        Properties.UpdateSSAO();
-                        Properties.UpdateSSGI();
-                        Properties.UpdateShadow();
-                        Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
-                    }
+                    Console.WriteLine("#### HSSSS: Successfully initialized the camera effects");
 
-                    else
-                    {
-                        Console.WriteLine("#### HSSSS: Could not load config.xml; writing a new one...");
+                    Properties.UpdateSkin();
+                    Properties.UpdateSSAO();
+                    Properties.UpdateSSGI();
+                    Properties.UpdatePCSS();
+                    Properties.UpdateMaterials();
+                }
 
-                        if (XmlParser.SaveExternalFile())
-                        {
-                            Console.WriteLine("#### HSSSS: Successfully wrote a new configuration file");
-                        }
-
-                        else
-                        {
-
-                        }
-                    }
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Couldn't initialize the camera effects");
                 }
             }
         }
@@ -258,7 +214,6 @@ namespace HSSSS
             {
                 if (this.windowObj == null)
                 {
-                    ConfigWindow.useTessellation = useTessellation;
                     ConfigWindow.fixAlphaShadow = fixAlphaShadow;
                     ConfigWindow.hsrCompatible = hsrCompatible;
                     ConfigWindow.uiScale = uiScale;
@@ -290,7 +245,8 @@ namespace HSSSS
                     Properties.UpdateSkin();
                     Properties.UpdateSSAO();
                     Properties.UpdateSSGI();
-                    Properties.UpdateShadow();
+                    Properties.UpdatePCSS();
+                    Properties.UpdateMaterials();
                     Console.WriteLine("#### HSSSS: Loaded Configurations from the Scene File");
                 }
                 catch
@@ -326,8 +282,6 @@ namespace HSSSS
             isEnabled = ModPrefs.GetBool("HSSSS", "Enabled", true, true);
             // shadow fix for overlay materials
             fixAlphaShadow = ModPrefs.GetBool("HSSSS", "FixShadow", true, true);
-            // tesellation skin shader
-            useTessellation = ModPrefs.GetBool("HSSSS", "Tessellation", false, true);
             // dedicated eye shader which supports pom/sss
             useEyePOMShader = ModPrefs.GetBool("HSSSS", "EyePOMShader", true, true);
             // whether to use custom thickness map instead of the built-in texture
@@ -378,267 +332,8 @@ namespace HSSSS
             if (hsrCompatible)
             {
                 fixAlphaShadow = false;
-                useTessellation = false;
                 useEyePOMShader = false;
                 useCustomThickness = false;
-            }
-        }
-
-        private void BaseAssetLoader()
-        {
-            // hssssresources.unity3d
-            assetBundle = AssetBundle.LoadFromMemory(Resources.hssssresources);
-
-            // custom thickness texture
-            if (useCustomThickness)
-            {
-                femaleBodyCustom = Path.Combine(pluginLocation, femaleBodyCustom);
-                femaleHeadCustom = Path.Combine(pluginLocation, femaleHeadCustom);
-                maleBodyCustom = Path.Combine(pluginLocation, maleBodyCustom);
-                maleHeadCustom = Path.Combine(pluginLocation, maleHeadCustom);
-
-                femaleBodyThickness = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
-                femaleHeadThickness = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
-                maleBodyThickness = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
-                maleHeadThickness = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
-
-                // female custom body
-                if (femaleBodyThickness.LoadImage(File.ReadAllBytes(femaleBodyCustom)))
-                {
-                    femaleBodyThickness.Apply();
-                }
-
-                else
-                {
-                    Console.Write("#### HSSSS: Could not load " + femaleBodyCustom);
-                    femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
-                }
-
-                // female custom head
-                if (femaleHeadThickness.LoadImage(File.ReadAllBytes(femaleHeadCustom)))
-                {
-                    femaleHeadThickness.Apply();
-                }
-
-                else
-                {
-                    Console.Write("#### HSSSS: Could not load " + femaleHeadCustom);
-                    femaleHeadThickness = assetBundle.LoadAsset<Texture2D>("FemaleHeadThickness");
-                }
-
-                // male custom body
-                if (maleBodyThickness.LoadImage(File.ReadAllBytes(maleBodyCustom)))
-                {
-                    maleBodyThickness.Apply();
-                }
-
-                else
-                {
-                    Console.Write("#### HSSSS: Could not load " + maleBodyCustom);
-                    maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
-                }
-
-                // male custom head
-                if (maleHeadThickness.LoadImage(File.ReadAllBytes(maleHeadCustom)))
-                {
-                    maleHeadThickness.Apply();
-                }
-
-                else
-                {
-                    Console.Write("#### HSSSS: Could not load " + maleHeadCustom);
-                    maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
-                }
-            }
-
-            // build-in thickness texture
-            else
-            {
-                femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
-                femaleHeadThickness = assetBundle.LoadAsset<Texture2D>("FemaleHeadThickness");
-                maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
-                maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
-            }
-
-            // area light lookup texture
-            areaLightLUT = assetBundle.LoadAsset<Texture2D>("AreaLightLUT");
-
-            // sss lookup textures
-            pennerSkinLUT = assetBundle.LoadAsset<Texture2D>("DefaultSkinLUT");
-            faceWorksSkinLUT = assetBundle.LoadAsset<Texture2D>("FaceWorksSkinLUT");
-            faceWorksShadowLUT = assetBundle.LoadAsset<Texture2D>("FaceWorksShadowLUT");
-            deepScatterLUT = assetBundle.LoadAsset<Texture2D>("DeepScatterLUT");
-
-            // jitter texture
-            skinJitter = assetBundle.LoadAsset<Texture2D>("SkinJitter");
-            blueNoise = assetBundle.LoadAsset<Texture3D>("BlueNoise");
-            
-            // spotlight cookie
-            spotCookie = assetBundle.LoadAsset<Texture2D>("DefaultSpotCookie");
-
-            #region Errors
-            if (null == assetBundle)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Internal AssetBundle");
-            }
-
-            if (null == femaleBodyThickness || null == femaleHeadThickness)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Female Thickness Textures");
-            }
-
-            if (null == maleBodyThickness || null == maleHeadThickness)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Male Thickness Textures");
-            }
-
-            if (null == areaLightLUT)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Area Light Lookup Texture");
-            }
-
-            if (null == pennerSkinLUT || null == faceWorksSkinLUT || null == faceWorksShadowLUT || null == deepScatterLUT)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Skin Lookup Textures");
-            }
-
-            if (null == skinJitter)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Blue Noise Texture");
-            }
-
-            if (null == skinJitter)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Skin Jitter Texture");
-            }
-
-            if (null == spotCookie)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Spotlight Cookie");
-            }
-            #endregion
-        }
-
-        private void DeferredAssetLoader()
-        {
-            liquidMaterial = assetBundle.LoadAsset<Material>("Liquid");
-
-            headWetMaterial = assetBundle.LoadAsset<Material>("CondensationHead");
-            bodyWetMaterial = assetBundle.LoadAsset<Material>("CondensationBody");
-
-            // tesellation materials
-            if (useTessellation)
-            {
-                skinMaterial = assetBundle.LoadAsset<Material>("SkinTessellation");
-                milkMaterial = assetBundle.LoadAsset<Material>("OverlayTessellationForward");
-                overlayMaterial = assetBundle.LoadAsset<Material>("OverlayTessellation");
-            }
-
-            // non-tesellation materials
-            else
-            {
-                skinMaterial = assetBundle.LoadAsset<Material>("Skin");
-                milkMaterial = assetBundle.LoadAsset<Material>("OverlayForward");
-                overlayMaterial = assetBundle.LoadAsset<Material>("Overlay");
-            }
-
-            // post fx shaders
-            normalBlurShader = assetBundle.LoadAsset<Shader>("ScreenSpaceNormalBlur");
-            diffuseBlurShader = assetBundle.LoadAsset<Shader>("ScreenSpaceDiffuseBlur");
-            initSpecularShader = assetBundle.LoadAsset<Shader>("InitSpecularBuffer");
-            transmissionBlitShader = assetBundle.LoadAsset<Shader>("TransmissionBlit");
-            backFaceDepthShader = assetBundle.LoadAsset<Shader>("BackFaceDepth");
-            temporalBlendShader = assetBundle.LoadAsset<Shader>("TemporalBlend");
-            ssaoShader = assetBundle.LoadAsset<Shader>("SSAO");
-            ssgiShader = assetBundle.LoadAsset<Shader>("SSGI");
-
-            // internal deferred & reflection shaders
-            deferredShading = assetBundle.LoadAsset<Shader>("InternalDeferredShading");
-            deferredReflections = assetBundle.LoadAsset<Shader>("InternalDeferredReflections");
-
-            // configuration window skin
-            windowSkin = assetBundle.LoadAsset<GUISkin>("GUISkin");
-
-            // confirm materials are loaded
-            #region Errors
-            if (null == skinMaterial || null == overlayMaterial)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Skin Material");
-            }
-
-            if (null == transmissionBlitShader || null == normalBlurShader)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load PostFX Shaders");
-            }
-
-            if (null == deferredShading || null == deferredReflections)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Deferred Internal Shaders");
-            }
-
-            if (null == ssaoShader)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Ambient Occlusion Shader");
-            }
-
-            if (null == ssgiShader)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load Global Illumination Shader");
-            }
-
-            if (null == windowSkin)
-            {
-                Console.WriteLine("#### HSSSS: Failed to Load UI Skin");
-            }
-            #endregion
-
-            // materials for additional replacement
-            if (fixAlphaShadow)
-            {
-                eyeBrowMaterial = assetBundle.LoadAsset<Material>("EyeBrow");
-                eyeLashMaterial = assetBundle.LoadAsset<Material>("EyeLash");
-                eyeOverlayMaterial = assetBundle.LoadAsset<Material>("OverlayForward");
-                eyeScleraMaterial = assetBundle.LoadAsset<Material>("Standard");
-
-                // dedicated pom eye shader
-                if (useEyePOMShader)
-                {
-                    eyeCorneaMaterial = assetBundle.LoadAsset<Material>("Eye");
-                }
-
-                // ordinary overlay eye shader
-                else
-                {
-                    eyeCorneaMaterial = assetBundle.LoadAsset<Material>("OverlayForward");
-                }
-
-                // confirm materials are loaded
-                #region Errors
-                if (null == eyeBrowMaterial)
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Load Eyebrow Material");
-                }
-
-                if (null == eyeLashMaterial)
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Load Eyelash Material");
-                }
-
-                if (null == eyeCorneaMaterial)
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Load Eyepuil Material");
-                }
-
-                if (null == eyeScleraMaterial)
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Load Eyewhite Material");
-                }
-
-                if (null == eyeOverlayMaterial)
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Load Eye Overlay Material");
-                }
-                #endregion
             }
         }
 
@@ -646,17 +341,17 @@ namespace HSSSS
         {
             GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredShading, BuiltinShaderMode.UseCustom);
             GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredReflections, BuiltinShaderMode.UseCustom);
-            GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredShading, deferredShading);
-            GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredReflections, deferredReflections);
+            GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredShading, AssetLoader.deferredLighting);
+            GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredReflections, AssetLoader.deferredReflection);
 
-            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredShading) != deferredShading)
+            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredShading) != AssetLoader.deferredLighting)
             {
-                Console.WriteLine("#### HSSSS: Failed to Replace Internal Deferred Shader");
+                Console.WriteLine("#### HSSSS: Couldn't replace deferred lighting shader");
             }
 
-            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredReflections) != deferredReflections)
+            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.DeferredReflections) != AssetLoader.deferredReflection)
             {
-                Console.WriteLine("#### HSSSS: Failed to Replace Internal Reflection Shader");
+                Console.WriteLine("#### HSSSS: Couldn't replace deferred reflection Shader");
             }
         }
 
@@ -793,32 +488,28 @@ namespace HSSSS
                 switch (key)
                 {
                     case CharReference.TagObjKey.ObjUnderHair:
-                        ShaderReplacer(overlayMaterial, mat);
+                        ShaderReplacer(AssetLoader.overlay, mat);
                         break;
 
                     case CharReference.TagObjKey.ObjEyelashes:
-                        ShaderReplacer(eyeLashMaterial, mat);
+                        ShaderReplacer(AssetLoader.eyelash, mat);
                         break;
 
                     case CharReference.TagObjKey.ObjEyebrow:
-                        ShaderReplacer(eyeBrowMaterial, mat);
-                        if (fixAlphaShadow)
-                        {
-                            mat.SetFloat("_VertexWrapOffset", Properties.skin.eyebrowoffset);
-                        }
+                        ShaderReplacer(AssetLoader.eyebrow, mat);
                         break;
 
                     case CharReference.TagObjKey.ObjEyeHi:
-                        ShaderReplacer(eyeOverlayMaterial, mat);
+                        ShaderReplacer(AssetLoader.eyeOverlay, mat);
                         mat.renderQueue = 2451;
                         break;
 
                     case CharReference.TagObjKey.ObjEyeW:
-                        ShaderReplacer(eyeScleraMaterial, mat);
+                        ShaderReplacer(AssetLoader.sclera, mat);
                         break;
 
                     case CharReference.TagObjKey.ObjEyeL:
-                        ShaderReplacer(eyeCorneaMaterial, mat);
+                        ShaderReplacer(AssetLoader.cornea, mat);
                         if (useEyePOMShader)
                         {
                             mat.SetTexture("_SpecGlossMap", null);
@@ -827,7 +518,7 @@ namespace HSSSS
                         break;
 
                     case CharReference.TagObjKey.ObjEyeR:
-                        ShaderReplacer(eyeCorneaMaterial, mat);
+                        ShaderReplacer(AssetLoader.cornea, mat);
                         if (useEyePOMShader)
                         {
                             mat.SetTexture("_SpecGlossMap", null);
@@ -836,11 +527,11 @@ namespace HSSSS
                         break;
 
                     case CharReference.TagObjKey.ObjNip:
-                        ShaderReplacer(overlayMaterial, mat);
+                        ShaderReplacer(AssetLoader.overlay, mat);
                         break;
 
                     case CharReference.TagObjKey.ObjNail:
-                        ShaderReplacer(skinMaterial, mat);
+                        ShaderReplacer(AssetLoader.skin, mat);
                         mat.SetTexture("_DetailNormalMap_2", null);
                         mat.SetTexture("_DetailNormalMap_3", null);
                         mat.SetTexture("_DetailSkinPoreMap", null);
@@ -919,12 +610,12 @@ namespace HSSSS
                 // tessellation
                 if (targetMaterial.HasProperty("_Phong"))
                 {
-                    targetMaterial.SetFloat("_Phong", Properties.skin.phongStrength);
+                    targetMaterial.SetFloat("_Phong", Properties.tess.phong);
                 }
 
                 if (targetMaterial.HasProperty("_EdgeLength"))
                 {
-                    targetMaterial.SetFloat("_EdgeLength", Properties.skin.edgeLength);
+                    targetMaterial.SetFloat("_EdgeLength", Properties.tess.edge);
                 }
             }
 
@@ -934,18 +625,18 @@ namespace HSSSS
                 {
                     if (WillReplaceShader(mat.shader))
                     {
-                        ShaderReplacer(skinMaterial, mat);
+                        ShaderReplacer(AssetLoader.skin, mat);
 
                         if (tagKey == CharReference.TagObjKey.ObjSkinBody)
                         {
                             if (___chaInfo.Sex == 0)
                             {
-                                mat.SetTexture("_Thickness", maleBodyThickness);
+                                mat.SetTexture("_Thickness", AssetLoader.maleBody);
                             }
 
                             else if (___chaInfo.Sex == 1)
                             {
-                                mat.SetTexture("_Thickness", femaleBodyThickness);
+                                mat.SetTexture("_Thickness", AssetLoader.femaleBody);
                             }
                         }
 
@@ -953,12 +644,12 @@ namespace HSSSS
                         {
                             if (___chaInfo.Sex == 0)
                             {
-                                mat.SetTexture("_Thickness", maleHeadThickness);
+                                mat.SetTexture("_Thickness", AssetLoader.maleHead);
                             }
 
                             else if (___chaInfo.Sex == 1)
                             {
-                                mat.SetTexture("_Thickness", femaleHeadThickness);
+                                mat.SetTexture("_Thickness", AssetLoader.femaleHead);
                             }
                         }
 
@@ -1009,6 +700,7 @@ namespace HSSSS
                     {
                         if (WillReplaceShader(juiceMat.shader))
                         {
+                            /*
                             switch (juiceMat.name)
                             {
                                 case "cf_M_k_kaosiru01":
@@ -1027,15 +719,10 @@ namespace HSSSS
                                     Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
                                     break;
                             }
-
-                            /*
-                            else
-                            {
-                                ShaderReplacer(milkMaterial, juiceMat);
-                                juiceMat.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 0.2f));
-                                Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
-                            }
                             */
+                            ShaderReplacer(AssetLoader.milk, juiceMat);
+                            juiceMat.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 0.2f));
+                            Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
                         }
                     }
                 }
@@ -1048,7 +735,7 @@ namespace HSSSS
                 {
                     if (WillReplaceShader(__instance.matHohoAka.shader))
                     {
-                        ShaderReplacer(overlayMaterial, __instance.matHohoAka);
+                        ShaderReplacer(AssetLoader.overlay, __instance.matHohoAka);
                         Console.WriteLine("#### HSSSS Replaced " + __instance.matHohoAka.name);
                     }
                 }
@@ -1067,13 +754,7 @@ namespace HSSSS
                         {
                             if (WillReplaceShader(material.shader))
                             {
-                                ShaderReplacer(overlayMaterial, material);
-
-                                if (useTessellation)
-                                {
-                                    material.SetFloat("_Phong", Properties.skin.phongStrength);
-                                    material.SetFloat("_EdgeLength", Properties.skin.edgeLength);
-                                }
+                                ShaderReplacer(AssetLoader.overlay, material);
                                 Console.WriteLine("#### HSSSS Replaced " + material.name);
                             }
                         }
@@ -1100,7 +781,7 @@ namespace HSSSS
                         {
                             if (WillReplaceShader(material.shader))
                             {
-                                ShaderReplacer(skinMaterial, material);
+                                ShaderReplacer(AssetLoader.skin, material);
                                 Console.WriteLine("#### HSSSS Replaced " + material.name);
                             }
                         }
@@ -1141,7 +822,7 @@ namespace HSSSS
                                 {
                                     if (WillReplaceShader(material.shader))
                                     {
-                                        ShaderReplacer(eyeOverlayMaterial, material);
+                                        ShaderReplacer(AssetLoader.eyeOverlay, material);
                                         material.renderQueue = 2452;
                                         Console.WriteLine("#### HSSSS Replaced " + material.name);
                                     }
@@ -1171,8 +852,8 @@ namespace HSSSS
                                     {
                                         if (WillReplaceShader(material.shader))
                                         {
-                                            material.shader = liquidMaterial.shader;
-                                            material.CopyPropertiesFromMaterial(liquidMaterial);
+                                            material.shader = AssetLoader.liquid.shader;
+                                            material.CopyPropertiesFromMaterial(AssetLoader.liquid);
                                             /*
                                             ShaderReplacer(liquidMaterial, material);
                                             material.SetColor("_Color", new Color(0.6f, 0.6f, 0.6f, 0.6f));

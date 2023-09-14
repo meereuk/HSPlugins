@@ -26,7 +26,7 @@ namespace HSSSS
 
                     if (this.mMaterial.GetTexture("_MainTex") == null)
                     {
-                        this.mMaterial.SetTexture("_MainTex", HSSSS.spotCookie);
+                        this.mMaterial.SetTexture("_MainTex", AssetLoader.spotCookie);
                     }
 
                     this.mRenderer = this.mObject.AddComponent<MeshRenderer>();

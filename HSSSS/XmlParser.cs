@@ -89,31 +89,31 @@ namespace HSSSS
             writer.WriteStartElement("SoftShadow");
             {
                 // pcf state
-                writer.WriteAttributeString("State", Convert.ToString(Properties.shadow.pcfState));
+                writer.WriteAttributeString("State", Convert.ToString(Properties.pcss.pcfState));
                 // pcss soft shadow
-                writer.WriteElementString("PCSS", XmlConvert.ToString(Properties.shadow.pcssEnabled));
+                writer.WriteElementString("PCSS", XmlConvert.ToString(Properties.pcss.pcssEnabled));
                 // directional light
                 writer.WriteStartElement("Directional");
                 {
-                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.shadow.dirLightPenumbra.x));
-                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.shadow.dirLightPenumbra.y));
-                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.shadow.dirLightPenumbra.z));
+                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.pcss.dirLightPenumbra.x));
+                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.pcss.dirLightPenumbra.y));
+                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.pcss.dirLightPenumbra.z));
                 }
                 writer.WriteEndElement();
                 // spot light
                 writer.WriteStartElement("Spot");
                 {
-                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.shadow.spotLightPenumbra.x));
-                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.shadow.spotLightPenumbra.y));
-                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.shadow.spotLightPenumbra.z));
+                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.pcss.spotLightPenumbra.x));
+                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.pcss.spotLightPenumbra.y));
+                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.pcss.spotLightPenumbra.z));
                 }
                 writer.WriteEndElement();
                 // spot light
                 writer.WriteStartElement("Point");
                 {
-                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.shadow.pointLightPenumbra.x));
-                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.shadow.pointLightPenumbra.y));
-                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.shadow.pointLightPenumbra.z));
+                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.pcss.pointLightPenumbra.x));
+                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.pcss.pointLightPenumbra.y));
+                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.pcss.pointLightPenumbra.z));
                 }
                 writer.WriteEndElement();
             }
@@ -204,8 +204,9 @@ namespace HSSSS
                 // tessellation
                 writer.WriteStartElement("Tessellation");
                 {
-                    writer.WriteElementString("Phong", XmlConvert.ToString(Properties.skin.phongStrength));
-                    writer.WriteElementString("EdgeLength", XmlConvert.ToString(Properties.skin.edgeLength));
+                    writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.tess.enabled));
+                    writer.WriteElementString("Phong", XmlConvert.ToString(Properties.tess.phong));
+                    writer.WriteElementString("EdgeLength", XmlConvert.ToString(Properties.tess.edge));
                 }
                 writer.WriteEndElement();
                 // eyebrow wrap
@@ -286,20 +287,20 @@ namespace HSSSS
             
             prefix = "HSSSS/SoftShadow";
 
-            XmlQuery<Properties.PCFState>(null, "State", ref Properties.shadow.pcfState);
-            XmlQuery<bool>("/PCSS", ref Properties.shadow.pcssEnabled);
+            XmlQuery<Properties.PCFState>(null, "State", ref Properties.pcss.pcfState);
+            XmlQuery<bool>("/PCSS", ref Properties.pcss.pcssEnabled);
 
-            XmlQuery<float>("/Directional/SearchRadius", ref Properties.shadow.dirLightPenumbra.x);
-            XmlQuery<float>("/Directional/LightRadius", ref Properties.shadow.dirLightPenumbra.y);
-            XmlQuery<float>("/Directional/MinPenumbra", ref Properties.shadow.dirLightPenumbra.z);
+            XmlQuery<float>("/Directional/SearchRadius", ref Properties.pcss.dirLightPenumbra.x);
+            XmlQuery<float>("/Directional/LightRadius", ref Properties.pcss.dirLightPenumbra.y);
+            XmlQuery<float>("/Directional/MinPenumbra", ref Properties.pcss.dirLightPenumbra.z);
 
-            XmlQuery<float>("/Spot/SearchRadius", ref Properties.shadow.spotLightPenumbra.x);
-            XmlQuery<float>("/Spot/LightRadius", ref Properties.shadow.spotLightPenumbra.y);
-            XmlQuery<float>("/Spot/MinPenumbra", ref Properties.shadow.spotLightPenumbra.z);
+            XmlQuery<float>("/Spot/SearchRadius", ref Properties.pcss.spotLightPenumbra.x);
+            XmlQuery<float>("/Spot/LightRadius", ref Properties.pcss.spotLightPenumbra.y);
+            XmlQuery<float>("/Spot/MinPenumbra", ref Properties.pcss.spotLightPenumbra.z);
 
-            XmlQuery<float>("/Point/SearchRadius", ref Properties.shadow.pointLightPenumbra.x);
-            XmlQuery<float>("/Point/LightRadius", ref Properties.shadow.pointLightPenumbra.y);
-            XmlQuery<float>("/Point/MinPenumbra", ref Properties.shadow.pointLightPenumbra.z);
+            XmlQuery<float>("/Point/SearchRadius", ref Properties.pcss.pointLightPenumbra.x);
+            XmlQuery<float>("/Point/LightRadius", ref Properties.pcss.pointLightPenumbra.y);
+            XmlQuery<float>("/Point/MinPenumbra", ref Properties.pcss.pointLightPenumbra.z);
 
             ///////////////////////
             // ambient occlusion //
@@ -372,8 +373,9 @@ namespace HSSSS
             XmlQuery<float>("/MicroDetails/Weight_2", ref Properties.skin.microDetailWeight_2);
             XmlQuery<float>("/MicroDetails/Tiling", ref Properties.skin.microDetailTiling);
 
-            XmlQuery<float>("/Tessellation/Phong", ref Properties.skin.phongStrength);
-            XmlQuery<float>("/Tessellation/EdgeLength", ref Properties.skin.edgeLength);
+            XmlQuery<bool>("/Tessellation", "Enabled", ref Properties.tess.enabled);
+            XmlQuery<float>("/Tessellation/Phong", ref Properties.tess.phong);
+            XmlQuery<float>("/Tessellation/EdgeLength", ref Properties.tess.edge);
 
             XmlQuery<float>("/EyebrowOffset", ref Properties.skin.eyebrowoffset);
 

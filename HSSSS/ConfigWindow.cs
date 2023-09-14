@@ -6,7 +6,6 @@ namespace HSSSS
     public class ConfigWindow : MonoBehaviour
     {
         #region Global Fields
-        public static bool useTessellation;
         public static bool fixAlphaShadow;
         public static bool hsrCompatible;
 
@@ -24,10 +23,11 @@ namespace HSSSS
         private Rect configWindow;
 
         private Properties.SkinProperties skin;
-        private Properties.ShadowProperties shadow;
+        private Properties.PCSSProperties pcss;
         private Properties.SSAOProperties ssao;
         private Properties.SSGIProperties ssgi;
         private Properties.SSCSProperties sscs;
+        private Properties.TESSProperties tess;
 
         private enum TabState
         {
@@ -64,7 +64,8 @@ namespace HSSSS
             this.ssao = Properties.ssao;
             this.ssgi = Properties.ssgi;
             this.sscs = Properties.sscs;
-            this.shadow = Properties.shadow;
+            this.pcss = Properties.pcss;
+            this.tess = Properties.tess;
         }
 
         public void OnGUI()
@@ -167,7 +168,7 @@ namespace HSSSS
 
         private void RefreshGUISkin()
         {
-            GUI.skin = HSSSS.windowSkin;
+            GUI.skin = AssetLoader.gui;
             // button
             GUI.skin.button.margin.top = singleSpace;
             GUI.skin.button.margin.left = singleSpace;
@@ -272,7 +273,7 @@ namespace HSSSS
                 this.RefreshWindowSize();
             }
 
-            if (!this.skin.bakedThickness && !this.shadow.pcssEnabled)
+            if (!this.skin.bakedThickness && !this.pcss.pcssEnabled)
             {
                 GUILayout.Label("<color=red>TURN ON PCSS SOFT SHADOW TO USE THIS OPTION!</color>");
             }
@@ -307,75 +308,75 @@ namespace HSSSS
             #region Soft Shadow
             // pcf iterations count
             GUILayout.Label("PCF Shadow Quality");
-            Properties.PCFState pcfState = (Properties.PCFState)GUILayout.Toolbar((int)this.shadow.pcfState, pcfLabels);
+            Properties.PCFState pcfState = (Properties.PCFState)GUILayout.Toolbar((int)this.pcss.pcfState, pcfLabels);
 
-            if (this.shadow.pcfState != pcfState)
+            if (this.pcss.pcfState != pcfState)
             {
-                this.shadow.pcfState = pcfState;
+                this.pcss.pcfState = pcfState;
                 this.RefreshWindowSize();
             }
 
-            if (this.shadow.pcfState != Properties.PCFState.disable)
+            if (this.pcss.pcfState != Properties.PCFState.disable)
             {
                 // pcss soft shadow toggle
                 GUILayout.Label("Percentage Closer Soft Shadow");
-                bool pcssEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.shadow.pcssEnabled), new string[] { "Disable", "Enable" }) == 1;
+                bool pcssEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.pcss.pcssEnabled), new string[] { "Disable", "Enable" }) == 1;
 
-                if (this.shadow.pcssEnabled != pcssEnabled)
+                if (this.pcss.pcssEnabled != pcssEnabled)
                 {
-                    this.shadow.pcssEnabled = pcssEnabled;
+                    this.pcss.pcssEnabled = pcssEnabled;
                     this.RefreshWindowSize();
                 }
 
                 Separator();
 
                 // directional lights
-                if (this.shadow.pcssEnabled)
+                if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("Directional Light / Blocker Search Radius (cm)", ref this.shadow.dirLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("Directional Light / Light Radius (cm)", ref this.shadow.dirLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("Directional Light / Minimum Penumbra (cm)", ref this.shadow.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("Directional Light / Blocker Search Radius (cm)", ref this.pcss.dirLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("Directional Light / Light Radius (cm)", ref this.pcss.dirLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("Directional Light / Minimum Penumbra (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("Directional Light / Penumbra Scale (cm)", ref this.shadow.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("Directional Light / Penumbra Scale (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 Separator();
 
                 // spot lights
-                if (this.shadow.pcssEnabled)
+                if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("Spot Light / Blocker Search Radius (cm)", ref this.shadow.spotLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("Spot Light / Light Radius (cm)", ref this.shadow.spotLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("Spot Light / Minimum Penumbra (cm)", ref this.shadow.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("Spot Light / Blocker Search Radius (cm)", ref this.pcss.spotLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("Spot Light / Light Radius (cm)", ref this.pcss.spotLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("Spot Light / Minimum Penumbra (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("Spot Light / Penumbra Scale (cm)", ref this.shadow.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("Spot Light / Penumbra Scale (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 Separator();
 
                 // point lights
-                if (this.shadow.pcssEnabled)
+                if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("Point Light / Blocker Search Radius (cm)", ref this.shadow.pointLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("Point Light / Light Radius (cm)", ref this.shadow.pointLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("Point Light / Minimum Penumbra (cm)", ref this.shadow.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("Point Light / Blocker Search Radius (cm)", ref this.pcss.pointLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("Point Light / Light Radius (cm)", ref this.pcss.pointLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("Point Light / Minimum Penumbra (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("Point Light / Penumbra Scale (cm)", ref this.shadow.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("Point Light / Penumbra Scale (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
                 }
             }
 
             else
             {
-                this.shadow.pcssEnabled = false;
+                this.pcss.pcssEnabled = false;
             }
             #endregion
 
@@ -514,15 +515,24 @@ namespace HSSSS
             // skin microdetails
             SliderControls("MicroDetail #1 Strength", ref this.skin.microDetailWeight_1, 0.0f, 1.0f);
             SliderControls("MicroDetail #2 Strength", ref this.skin.microDetailWeight_2, 0.0f, 1.0f);
-            SliderControls("MicroDetails Tiling", ref this.skin.microDetailTiling, 0.1f, 100.0f);
+            SliderControls("MicroDetail Tiling", ref this.skin.microDetailTiling, 0.1f, 100.0f);
 
             // tessellation
-            if (useTessellation)
-            {
-                Separator();
+            Separator();
+            GUILayout.Label("Tessellation");
+            bool tessEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.tess.enabled), new string[] { "Disable", "Enable" }) == 1;
 
-                SliderControls("Tessellation Phong Strength", ref this.skin.phongStrength, 0.0f, 1.0f);
-                SliderControls("Tessellation Edge Length", ref this.skin.edgeLength, 2.0f, 50.0f);
+            if (this.tess.enabled != tessEnabled)
+            {
+                this.tess.enabled = tessEnabled;
+                this.RefreshWindowSize();
+            }
+
+            if (this.tess.enabled)
+            {
+
+                SliderControls("Phong Strength", ref this.tess.phong, 0.0f, 1.0f);
+                SliderControls("Edge Length", ref this.tess.edge, 2.0f, 50.0f);
             }
 
             if (fixAlphaShadow)
@@ -545,12 +555,14 @@ namespace HSSSS
                     this.ssao = Properties.ssao;
                     this.ssgi = Properties.ssgi;
                     this.sscs = Properties.sscs;
-                    this.shadow = Properties.shadow;
+                    this.pcss = Properties.pcss;
+                    this.tess = Properties.tess;
 
                     Properties.UpdateSkin();
-                    Properties.UpdateShadow();
+                    Properties.UpdatePCSS();
                     Properties.UpdateSSAO();
                     Properties.UpdateSSGI();
+                    Properties.UpdateMaterials();
 
                     Console.WriteLine("#### HSSSS: Loaded Configurations");
                 }
@@ -569,7 +581,8 @@ namespace HSSSS
                 Properties.ssao = this.ssao;
                 Properties.ssgi = this.ssgi;
                 Properties.sscs = this.sscs;
-                Properties.shadow = this.shadow;
+                Properties.pcss = this.pcss;
+                Properties.tess = this.tess;
 
                 if (XmlParser.SaveExternalFile())
                 {
@@ -688,9 +701,9 @@ namespace HSSSS
                     break;
 
                 case TabState.lightShadow:
-                    Properties.shadow = this.shadow;
+                    Properties.pcss = this.pcss;
                     Properties.sscs = this.sscs;
-                    Properties.UpdateShadow();
+                    Properties.UpdatePCSS();
                     break;
 
                 case TabState.ssao:
@@ -705,7 +718,9 @@ namespace HSSSS
 
                 case TabState.miscellaneous:
                     Properties.skin = this.skin;
+                    Properties.tess = this.tess;
                     Properties.UpdateSkin();
+                    Properties.UpdateMaterials();
                     break;
             }
         }

@@ -1,4 +1,5 @@
-﻿using Studio;
+﻿using Manager;
+using Studio;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -78,13 +79,10 @@ namespace HSSSS
             public float microDetailWeight_2;
             public float microDetailTiling;
 
-            public float phongStrength;
-            public float edgeLength;
-
             public float eyebrowoffset;
         }
 
-        public struct ShadowProperties
+        public struct PCSSProperties
         {
             public PCFState pcfState;
             public bool pcssEnabled;
@@ -141,6 +139,13 @@ namespace HSSSS
             public float meanDepth;
         }
 
+        public struct TESSProperties
+        {
+            public bool enabled;
+            public float phong;
+            public float edge;
+        }
+
         public static SkinProperties skin = new SkinProperties()
         {
             sssEnabled = true,
@@ -178,12 +183,10 @@ namespace HSSSS
 
             microDetailTiling = 64.0f,
 
-            phongStrength = 0.5f,
-            edgeLength = 2.0f,
             eyebrowoffset = 0.1f
         };
 
-        public static ShadowProperties shadow = new ShadowProperties()
+        public static PCSSProperties pcss = new PCSSProperties()
         {
             pcfState = PCFState.disable,
             pcssEnabled = false,
@@ -238,6 +241,45 @@ namespace HSSSS
             depthBias = 0.2f,
             meanDepth = 1.0f
         };
+
+        public static TESSProperties tess = new TESSProperties()
+        {
+            enabled = false,
+            phong = 0.5f,
+            edge = 2.0f
+        };
+
+        public static void UpdateMaterials()
+        {
+            if (Properties.tess.enabled)
+            {
+                AssetLoader.skin.shader.maximumLOD = 400;
+                AssetLoader.overlay.shader.maximumLOD = 400;
+                AssetLoader.liquid.shader.maximumLOD = 400;
+                AssetLoader.milk.shader.maximumLOD = 400;
+                AssetLoader.cornea.shader.maximumLOD = 400;
+                AssetLoader.sclera.shader.maximumLOD = 400;
+                AssetLoader.eyeOverlay.shader.maximumLOD = 400;
+            }
+
+            else
+            {
+                AssetLoader.skin.shader.maximumLOD = 300;
+                AssetLoader.overlay.shader.maximumLOD = 300;
+                AssetLoader.liquid.shader.maximumLOD = 300;
+                AssetLoader.milk.shader.maximumLOD = 300;
+                AssetLoader.cornea.shader.maximumLOD = 300;
+                AssetLoader.sclera.shader.maximumLOD = 300;
+                AssetLoader.eyeOverlay.shader.maximumLOD = 300;
+            }
+
+            if (HSSSS.fixAlphaShadow)
+            {
+                AssetLoader.eyebrow.SetFloat("_Phong", Properties.tess.phong);
+                AssetLoader.eyebrow.SetFloat("_EdgeLength", Properties.tess.edge);
+                AssetLoader.eyebrow.SetFloat("_VertexWrapOffset", Properties.skin.eyebrowoffset);
+            }
+        }
 
         public static void UpdateSkin()
         {
@@ -299,12 +341,12 @@ namespace HSSSS
 
                         if (mat.HasProperty("_Phong"))
                         {
-                            mat.SetFloat("_Phong", Properties.skin.phongStrength);
+                            mat.SetFloat("_Phong", Properties.tess.phong);
                         }
 
                         if (mat.HasProperty("_EdgeLength"))
                         {
-                            mat.SetFloat("_EdgeLength", Properties.skin.edgeLength);
+                            mat.SetFloat("_EdgeLength", Properties.tess.edge);
                         }
 
                         if (mat.HasProperty("_VertexWrapOffset"))
@@ -316,7 +358,7 @@ namespace HSSSS
             }
         }
 
-        public static void UpdateShadow()
+        public static void UpdatePCSS()
         {
             Shader.DisableKeyword("_PCF_ON");
             Shader.DisableKeyword("_PCSS_ON");
@@ -325,27 +367,27 @@ namespace HSSSS
             if (HSSSS.isStudio)
             {
                 // pcf & pcss shadow
-                if (shadow.pcfState == PCFState.disable)
+                if (pcss.pcfState == PCFState.disable)
                 {
-                    shadow.pcssEnabled = false;
+                    pcss.pcssEnabled = false;
                 }
 
                 else
                 {
                     Shader.EnableKeyword("_PCF_ON");
-                    Shader.SetGlobalInt("_SoftShadowNumIter", (int)shadow.pcfState + 2);
-                    Shader.SetGlobalTexture("_ShadowJitterTexture", HSSSS.blueNoise);
+                    Shader.SetGlobalInt("_SoftShadowNumIter", (int)pcss.pcfState + 2);
+                    Shader.SetGlobalTexture("_ShadowJitterTexture", AssetLoader.blueNoise);
                 }
 
-                if (shadow.pcssEnabled)
+                if (pcss.pcssEnabled)
                 {
                     Shader.DisableKeyword("_PCF_ON");
                     Shader.EnableKeyword("_PCSS_ON");
                 }
 
-                Shader.SetGlobalVector("_DirLightPenumbra", shadow.dirLightPenumbra);
-                Shader.SetGlobalVector("_SpotLightPenumbra", shadow.spotLightPenumbra);
-                Shader.SetGlobalVector("_PointLightPenumbra", shadow.pointLightPenumbra);
+                Shader.SetGlobalVector("_DirLightPenumbra", pcss.dirLightPenumbra);
+                Shader.SetGlobalVector("_SpotLightPenumbra", pcss.spotLightPenumbra);
+                Shader.SetGlobalVector("_PointLightPenumbra", pcss.pointLightPenumbra);
 
                 // sscs shadow
                 if (sscs.enabled)

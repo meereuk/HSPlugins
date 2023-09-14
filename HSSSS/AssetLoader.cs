@@ -1,139 +1,206 @@
 ﻿using System;
 using System.IO;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace HSSSS
 {
-    public class AssetLoader
+    public static class AssetLoader
     {
         private static AssetBundle assetBundle;
 
-        // body materials
-        public static Material skinMaterial;
-        public static Material milkMaterial;
-        public static Material liquidMaterial;
-        public static Material overlayMaterial;
-        public static Material eyeBrowMaterial;
-        public static Material eyeLashMaterial;
-        public static Material eyeCorneaMaterial;
-        public static Material eyeScleraMaterial;
-        public static Material eyeOverlayMaterial;
+        // internal shaders
+        public static Shader deferredLighting;
+        public static Shader deferredReflection;
 
-        // thickness textures
-        public static Texture2D femaleBodyThickness;
-        public static Texture2D femaleHeadThickness;
-        public static Texture2D maleBodyThickness;
-        public static Texture2D maleHeadThickness;
+        // subsurface scattering
+        public static Shader sssPrePass;
+        public static Shader sssMainPass;
 
-        private static Dictionary<Texture2D, string> textures = new Dictionary<Texture2D, string>()
-        {
-            { femaleBodyThickness, "FemaleBodyThickness" },
-            { femaleHeadThickness, "FemaleHeadThickness" },
-            { maleBodyThickness, "MaleBodyThickness" },
-            { maleHeadThickness, "MaleHeadThickness" }
-        };
+        // ssao & ssgi
+        public static Shader ssao;
+        public static Shader ssgi;
 
-        private static Dictionary<Material, string> materials = new Dictionary<Material, string>()
-        {
-            { skinMaterial, "Skin" },
-            { milkMaterial, "Milk" },
-            { liquidMaterial, "Liquid" },
-            { overlayMaterial, "Overlay" },
-            { eyeBrowMaterial, "EyeBrow" },
-            { eyeLashMaterial, "EyeLash" }
-        };
+        public static GUISkin gui;
 
-        private static Dictionary<Shader, string> shaders = new Dictionary<Shader, string>()
-        {
-        };
+        #region Textures
+        public static Texture2D pennerDiffuse;
+        public static Texture2D nvidiaDiffuse;
+        public static Texture2D nvidiaShadow;
+        public static Texture2D deepScatter;
 
-        public static void LoadAssetBundle()
+        public static Texture2D skinJitter;
+        public static Texture3D blueNoise;
+
+        public static Texture2D femaleBody;
+        public static Texture2D femaleHead;
+        public static Texture2D maleBody;
+        public static Texture2D maleHead;
+
+        public static Texture2D spotCookie;
+        #endregion
+
+        #region Materials
+        public static Material skin;
+        public static Material milk;
+        public static Material liquid;
+        public static Material overlay;
+        public static Material eyebrow;
+        public static Material eyelash;
+        public static Material cornea;
+        public static Material sclera;
+        public static Material eyeOverlay;
+        #endregion
+
+        private static void LoadAssetBundle()
         {
             assetBundle = AssetBundle.LoadFromMemory(Resources.hssssresources);
         }
 
-        public static void LoadBodyAssets()
+        private static void LoadTextures()
         {
-            // custom thickness texture
+            // body thickness
             if (HSSSS.useCustomThickness)
             {
-                LoadCustomThickness();
+                string[] path =
+                {
+                    Path.Combine(HSSSS.pluginLocation, HSSSS.femaleBodyCustom),
+                    Path.Combine(HSSSS.pluginLocation, HSSSS.femaleHeadCustom),
+                    Path.Combine(HSSSS.pluginLocation, HSSSS.maleBodyCustom),
+                    Path.Combine(HSSSS.pluginLocation, HSSSS.maleBodyCustom)
+                };
+
+                femaleBody = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
+                femaleHead = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
+                maleBody = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
+                maleHead = new Texture2D(4, 4, TextureFormat.ARGB32, true, true);
+
+                if (femaleBody.LoadImage(File.ReadAllBytes(path[0])))
+                {
+                    femaleBody.Apply();
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Couldn't load custom texture from " + path[0]);
+                    Console.WriteLine("#### HSSSS: Trying built-in texture instead...");
+                    ReadAsset<Texture2D>(ref femaleBody, "FemaleBodyThickness", "female body thickness");
+                }
+
+                if (femaleHead.LoadImage(File.ReadAllBytes(path[1])))
+                {
+                    femaleHead.Apply();
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Couldn't load custom texture from " + path[1]);
+                    Console.WriteLine("#### HSSSS: Trying built-in texture instead...");
+                    ReadAsset<Texture2D>(ref femaleHead, "FemaleHeadThickness", "female head thickness");
+                }
+
+                if (maleBody.LoadImage(File.ReadAllBytes(path[2])))
+                {
+                    maleBody.Apply();
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Couldn't load custom texture from " + path[2]);
+                    Console.WriteLine("#### HSSSS: Trying built-in texture instead...");
+                    ReadAsset<Texture2D>(ref maleBody, "MaleBodyThickness", "Male body thickness");
+                }
+
+                if (maleHead.LoadImage(File.ReadAllBytes(path[3])))
+                {
+                    maleHead.Apply();
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Couldn't load custom texture from " + path[3]);
+                    Console.WriteLine("#### HSSSS: Trying built-in texture instead...");
+                    ReadAsset<Texture2D>(ref maleHead, "MaleHeadThickness", "Male head thickness");
+                }
             }
 
-            // built-in thickness texture
             else
             {
-                femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
-                femaleHeadThickness = assetBundle.LoadAsset<Texture2D>("FemaleHeadThickness");
-                maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
-                maleHeadThickness = assetBundle.LoadAsset<Texture2D>("MaleHeadThickness");
+                ReadAsset<Texture2D>(ref femaleBody, "FemaleBodyThickness", "female body thickness");
+                ReadAsset<Texture2D>(ref femaleHead, "FemaleHeadThickness", "female head thickness");
+                ReadAsset<Texture2D>(ref maleBody, "MaleBodyThickness", "Male body thickness");
+                ReadAsset<Texture2D>(ref maleHead, "MaleHeadThickness", "Male head thickness");
+            }
+
+            // pre-integrate lookup textures
+            ReadAsset<Texture2D>(ref pennerDiffuse, "DefaultSkinLUT", "penner diffuse lut");
+            ReadAsset<Texture2D>(ref nvidiaDiffuse, "FaceWorksSkinLUT", "nvidia diffuse lut");
+            ReadAsset<Texture2D>(ref nvidiaShadow, "FaceWorksShadowLUT", "nvidia shadow lut");
+            ReadAsset<Texture2D>(ref deepScatter, "DeepScatterLUT", "deep scattering lut");
+
+            // stochastic textures
+            ReadAsset<Texture2D>(ref skinJitter, "SkinJitter", "SSS blur jittering texture");
+            ReadAsset<Texture3D>(ref blueNoise, "BlueNoise", "blue noise texture");
+
+            // spotlight cookie
+            ReadAsset<Texture2D>(ref spotCookie, "DefaultSpotCookie", "spotlight cookie");
+        }
+
+        private static void LoadMaterials()
+        {
+            // skin
+            ReadAsset<Material>(ref skin, "Skin", "skin material");
+            ReadAsset<Material>(ref overlay, "Overlay", "skin overlay material");
+            ReadAsset<Material>(ref liquid, "Liquid", "liquid material");
+            ReadAsset<Material>(ref milk, "OverlayForward", "milk material");
+
+            if (HSSSS.fixAlphaShadow)
+            {
+                ReadAsset<Material>(ref eyebrow, "Eyebrow", "eyebrow material");
+                ReadAsset<Material>(ref eyelash, "Eyelash", "eyelash material");
+                ReadAsset<Material>(ref sclera, "Sclera", "sclera material");
+
+                // cornea
+                if (HSSSS.useEyePOMShader)
+                {
+                    ReadAsset<Material>(ref cornea, "Cornea", "cornea material");
+                }
+
+                else
+                {
+                    ReadAsset<Material>(ref cornea, "OverlayForward", "cornea material");
+                }
+
+                // eye overlay
+                ReadAsset<Material>(ref eyeOverlay, "OverlayForward", "eye overlay material");
             }
         }
 
-        public static void LoadEffectAssets()
+        private static void LoadMiscellaneous()
         {
-
+            ReadAsset<Shader>(ref deferredLighting, "InternalDeferredShading", "deferred lighting shader");
+            ReadAsset<Shader>(ref deferredReflection, "InternalDeferredReflections", "deferred reflection shader");
+            ReadAsset<Shader>(ref sssPrePass, "SSSPrePass", "SSS prepass shader");
+            ReadAsset<Shader>(ref sssMainPass, "SSSMainPass", "SSS mainpass shader");
+            ReadAsset<Shader>(ref ssao, "SSAO", "SSAO shader");
+            ReadAsset<Shader>(ref ssgi, "SSGI", "SSGI shader");
+            ReadAsset<GUISkin>(ref gui, "GUISkin", "GUI skin");
         }
 
-        private static void LoadCustomThickness()
+        public static void LoadEverything()
         {
-            string femaleBodyCustom = Path.Combine(HSSSS.pluginLocation, HSSSS.femaleBodyCustom);
-            string femaleHeadCustom = Path.Combine(HSSSS.pluginLocation, HSSSS.femaleHeadCustom);
-            string maleBodyCustom = Path.Combine(HSSSS.pluginLocation, HSSSS.maleBodyCustom);
-            string maleHeadCustom = Path.Combine(HSSSS.pluginLocation, HSSSS.maleHeadCustom);
+            LoadAssetBundle();
+            LoadTextures();
+            LoadMaterials();
+            LoadMiscellaneous();
+        }
 
-            femaleBodyThickness = new Texture2D(4, 4, TextureFormat.RGBA32, true, true);
-            femaleHeadThickness = new Texture2D(4, 4, TextureFormat.RGBA32, true, true);
-            maleBodyThickness = new Texture2D(4, 4, TextureFormat.RGBA32, true, true);
-            maleHeadThickness = new Texture2D(4, 4, TextureFormat.RGBA32, true, true);
+        private static void ReadAsset<T>(ref T asset, string name, string desc) where T : UnityEngine.Object
+        {
+            asset = assetBundle.LoadAsset<T>(name);
 
-            // female body
-            if (femaleBodyThickness.LoadImage(File.ReadAllBytes(femaleBodyCustom)))
+            if (asset == null)
             {
-                femaleBodyThickness.Apply();
-            }
-
-            else
-            {
-                Console.Write("#### HSSSS: Could not load " + femaleBodyCustom + ", using built-in texture...");
-                femaleBodyThickness = assetBundle.LoadAsset<Texture2D>("FemaleBodyThickness");
-            }
-
-            // female head
-            if (femaleHeadThickness.LoadImage(File.ReadAllBytes(femaleHeadCustom)))
-            {
-                femaleHeadThickness.Apply();
-            }
-
-            else
-            {
-                Console.Write("#### HSSSS: Could not load " + femaleHeadCustom + ", using built-in texture...");
-                femaleHeadThickness = assetBundle.LoadAsset<Texture2D>("FemaleHeadThickness");
-            }
-
-            // male body
-            if (maleBodyThickness.LoadImage(File.ReadAllBytes(maleBodyCustom)))
-            {
-                maleBodyThickness.Apply();
-            }
-
-            else
-            {
-                Console.Write("#### HSSSS: Could not load " + maleBodyCustom + ", using built-in texture...");
-                maleBodyThickness = assetBundle.LoadAsset<Texture2D>("MaleBodyThickness");
-            }
-
-            // male head
-            if (maleHeadThickness.LoadImage(File.ReadAllBytes(maleHeadCustom)))
-            {
-                maleHeadThickness.Apply();
-            }
-
-            else
-            {
-                Console.Write("#### HSSSS: Could not load " + femaleHeadCustom + ", using built-in texture...");
-                maleHeadThickness = assetBundle.LoadAsset<Texture2D>("maleHeadThickness");
+                Console.WriteLine("#### HSSSS: Couldn't load " + desc);
             }
         }
     }

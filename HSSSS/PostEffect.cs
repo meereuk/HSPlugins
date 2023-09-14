@@ -8,21 +8,18 @@ namespace HSSSS
         private Camera mCamera;
 
         private CommandBuffer copyBuffer;
-        private CommandBuffer normalBlurBuffer;
-        private CommandBuffer diffuseBlurBuffer;
+        private CommandBuffer blurBuffer;
 
-        private readonly string copyBufferName = "HSSSS.ThicknessBlit";
-        private readonly string blurBufferName = "HSSSS.ScreenSpaceBlur";
+        private readonly string copyBufferName = "HSSSS.SSSPrePass";
+        private readonly string blurBufferName = "HSSSS.SSSMainPass";
 
-        private static Material copyMaterial;
-        private static Material normalBlurMaterial;
-        private static Material diffuseBlurMaterial;
+        private static Material prePass;
+        private static Material mainPass;
 
         public void Awake()
         {
-            copyMaterial = new Material(HSSSS.transmissionBlitShader);
-            normalBlurMaterial = new Material(HSSSS.normalBlurShader);
-            diffuseBlurMaterial = new Material(HSSSS.diffuseBlurShader);
+            prePass = new Material(AssetLoader.sssPrePass);
+            mainPass = new Material(AssetLoader.sssMainPass);
         }
 
         public void OnEnable()
@@ -63,25 +60,12 @@ namespace HSSSS
 
         private void RefreshBlurProperties()
         {
-            if (Properties.skin.lutProfile == Properties.LUTProfile.jimenez)
-            {
-                diffuseBlurMaterial.SetTexture("_SkinJitter", HSSSS.skinJitter);
-                diffuseBlurMaterial.SetVector("_DeferredBlurredNormalsParams",
-                    new Vector2(
-                        Properties.skin.normalBlurRadius,
-                        Properties.skin.normalBlurDepthRange * 100.0f
-                        ));
-            }
-
-            else
-            {
-                normalBlurMaterial.SetTexture("_SkinJitter", HSSSS.skinJitter);
-                normalBlurMaterial.SetVector("_DeferredBlurredNormalsParams",
-                    new Vector2(
-                        Properties.skin.normalBlurRadius,
-                        Properties.skin.normalBlurDepthRange * 25.0f
-                        ));
-            }
+            mainPass.SetTexture("_SkinJitter", AssetLoader.skinJitter);
+            mainPass.SetVector("_DeferredBlurredNormalsParams",
+                new Vector2(
+                    Properties.skin.normalBlurRadius,
+                    Properties.skin.normalBlurDepthRange * 100.0f
+                    ));
         }
 
         private void RefreshLookupProperties()
@@ -95,18 +79,18 @@ namespace HSSSS
             {
                 case Properties.LUTProfile.penner:
                     
-                    Shader.SetGlobalTexture("_DeferredSkinLut", HSSSS.pennerSkinLUT);
+                    Shader.SetGlobalTexture("_DeferredSkinLut", AssetLoader.pennerDiffuse);
                     break;
 
                 case Properties.LUTProfile.nvidia1:
                     Shader.EnableKeyword("_FACEWORKS_TYPE1");
-                    Shader.SetGlobalTexture("_DeferredSkinLut", HSSSS.faceWorksSkinLUT);
+                    Shader.SetGlobalTexture("_DeferredSkinLut", AssetLoader.nvidiaDiffuse);
                     break;
 
                 case Properties.LUTProfile.nvidia2:
                     Shader.EnableKeyword("_FACEWORKS_TYPE2");
-                    Shader.SetGlobalTexture("_DeferredSkinLut", HSSSS.faceWorksSkinLUT);
-                    Shader.SetGlobalTexture("_DeferredShadowLut", HSSSS.faceWorksShadowLUT);
+                    Shader.SetGlobalTexture("_DeferredSkinLut", AssetLoader.nvidiaDiffuse);
+                    Shader.SetGlobalTexture("_DeferredShadowLut", AssetLoader.nvidiaShadow);
                     break;
 
                 case Properties.LUTProfile.jimenez:
@@ -126,7 +110,7 @@ namespace HSSSS
 
             else
             {
-                Shader.SetGlobalTexture("_DeferredTransmissionLut", HSSSS.deepScatterLUT);
+                Shader.SetGlobalTexture("_DeferredTransmissionLut", AssetLoader.deepScatter);
                 Shader.SetGlobalFloat("_DeferredThicknessBias", Properties.skin.thicknessBias * 0.01f);
             }
 
@@ -169,17 +153,13 @@ namespace HSSSS
             this.copyBuffer.GetTemporaryRT(ambiRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
             // extract thickness map from gbuffer 3
-            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, copyMaterial, 0);
+            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, prePass, 0);
 
             // extract ambient diffuse
-            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, ambiRT, copyMaterial, 1);
+            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, ambiRT, prePass, 1);
 
             // spare gbuffer 3's alpha channel (for specular)
             this.copyBuffer.Blit(ambiRT, BuiltinRenderTextureType.CameraTarget);
-
-            // release rendertexture
-            this.copyBuffer.ReleaseTemporaryRT(copyRT);
-            //this.copyBuffer.ReleaseTemporaryRT(ambiRT);
 
             // add commandbuffer
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
@@ -190,34 +170,35 @@ namespace HSSSS
             ///////////////////////////////////
             ///////////////////////////////////
             
-            this.diffuseBlurBuffer = new CommandBuffer() { name = this.blurBufferName };
+            this.blurBuffer = new CommandBuffer() { name = this.blurBufferName };
 
             // get temporary rendertextures
-            this.diffuseBlurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.diffuseBlurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.blurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.blurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
-            this.diffuseBlurBuffer.Blit(BuiltinRenderTextureType.CurrentActive, flipRT, diffuseBlurMaterial, 0);
+            this.blurBuffer.Blit(BuiltinRenderTextureType.CurrentActive, flipRT, mainPass, 0);
 
             // separable blur
             for (int i = 0; i < Properties.skin.normalBlurIter; i ++)
             {
-                this.diffuseBlurBuffer.Blit(flipRT, flopRT, diffuseBlurMaterial, 1);
-                this.diffuseBlurBuffer.Blit(flopRT, flipRT, diffuseBlurMaterial, 2);
+                this.blurBuffer.Blit(flipRT, flopRT, mainPass, 1);
+                this.blurBuffer.Blit(flopRT, flipRT, mainPass, 2);
             }
 
             // collect all lightings
-            this.diffuseBlurBuffer.Blit(flipRT, flopRT, diffuseBlurMaterial, 3);
+            this.blurBuffer.Blit(flipRT, flopRT, mainPass, 3);
 
             // to camera target
-            this.diffuseBlurBuffer.Blit(flopRT, BuiltinRenderTextureType.CameraTarget);
+            this.blurBuffer.Blit(flopRT, BuiltinRenderTextureType.CameraTarget);
 
             // release rendertextures
-            this.diffuseBlurBuffer.ReleaseTemporaryRT(flipRT);
-            this.diffuseBlurBuffer.ReleaseTemporaryRT(flopRT);
-            this.diffuseBlurBuffer.ReleaseTemporaryRT(ambiRT);
+            this.blurBuffer.ReleaseTemporaryRT(flipRT);
+            this.blurBuffer.ReleaseTemporaryRT(flopRT);
+            this.blurBuffer.ReleaseTemporaryRT(copyRT);
+            this.blurBuffer.ReleaseTemporaryRT(ambiRT);
 
             // add commandbuffer
-            this.mCamera.AddCommandBuffer(CameraEvent.AfterLighting, this.diffuseBlurBuffer);
+            this.mCamera.AddCommandBuffer(CameraEvent.AfterLighting, this.blurBuffer);
         }
 
         private void SetupNormalBlurBuffer()
@@ -241,15 +222,11 @@ namespace HSSSS
             this.copyBuffer.GetTemporaryRT(specRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
             // extract thickness map from gbuffer 3
-            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, copyMaterial, 0);
+            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, prePass, 0);
 
             // ambient reflections
-            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, specRT, copyMaterial, 2);
+            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, specRT, prePass, 2);
             this.copyBuffer.Blit(specRT, BuiltinRenderTextureType.CameraTarget);
-
-            // release rendertexture
-            this.copyBuffer.ReleaseTemporaryRT(copyRT);
-            this.copyBuffer.ReleaseTemporaryRT(specRT);
 
             // add commandbuffer
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
@@ -260,36 +237,38 @@ namespace HSSSS
             //////////////////////////////////
             //////////////////////////////////
 
-            this.normalBlurBuffer = new CommandBuffer() { name = this.blurBufferName };
+            this.blurBuffer = new CommandBuffer() { name = this.blurBufferName };
 
-            this.normalBlurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear);
-            this.normalBlurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear);
-            this.normalBlurBuffer.GetTemporaryRT(buffRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear);
+            this.blurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear);
+            this.blurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear);
+            this.blurBuffer.GetTemporaryRT(buffRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGB2101010, RenderTextureReadWrite.Linear);
 
             if (Properties.skin.normalBlurIter > 0)
             {
-                this.normalBlurBuffer.Blit(BuiltinRenderTextureType.GBuffer2, flipRT, normalBlurMaterial, 0);
-                this.normalBlurBuffer.Blit(flipRT, flopRT, normalBlurMaterial, 1);
+                this.blurBuffer.Blit(BuiltinRenderTextureType.GBuffer2, flipRT, mainPass, 4);
+                this.blurBuffer.Blit(flipRT, flopRT, mainPass, 5);
 
                 for (int i = 1; i < Properties.skin.normalBlurIter; i++)
                 {
-                    this.normalBlurBuffer.Blit(flopRT, flipRT, normalBlurMaterial, 0);
-                    this.normalBlurBuffer.Blit(flipRT, flopRT, normalBlurMaterial, 1);
+                    this.blurBuffer.Blit(flopRT, flipRT, mainPass, 4);
+                    this.blurBuffer.Blit(flipRT, flopRT, mainPass, 5);
                 }
 
-                this.normalBlurBuffer.Blit(flopRT, buffRT);
+                this.blurBuffer.Blit(flopRT, buffRT);
             }
 
             else
             {
-                this.normalBlurBuffer.Blit(BuiltinRenderTextureType.GBuffer2, buffRT);
+                this.blurBuffer.Blit(BuiltinRenderTextureType.GBuffer2, buffRT);
             }
 
-            this.normalBlurBuffer.ReleaseTemporaryRT(flipRT);
-            this.normalBlurBuffer.ReleaseTemporaryRT(flopRT);
-            this.normalBlurBuffer.ReleaseTemporaryRT(buffRT);
+            this.blurBuffer.ReleaseTemporaryRT(flipRT);
+            this.blurBuffer.ReleaseTemporaryRT(flopRT);
+            this.blurBuffer.ReleaseTemporaryRT(buffRT);
+            this.blurBuffer.ReleaseTemporaryRT(copyRT);
+            this.blurBuffer.ReleaseTemporaryRT(specRT);
 
-            this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.normalBlurBuffer);
+            this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.blurBuffer);
         }
 
         private void InitDummyBuffer()
@@ -306,7 +285,7 @@ namespace HSSSS
             this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
 
             // extract thickness map from gbuffer 3
-            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, copyMaterial, 0);
+            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, prePass, 0);
 
             // release rendertexture
             this.copyBuffer.ReleaseTemporaryRT(copyRT);
@@ -358,8 +337,7 @@ namespace HSSSS
             }
 
             this.copyBuffer = null;
-            this.normalBlurBuffer = null;
-            this.diffuseBlurBuffer = null;
+            this.blurBuffer = null;
         }
         #endregion
 
@@ -387,8 +365,8 @@ namespace HSSSS
         private void Awake()
         {
             this.mCamera = GetComponent<Camera>();
-            this.mMaterial = new Material(HSSSS.ssaoShader);
-            this.mMaterial.SetTexture("_BlueNoise", HSSSS.blueNoise);
+            this.mMaterial = new Material(AssetLoader.ssao);
+            this.mMaterial.SetTexture("_BlueNoise", AssetLoader.blueNoise);
         }
 
         private void OnEnable()
@@ -549,8 +527,8 @@ namespace HSSSS
         private void Awake()
         {
             this.mCamera = GetComponent<Camera>();
-            this.mMaterial = new Material(HSSSS.ssgiShader);
-            this.mMaterial.SetTexture("_BlueNoise", HSSSS.blueNoise);
+            this.mMaterial = new Material(AssetLoader.ssgi);
+            this.mMaterial.SetTexture("_BlueNoise", AssetLoader.blueNoise);
         }
 
         private void OnEnable()
