@@ -36,6 +36,7 @@
     <Compile Include="AssetLoader.cs" />
     <Compile Include="ConfigWindow.cs" />
     <Compile Include="LightScripts.cs" />
+    <Compile Include="MaterialReplacer.cs" />
     <Compile Include="PostEffect.cs" />
     <Compile Include="HSSSS.cs" />
     <Compile Include="Properties.cs" />

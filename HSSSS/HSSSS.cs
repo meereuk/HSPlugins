@@ -64,7 +64,7 @@ namespace HSSSS
 
             if (instance != this)
             {
-                Console.WriteLine("#### HSSSS: It seems HSSSS is totally fucked up :P");
+                Console.WriteLine("#### HSSSS: It seems HSSSS is totally fucked up :(");
             }
 
             isStudio = "StudioNEO" == Application.productName;
@@ -85,6 +85,8 @@ namespace HSSSS
 
             if (isEnabled)
             {
+                Console.WriteLine("#### HSSSS: The global maximum LOD value is... " + Shader.globalMaximumLOD.ToString());
+
                 if (XmlParser.LoadExternalFile())
                 {
                     Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
@@ -114,63 +116,8 @@ namespace HSSSS
                     HSExtSave.HSExtSave.RegisterHandler("HSSSS", null, null, this.OnSceneLoad, null, this.OnSceneSave, null, null);
                 }
 
-                #region Harmony
-                HarmonyInstance harmony = HarmonyInstance.Create("com.kkul.hssss");
-
-                if (!hsrCompatible)
-                {
-                    harmony.Patch(
-                        AccessTools.Method(typeof(CharCustom), nameof(CharCustom.SetBaseMaterial)), null,
-                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.SkinPartsReplacer))
-                        );
-
-                    harmony.Patch(
-                        AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeNailColor)), null,
-                        new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.NailReplacer))
-                        );
-
-                    if (fixAlphaShadow)
-                    {
-                        harmony.Patch(
-                            AccessTools.Method(typeof(CharFemaleBody), nameof(CharFemaleBody.Reload)), null,
-                            new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.MiscReplacer))
-                            );
-
-                        harmony.Patch(
-                            AccessTools.Method(typeof(Manager.Character), nameof(Manager.Character.Awake)), null,
-                            new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.JuicesReplacer))
-                            );
-
-                        harmony.Patch(
-                            AccessTools.Method(typeof(CharCustom), nameof(CharCustom.ChangeMaterial)), null,
-                            new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.CommonPartsReplacer))
-                            );
-
-                        harmony.Patch(
-                            AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeEyeWColor)), null,
-                            new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.ScleraReplacer))
-                            );
-
-                        harmony.Patch(
-                            AccessTools.Method(typeof(CharMaleCustom), nameof(CharMaleCustom.ChangeEyeWColor)), null,
-                            new HarmonyMethod(typeof(SkinReplacer), nameof(SkinReplacer.ScleraReplacer))
-                            );
-                    }
-                }
-
-                if (isStudio)
-                {
-                    harmony.Patch(
-                        AccessTools.Method(typeof(OCILight), nameof(OCILight.SetEnable)), null,
-                        new HarmonyMethod(typeof(HSSSS), nameof(SpotLightPatcher))
-                        );
-
-                    harmony.Patch(
-                        AccessTools.Method(typeof(OCILight), nameof(OCILight.SetEnable)), null,
-                        new HarmonyMethod(typeof(HSSSS), nameof(ShadowMapPatcher))
-                        );
-                }
-                #endregion
+                // harmony
+                this.InjectHarmonyMethods();
             }
         }
 
@@ -190,7 +137,6 @@ namespace HSSSS
                     Properties.UpdateSSAO();
                     Properties.UpdateSSGI();
                     Properties.UpdatePCSS();
-                    Properties.UpdateMaterials();
                 }
 
                 else
@@ -246,7 +192,6 @@ namespace HSSSS
                     Properties.UpdateSSAO();
                     Properties.UpdateSSGI();
                     Properties.UpdatePCSS();
-                    Properties.UpdateMaterials();
                     Console.WriteLine("#### HSSSS: Loaded Configurations from the Scene File");
                 }
                 catch
@@ -429,6 +374,57 @@ namespace HSSSS
         #endregion
 
         #region Harmony Patches
+        private void InjectHarmonyMethods()
+        {
+            HarmonyInstance harmony = HarmonyInstance.Create("com.kkul.hssss");
+
+            if (!hsrCompatible)
+            {
+                harmony.Patch(
+                    AccessTools.Method(typeof(CharCustom), nameof(CharCustom.SetBaseMaterial)), null,
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.SkinReplacer))
+                    );
+
+                harmony.Patch(
+                    AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeNailColor)), null,
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.NailReplacer))
+                    );
+
+                harmony.Patch(
+                    AccessTools.Method(typeof(CharFemaleBody), nameof(CharFemaleBody.Reload)), null,
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.MiscReplacer))
+                    );
+
+                harmony.Patch(
+                    AccessTools.Method(typeof(CharCustom), nameof(CharCustom.ChangeMaterial)), null,
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.CommonReplacer))
+                    );
+
+                harmony.Patch(
+                    AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeEyeWColor)), null,
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ScleraReplacer))
+                    );
+
+                harmony.Patch(
+                    AccessTools.Method(typeof(CharMaleCustom), nameof(CharMaleCustom.ChangeEyeWColor)), null,
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ScleraReplacer))
+                    );
+            }
+
+            if (isStudio)
+            {
+                harmony.Patch(
+                    AccessTools.Method(typeof(OCILight), nameof(OCILight.SetEnable)), null,
+                    new HarmonyMethod(typeof(HSSSS), nameof(SpotLightPatcher))
+                    );
+
+                harmony.Patch(
+                    AccessTools.Method(typeof(OCILight), nameof(OCILight.SetEnable)), null,
+                    new HarmonyMethod(typeof(HSSSS), nameof(ShadowMapPatcher))
+                    );
+            }
+        }
+
         private static void SpotLightPatcher(OCILight __instance)
         {
             if (__instance.lightType == LightType.Spot)
@@ -448,431 +444,6 @@ namespace HSSSS
                 {
                     __instance.light.gameObject.AddComponent<ShadowMapDispatcher>();
                 }
-            }
-        }
-
-        private class SkinReplacer
-        {
-            private static readonly Dictionary<string, string> colorProps = new Dictionary<string, string>()
-            {
-                { "_Color", "_Color" },
-                { "_SpecColor", "_SpecColor"},
-                { "_EmissionColor", "_EmissionColor" },
-            };
-
-            private static readonly Dictionary<string, string> floatProps = new Dictionary<string, string>()
-            {
-                { "_Metallic", "_Metallic" },
-                { "_Smoothness", "_Smoothness" },
-                { "_Glossiness", "_Smoothness" },
-                { "_OcclusionStrength", "_OcclusionStrength" },
-                { "_BumpScale", "_BumpScale" },
-                { "_NormalStrength", "_BumpScale" },
-                { "_BlendNormalMapScale", "_BlendNormalMapScale" },
-                { "_DetailNormalMapScale", "_DetailNormalMapScale" },
-            };
-
-            private static readonly Dictionary<string, string> textureProps = new Dictionary<string, string>()
-            {
-                { "_MainTex", "_MainTex" },
-                { "_SpecGlossMap", "_SpecGlossMap" },
-                { "_OcclusionMap", "_OcclusionMap" },
-                { "_BumpMap", "_BumpMap" },
-                { "_NormalMap", "_BumpMap" },
-                { "_BlendNormalMap", "_BlendNormalMap" },
-                { "_DetailNormalMap", "_DetailNormalMap" }
-            };
-
-            private static void ObjectParser(Material mat, CharReference.TagObjKey key)
-            {
-                switch (key)
-                {
-                    case CharReference.TagObjKey.ObjUnderHair:
-                        ShaderReplacer(AssetLoader.overlay, mat);
-                        break;
-
-                    case CharReference.TagObjKey.ObjEyelashes:
-                        ShaderReplacer(AssetLoader.eyelash, mat);
-                        break;
-
-                    case CharReference.TagObjKey.ObjEyebrow:
-                        ShaderReplacer(AssetLoader.eyebrow, mat);
-                        break;
-
-                    case CharReference.TagObjKey.ObjEyeHi:
-                        ShaderReplacer(AssetLoader.eyeOverlay, mat);
-                        mat.renderQueue = 2451;
-                        break;
-
-                    case CharReference.TagObjKey.ObjEyeW:
-                        ShaderReplacer(AssetLoader.sclera, mat);
-                        break;
-
-                    case CharReference.TagObjKey.ObjEyeL:
-                        ShaderReplacer(AssetLoader.cornea, mat);
-                        if (useEyePOMShader)
-                        {
-                            mat.SetTexture("_SpecGlossMap", null);
-                            mat.SetTexture("_EmissionMap", mat.GetTexture("_MainTex"));
-                        }
-                        break;
-
-                    case CharReference.TagObjKey.ObjEyeR:
-                        ShaderReplacer(AssetLoader.cornea, mat);
-                        if (useEyePOMShader)
-                        {
-                            mat.SetTexture("_SpecGlossMap", null);
-                            mat.SetTexture("_EmissionMap", mat.GetTexture("_MainTex"));
-                        }
-                        break;
-
-                    case CharReference.TagObjKey.ObjNip:
-                        ShaderReplacer(AssetLoader.overlay, mat);
-                        break;
-
-                    case CharReference.TagObjKey.ObjNail:
-                        ShaderReplacer(AssetLoader.skin, mat);
-                        mat.SetTexture("_DetailNormalMap_2", null);
-                        mat.SetTexture("_DetailNormalMap_3", null);
-                        mat.SetTexture("_DetailSkinPoreMap", null);
-                        break;
-
-                    default:
-                        break;
-                }
-            }
-
-            private static void ShaderReplacer(Material sourceMaterial, Material targetMaterial)
-            {
-                Material cacheMat = new Material(source: targetMaterial);
-
-                targetMaterial.shader = sourceMaterial.shader;
-                targetMaterial.CopyPropertiesFromMaterial(sourceMaterial);
-
-                foreach (KeyValuePair<string, string> entry in textureProps)
-                {
-                    if (cacheMat.HasProperty(entry.Key))
-                    {
-                        if (targetMaterial.GetTexture(entry.Key) == null)
-                        {
-                            targetMaterial.SetTexture(entry.Value, cacheMat.GetTexture(entry.Key));
-                            targetMaterial.SetTextureScale(entry.Value, cacheMat.GetTextureScale(entry.Key));
-                            targetMaterial.SetTextureOffset(entry.Value, cacheMat.GetTextureOffset(entry.Key));
-                        }
-                    }
-                }
-
-                foreach (KeyValuePair<string, string> entry in colorProps)
-                {
-                    if (cacheMat.HasProperty(entry.Key))
-                    {
-                        targetMaterial.SetColor(entry.Value, cacheMat.GetColor(entry.Key));
-                    }
-                }
-
-                foreach (KeyValuePair<string, string> entry in floatProps)
-                {
-                    if (cacheMat.HasProperty(entry.Key))
-                    {
-                        targetMaterial.SetFloat(entry.Value, cacheMat.GetFloat(entry.Key));
-                    }
-                }
-
-                // microdetails intensity
-                if (targetMaterial.HasProperty("_DetailNormalMapScale_2"))
-                {
-                    targetMaterial.SetFloat("_DetailNormalMapScale_2", Properties.skin.microDetailWeight_1);
-                }
-
-                if (targetMaterial.HasProperty("_DetailNormalMapScale_3"))
-                {
-                    targetMaterial.SetFloat("_DetailNormalMapScale_3", Properties.skin.microDetailWeight_2);
-                }
-
-                // microdetails tiling
-                Vector2 tiling = new Vector2(Math.Max(Properties.skin.microDetailTiling, 0.01f), Math.Max(Properties.skin.microDetailTiling, 0.01f));
-
-                if (targetMaterial.HasProperty("_DetailNormalMap_2"))
-                {
-                    targetMaterial.SetTextureScale("_DetailNormalMap_2", tiling);
-                }
-
-                if (targetMaterial.HasProperty("_DetailNormalMap_3"))
-                {
-                    targetMaterial.SetTextureScale("_DetailNormalMap_3", tiling);
-                }
-
-                if (targetMaterial.HasProperty("_DetailSkinPoreMap"))
-                {
-                    targetMaterial.SetTextureScale("_DetailSkinPoreMap", tiling);
-                }
-
-                // tessellation
-                if (targetMaterial.HasProperty("_Phong"))
-                {
-                    targetMaterial.SetFloat("_Phong", Properties.tess.phong);
-                }
-
-                if (targetMaterial.HasProperty("_EdgeLength"))
-                {
-                    targetMaterial.SetFloat("_EdgeLength", Properties.tess.edge);
-                }
-            }
-
-            public static void SkinPartsReplacer(CharInfo ___chaInfo, CharReference.TagObjKey tagKey, Material mat)
-            {
-                if (mat != null)
-                {
-                    if (WillReplaceShader(mat.shader))
-                    {
-                        ShaderReplacer(AssetLoader.skin, mat);
-
-                        if (tagKey == CharReference.TagObjKey.ObjSkinBody)
-                        {
-                            if (___chaInfo.Sex == 0)
-                            {
-                                mat.SetTexture("_Thickness", AssetLoader.maleBody);
-                            }
-
-                            else if (___chaInfo.Sex == 1)
-                            {
-                                mat.SetTexture("_Thickness", AssetLoader.femaleBody);
-                            }
-                        }
-
-                        else if (tagKey == CharReference.TagObjKey.ObjSkinFace)
-                        {
-                            if (___chaInfo.Sex == 0)
-                            {
-                                mat.SetTexture("_Thickness", AssetLoader.maleHead);
-                            }
-
-                            else if (___chaInfo.Sex == 1)
-                            {
-                                mat.SetTexture("_Thickness", AssetLoader.femaleHead);
-                            }
-                        }
-
-                        Console.WriteLine("#### HSSSS Replaced " + mat);
-                    }
-                }
-            }
-
-            public static void CommonPartsReplacer(CharInfo ___chaInfo, CharReference.TagObjKey key)
-            {
-                foreach (GameObject obj in ___chaInfo.GetTagInfo(key))
-                {
-                    foreach (Renderer rend in obj.GetComponents<Renderer>())
-                    {
-                        foreach (Material mat in rend.sharedMaterials)
-                        {
-                            ObjectParser(mat, key);
-                            Console.WriteLine("#### HSSSS Replaced " + mat.name);
-                        }
-
-                        if (!rend.receiveShadows)
-                        {
-                            rend.receiveShadows = true;
-                        }
-                    }
-                }
-            }
-
-            public static void ScleraReplacer(CharInfo ___chaInfo)
-            {
-                CommonPartsReplacer(___chaInfo, CharReference.TagObjKey.ObjEyeW);
-            }
-
-            public static void NailReplacer(CharInfo ___chaInfo)
-            {
-                CommonPartsReplacer(___chaInfo, CharReference.TagObjKey.ObjNail);
-            }
-
-            public static void JuicesReplacer(Manager.Character __instance)
-            {
-                Dictionary<string, Material> juices = __instance.dictSiruMaterial;
-
-                foreach (KeyValuePair<string, Material> entry in juices)
-                {
-                    Material juiceMat = entry.Value;
-
-                    if (juiceMat != null)
-                    {
-                        if (WillReplaceShader(juiceMat.shader))
-                        {
-                            /*
-                            switch (juiceMat.name)
-                            {
-                                case "cf_M_k_kaosiru01":
-                                    juiceMat.shader = headWetMaterial.shader;
-                                    juiceMat.CopyPropertiesFromMaterial(headWetMaterial);
-                                    break;
-
-                                case "cf_M_k_munesiru01":
-                                    juiceMat.shader = bodyWetMaterial.shader;
-                                    juiceMat.CopyPropertiesFromMaterial(bodyWetMaterial);
-                                    break;
-
-                                default:
-                                    ShaderReplacer(milkMaterial, juiceMat);
-                                    juiceMat.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 0.2f));
-                                    Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
-                                    break;
-                            }
-                            */
-                            ShaderReplacer(AssetLoader.milk, juiceMat);
-                            juiceMat.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 0.2f));
-                            Console.WriteLine("#### HSSSS Replaced " + juiceMat.name);
-                        }
-                    }
-                }
-            }
-
-            public static void MiscReplacer(CharFemaleBody __instance)
-            {
-                // face blush
-                if (null != __instance.matHohoAka)
-                {
-                    if (WillReplaceShader(__instance.matHohoAka.shader))
-                    {
-                        ShaderReplacer(AssetLoader.overlay, __instance.matHohoAka);
-                        Console.WriteLine("#### HSSSS Replaced " + __instance.matHohoAka.name);
-                    }
-                }
-
-                List<GameObject> faceObjs = __instance.chaInfo.GetTagInfo(CharReference.TagObjKey.ObjSkinFace);
-
-                if (faceObjs.Count > 0)
-                {
-                    Renderer renderer = faceObjs[0].GetComponent<Renderer>();
-
-                    if (renderer && renderer.materials.Length > 1)
-                    {
-                        Material material = renderer.materials[1];
-
-                        if (material)
-                        {
-                            if (WillReplaceShader(material.shader))
-                            {
-                                ShaderReplacer(AssetLoader.overlay, material);
-                                Console.WriteLine("#### HSSSS Replaced " + material.name);
-                            }
-                        }
-                    }
-                }
-
-                // tongue
-                GameObject objHead = __instance.objHead;
-
-                if (objHead)
-                {
-                    GameObject objTongue = null;
-
-                    if (objHead.transform.Find("cf_N_head/cf_O_sita"))
-                    {
-                        objTongue = objHead.transform.Find("cf_N_head/cf_O_sita").gameObject;
-                    }
-
-                    if (objTongue)
-                    {
-                        Material material = objTongue.GetComponent<Renderer>().material;
-
-                        if (material)
-                        {
-                            if (WillReplaceShader(material.shader))
-                            {
-                                ShaderReplacer(AssetLoader.skin, material);
-                                Console.WriteLine("#### HSSSS Replaced " + material.name);
-                            }
-                        }
-                    }
-                }
-
-                if (fixAlphaShadow)
-                {
-                    if (objHead)
-                    {
-                        // eye shade
-                        GameObject objShade = null;
-
-                        if (objHead.transform.Find("cf_N_head/cf_O_eyekage"))
-                        {
-                            objShade = objHead.transform.Find("cf_N_head/cf_O_eyekage").gameObject;
-                        }
-
-                        else if (objHead.transform.Find("cf_N_head/cf_O_eyekage1"))
-                        {
-                            objShade = objHead.transform.Find("cf_N_head/cf_O_eyekage1").gameObject;
-                        }
-
-                        if (objShade)
-                        {
-                            Renderer renderer = objShade.GetComponent<Renderer>();
-
-                            if (renderer)
-                            {
-                                if (!renderer.receiveShadows)
-                                {
-                                    renderer.receiveShadows = true;
-                                }
-
-                                Material material = renderer.sharedMaterial;
-
-                                if (material)
-                                {
-                                    if (WillReplaceShader(material.shader))
-                                    {
-                                        ShaderReplacer(AssetLoader.eyeOverlay, material);
-                                        material.renderQueue = 2452;
-                                        Console.WriteLine("#### HSSSS Replaced " + material.name);
-                                    }
-                                }
-                            }
-                        }
-
-                        // tears
-                        for (int i = 1; i < 4; i++)
-                        {
-                            GameObject objTears = objHead.transform.Find("cf_N_head/N_namida/cf_O_namida" + i.ToString("00")).gameObject;
-
-                            if (objTears)
-                            {
-                                Renderer renderer = objTears.GetComponent<Renderer>();
-
-                                if (renderer)
-                                {
-                                    if (!renderer.receiveShadows)
-                                    {
-                                        renderer.receiveShadows = true;
-                                    }
-
-                                    Material material = renderer.sharedMaterial;
-
-                                    if (material)
-                                    {
-                                        if (WillReplaceShader(material.shader))
-                                        {
-                                            material.shader = AssetLoader.liquid.shader;
-                                            material.CopyPropertiesFromMaterial(AssetLoader.liquid);
-                                            /*
-                                            ShaderReplacer(liquidMaterial, material);
-                                            material.SetColor("_Color", new Color(0.6f, 0.6f, 0.6f, 0.6f));
-                                            material.SetColor("_EmissionColor", new Color(0.0f, 0.0f, 0.0f, 1.0f));
-                                            material.renderQueue = 2453;
-                                            Console.WriteLine("#### HSSSS Replaced " + material.name);
-                                            */
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            public static bool WillReplaceShader(Shader shader)
-            {
-                return shader.name.Contains("Shader Forge/") || shader.name.Contains("HSStandard/") || shader.name.Contains("Unlit/") || shader.name.Equals("Standard");
             }
         }
         #endregion

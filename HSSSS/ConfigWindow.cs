@@ -562,7 +562,6 @@ namespace HSSSS
                     Properties.UpdatePCSS();
                     Properties.UpdateSSAO();
                     Properties.UpdateSSGI();
-                    Properties.UpdateMaterials();
 
                     Console.WriteLine("#### HSSSS: Loaded Configurations");
                 }
@@ -720,7 +719,6 @@ namespace HSSSS
                     Properties.skin = this.skin;
                     Properties.tess = this.tess;
                     Properties.UpdateSkin();
-                    Properties.UpdateMaterials();
                     break;
             }
         }

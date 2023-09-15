@@ -1,9 +1,5 @@
-﻿using Manager;
-using Studio;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 
 namespace HSSSS
@@ -139,6 +135,14 @@ namespace HSSSS
             public float meanDepth;
         }
 
+        public struct MiscProperties
+        {
+            public bool fixEyeball;
+            public bool fixOverlay;
+            public bool wetSkinTex;
+            public float wrapOffset;
+        }
+
         public struct TESSProperties
         {
             public bool enabled;
@@ -249,40 +253,18 @@ namespace HSSSS
             edge = 2.0f
         };
 
-        public static void UpdateMaterials()
+        public static MiscProperties misc = new MiscProperties()
         {
-            if (Properties.tess.enabled)
-            {
-                AssetLoader.skin.shader.maximumLOD = 400;
-                AssetLoader.overlay.shader.maximumLOD = 400;
-                AssetLoader.liquid.shader.maximumLOD = 400;
-                AssetLoader.milk.shader.maximumLOD = 400;
-                AssetLoader.cornea.shader.maximumLOD = 400;
-                AssetLoader.sclera.shader.maximumLOD = 400;
-                AssetLoader.eyeOverlay.shader.maximumLOD = 400;
-            }
-
-            else
-            {
-                AssetLoader.skin.shader.maximumLOD = 300;
-                AssetLoader.overlay.shader.maximumLOD = 300;
-                AssetLoader.liquid.shader.maximumLOD = 300;
-                AssetLoader.milk.shader.maximumLOD = 300;
-                AssetLoader.cornea.shader.maximumLOD = 300;
-                AssetLoader.sclera.shader.maximumLOD = 300;
-                AssetLoader.eyeOverlay.shader.maximumLOD = 300;
-            }
-
-            if (HSSSS.fixAlphaShadow)
-            {
-                AssetLoader.eyebrow.SetFloat("_Phong", Properties.tess.phong);
-                AssetLoader.eyebrow.SetFloat("_EdgeLength", Properties.tess.edge);
-                AssetLoader.eyebrow.SetFloat("_VertexWrapOffset", Properties.skin.eyebrowoffset);
-            }
-        }
+            fixEyeball = false,
+            fixOverlay = false,
+            wetSkinTex = false,
+            wrapOffset = 0.1f
+        };
 
         public static void UpdateSkin()
         {
+            AssetLoader.RefreshMaterials();
+            MaterialReplacer.MilkReplacer();
             HSSSS.DeferredRenderer.UpdateSkinSettings();
 
             var CharacterManager = Singleton<Manager.Character>.Instance;
