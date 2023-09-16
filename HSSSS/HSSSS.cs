@@ -141,6 +141,12 @@ namespace HSSSS
                 {
                     Console.WriteLine("#### HSSSS: Couldn't initialize the camera effects");
                 }
+
+                if (isStudio)
+                {
+                    MaterialReplacer.StoreMilk();
+                    MaterialReplacer.ReplaceMilk();
+                }
             }
         }
 
@@ -191,6 +197,7 @@ namespace HSSSS
                     Properties.UpdatePCSS();
                     Console.WriteLine("#### HSSSS: Loaded Configurations from the Scene File");
                 }
+
                 catch
                 {
                     Console.WriteLine("#### HSSSS: Failed to Load Configurations in the Scene File");
@@ -201,6 +208,9 @@ namespace HSSSS
             {
                 Console.WriteLine("#### HSSSS: Could not Find Configurations in the Scene File");
             }
+
+            MaterialReplacer.RestoreMilk();
+            MaterialReplacer.ReplaceMilk();
         }
 
         private void OnSceneSave(string path, XmlWriter writer)
@@ -368,32 +378,32 @@ namespace HSSSS
             {
                 harmony.Patch(
                     AccessTools.Method(typeof(CharCustom), nameof(CharCustom.SetBaseMaterial)), null,
-                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.SkinReplacer))
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ReplaceSkin))
                     );
 
                 harmony.Patch(
                     AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeNailColor)), null,
-                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.NailReplacer))
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ReplaceNail))
                     );
 
                 harmony.Patch(
                     AccessTools.Method(typeof(CharFemaleBody), nameof(CharFemaleBody.Reload)), null,
-                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.MiscReplacer))
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ReplaceMisc))
                     );
 
                 harmony.Patch(
                     AccessTools.Method(typeof(CharCustom), nameof(CharCustom.ChangeMaterial)), null,
-                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.CommonReplacer))
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ReplaceCommon))
                     );
 
                 harmony.Patch(
                     AccessTools.Method(typeof(CharFemaleCustom), nameof(CharFemaleCustom.ChangeEyeWColor)), null,
-                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ScleraReplacer))
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ReplaceSclera))
                     );
 
                 harmony.Patch(
                     AccessTools.Method(typeof(CharMaleCustom), nameof(CharMaleCustom.ChangeEyeWColor)), null,
-                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ScleraReplacer))
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ReplaceSclera))
                     );
             }
 

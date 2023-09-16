@@ -16,9 +16,6 @@ namespace HSSSS
             // skin scattering
             writer.WriteStartElement("SkinScattering");
             {
-                writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.skin.sssEnabled));
-                // scattering weight
-                writer.WriteElementString("Weight", XmlConvert.ToString(Properties.skin.sssWeight));
                 // scattering profile
                 writer.WriteElementString("BRDF", Convert.ToString(Properties.skin.lutProfile));
 
@@ -70,7 +67,6 @@ namespace HSSSS
             // transmission
             writer.WriteStartElement("Transmission");
             {
-                writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.skin.transEnabled));
                 // baked thickness
                 writer.WriteElementString("BakedThickness", XmlConvert.ToString(Properties.skin.bakedThickness));
                 // transmission weight
@@ -225,7 +221,7 @@ namespace HSSSS
                 // wet skin overlay
                 writer.WriteStartElement("WetSkinOverlay");
                 {
-                    writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.misc.wetSkinTex));
+                    writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.misc.wetOverlay));
                 }
                 writer.WriteEndElement();
             }
@@ -260,10 +256,7 @@ namespace HSSSS
             
             prefix = "HSSSS/SkinScattering";
 
-            XmlQuery<bool>(null, "Enabled", ref Properties.skin.sssEnabled);
             XmlQuery<Properties.LUTProfile>("/BRDF", ref Properties.skin.lutProfile);
-            XmlQuery<float>("/Weight", ref Properties.skin.sssWeight);
-
             // pre-integrated skin lookup
             XmlQuery<float>("/Diffusion/Scale", ref Properties.skin.skinLutScale);
             XmlQuery<float>("/Diffusion/Bias", ref Properties.skin.skinLutBias);
@@ -290,7 +283,6 @@ namespace HSSSS
             
             prefix = "HSSSS/Transmission";
 
-            XmlQuery<bool>(null, "Enabled", ref Properties.skin.transEnabled);
             XmlQuery<bool>("/BakedThickness", ref Properties.skin.bakedThickness);
             XmlQuery<float>("/Weight", ref Properties.skin.transWeight);
             XmlQuery<float>("/NormalDistortion", ref Properties.skin.transDistortion);
@@ -400,7 +392,7 @@ namespace HSSSS
             XmlQuery<bool>("/OverlayShader", "Enabled", ref Properties.misc.fixOverlay);
             XmlQuery<float>("/OverlayShader/WrapOffset", ref Properties.misc.wrapOffset);
             // wet skin overlay
-            XmlQuery<bool>("/WetSkinOverlay", "Enabled", ref Properties.misc.wetSkinTex);
+            XmlQuery<bool>("/WetSkinOverlay", "Enabled", ref Properties.misc.wetOverlay);
 
             prefix = null;
 

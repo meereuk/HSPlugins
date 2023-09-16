@@ -38,14 +38,17 @@ namespace HSSSS
             full
         }
 
+        public enum MilkPart
+        {
+            chest,
+            spine,
+            belly,
+            butt
+        }
+
         public struct SkinProperties
         {
-            public bool sssEnabled;
-            public bool transEnabled;
-
             public LUTProfile lutProfile;
-
-            public float sssWeight;
 
             public float skinLutBias;
             public float skinLutScale;
@@ -137,7 +140,7 @@ namespace HSSSS
         {
             public bool fixEyeball;
             public bool fixOverlay;
-            public bool wetSkinTex;
+            public bool wetOverlay;
             public float wrapOffset;
         }
 
@@ -150,12 +153,7 @@ namespace HSSSS
 
         public static SkinProperties skin = new SkinProperties()
         {
-            sssEnabled = true,
-            transEnabled = true,
-
             lutProfile = LUTProfile.penner,
-
-            sssWeight = 1.0f,
 
             skinLutBias = 0.0f,
             skinLutScale = 0.5f,
@@ -253,14 +251,13 @@ namespace HSSSS
         {
             fixEyeball = false,
             fixOverlay = false,
-            wetSkinTex = false,
+            wetOverlay = false,
             wrapOffset = 0.1f
         };
 
         public static void UpdateSkin()
         {
             AssetLoader.RefreshMaterials();
-            MaterialReplacer.MilkReplacer();
 
             HSSSS.DeferredRenderer.UpdateSkinSettings();
 

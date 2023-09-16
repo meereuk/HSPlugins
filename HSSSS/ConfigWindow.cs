@@ -480,7 +480,17 @@ namespace HSSSS
             Separator();
             
             // wet skin replacer for some milks
-            OnOffToolbar("Wet Skin Overlay", ref this.misc.wetSkinTex);
+            OnOffToolbar("Wet Skin Overlay", ref this.misc.wetOverlay);
+
+            if (this.misc.wetOverlay != Properties.misc.wetOverlay)
+            {
+                Properties.misc.wetOverlay = this.misc.wetOverlay;
+
+                MaterialReplacer.RestoreMilk();
+                MaterialReplacer.ReplaceMilk();
+            }
+
+
             // dedicated pom eye shader
             OnOffToolbar("Dedicated POM Eye Shader<color=red>*</color>", ref this.misc.fixEyeball);
             // dedicated overlay shader

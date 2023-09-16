@@ -36,7 +36,9 @@ namespace HSSSS
             { "_DetailNormalMap", "_DetailNormalMap" }
         };
 
-        public static void SkinReplacer(CharInfo ___chaInfo, CharReference.TagObjKey tagKey, Material mat)
+        private static Dictionary<string, Material> milks = null;
+
+        public static void ReplaceSkin(CharInfo ___chaInfo, CharReference.TagObjKey tagKey, Material mat)
         {
             if (mat)
             {
@@ -77,17 +79,17 @@ namespace HSSSS
             }
         }
 
-        public static void ScleraReplacer(CharInfo ___chaInfo)
+        public static void ReplaceSclera(CharInfo ___chaInfo)
         {
-            CommonReplacer(___chaInfo, CharReference.TagObjKey.ObjEyeW);
+            ReplaceCommon(___chaInfo, CharReference.TagObjKey.ObjEyeW);
         }
 
-        public static void NailReplacer(CharInfo ___chaInfo)
+        public static void ReplaceNail(CharInfo ___chaInfo)
         {
-            CommonReplacer(___chaInfo, CharReference.TagObjKey.ObjNail);
+            ReplaceCommon(___chaInfo, CharReference.TagObjKey.ObjNail);
         }
 
-        public static void MiscReplacer(CharFemaleBody __instance)
+        public static void ReplaceMisc(CharFemaleBody __instance)
         {
             // face blush
             if (null != __instance.matHohoAka)
@@ -216,7 +218,7 @@ namespace HSSSS
             }
         }
 
-        public static void CommonReplacer(CharInfo ___chaInfo, CharReference.TagObjKey key)
+        public static void ReplaceCommon(CharInfo ___chaInfo, CharReference.TagObjKey key)
         {
             foreach (GameObject obj in ___chaInfo.GetTagInfo(key))
             {
@@ -236,21 +238,45 @@ namespace HSSSS
             }
         }
 
-        public static void MilkReplacer()
+        public static void StoreMilk()
         {
-            foreach (KeyValuePair<string, Material> entry in Manager.Character.Instance.dictSiruMaterial)
+            milks = new Dictionary<string, Material>();
+            var CharacterManager = Singleton<Manager.Character>.Instance;
+
+            foreach (KeyValuePair<string, Material> entry in CharacterManager.dictSiruMaterial)
+            {
+                milks.Add(entry.Key, new Material(source: entry.Value));
+            }
+        }
+
+        public static void RestoreMilk()
+        {
+            var CharacterManager = Singleton<Manager.Character>.Instance;
+
+            foreach (KeyValuePair<string, Material> entry in CharacterManager.dictSiruMaterial)
+            {
+                entry.Value.shader = milks[entry.Key].shader;
+                entry.Value.CopyPropertiesFromMaterial(milks[entry.Key]);
+            }
+        }
+
+        public static void ReplaceMilk()
+        {
+            var CharacterManager = Singleton<Manager.Character>.Instance;
+
+            foreach (KeyValuePair<string, Material> entry in CharacterManager.dictSiruMaterial)
             {
                 Material material = entry.Value;
 
                 if (material)
                 {
-                    if (Properties.misc.wetSkinTex && material.name == "cf_M_k_kaosiru01")
+                    if (Properties.misc.wetOverlay && material.name == "cf_M_k_kaosiru01")
                     {
                         material.shader = AssetLoader.headwet.shader;
                         material.CopyPropertiesFromMaterial(AssetLoader.headwet);
                     }
 
-                    else if (Properties.misc.wetSkinTex && material.name == "cf_M_k_munesiru01")
+                    else if (Properties.misc.wetOverlay && material.name == "cf_M_k_munesiru01")
                     {
                         material.shader = AssetLoader.bodywet.shader;
                         material.CopyPropertiesFromMaterial(AssetLoader.bodywet);

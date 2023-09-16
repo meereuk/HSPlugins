@@ -44,7 +44,7 @@ namespace HSSSS
         {
             Shader.SetGlobalVector("_DeferredSkinParams",
                 new Vector4(
-                    Properties.skin.sssWeight,
+                    1.0f,
                     Properties.skin.skinLutBias,
                     Properties.skin.skinLutScale,
                     Properties.skin.normalBlurWeight
