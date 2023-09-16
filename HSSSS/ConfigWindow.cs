@@ -1,12 +1,12 @@
 ﻿using System;
 using UnityEngine;
+using static Manager.KeyInput.Pad;
 
 namespace HSSSS
 {
     public class ConfigWindow : MonoBehaviour
     {
         #region Global Fields
-        public static bool fixAlphaShadow;
         public static bool hsrCompatible;
 
         public static int uiScale;
@@ -28,6 +28,7 @@ namespace HSSSS
         private Properties.SSGIProperties ssgi;
         private Properties.SSCSProperties sscs;
         private Properties.TESSProperties tess;
+        private Properties.MiscProperties misc;
 
         private enum TabState
         {
@@ -44,7 +45,9 @@ namespace HSSSS
         private readonly string[] tabLabels = new string[] { "Skin Scattering", "Transmission", "Soft Shadow", "Ambient Occlusion", "Global Illumination", "Miscellaneous" };
         private readonly string[] lutLabels = new string[] { "Penner", "FaceWorks #1", "FaceWorks #2", "Jimenez" };
         private readonly string[] pcfLabels = new string[] { "Off", "Low", "Medium", "High", "Ultra" };
-        private readonly string[] thkLabels = new string[] { "Pre-Baked", "On-the-Fly" };
+
+        private readonly string[] scalelabels = new string[] { "Quarter", "Half", "Full" };
+        private readonly string[] qualitylabels = new string[] { "Low", "Medium", "High", "Ultra" };
         #endregion
 
         public void Awake()
@@ -59,13 +62,7 @@ namespace HSSSS
 
             this.configWindow = new Rect(windowPosition, windowSize);
             this.tabState = TabState.skinScattering;
-
-            this.skin = Properties.skin;
-            this.ssao = Properties.ssao;
-            this.ssgi = Properties.ssgi;
-            this.sscs = Properties.sscs;
-            this.pcss = Properties.pcss;
-            this.tess = Properties.tess;
+            this.ReadSettings();
         }
 
         public void OnGUI()
@@ -214,42 +211,36 @@ namespace HSSSS
             GUILayout.Space(doubleSpace);
 
             // weight
-            SliderControls("Scattering Weight", ref skin.sssWeight, 0.0f, 1.0f);
-            // profiles
-            GUILayout.Label("Scattering Profile");
-            Properties.LUTProfile lutProfile = (Properties.LUTProfile)GUILayout.Toolbar((int)skin.lutProfile, lutLabels);
+            //SliderControls("Scattering Weight", ref skin.sssWeight, 0.0f, 1.0f);
 
-            if (skin.lutProfile != lutProfile)
-            {
-                skin.lutProfile = lutProfile;
-                this.RefreshWindowSize();
-            }
+            // profiles
+            EnumToolbar("Scattering Profile", ref this.skin.lutProfile);
 
             Separator();
 
-            if (skin.lutProfile != Properties.LUTProfile.jimenez)
+            if (this.skin.lutProfile != Properties.LUTProfile.jimenez)
             {
                 // skin diffusion brdf
-                SliderControls("Skin BRDF Lookup Scale", ref skin.skinLutScale, 0.0f, 1.0f);
-                SliderControls("Skin BRDF Lookup Bias", ref skin.skinLutBias, 0.0f, 1.0f);
+                SliderControls("Skin BRDF Lookup Scale", ref this.skin.skinLutScale, 0.0f, 1.0f);
+                SliderControls("Skin BRDF Lookup Bias", ref this.skin.skinLutBias, 0.0f, 1.0f);
 
                 // shadow penumbra brdf
-                if (skin.lutProfile == Properties.LUTProfile.nvidia2)
+                if (this.skin.lutProfile == Properties.LUTProfile.nvidia2)
                 {
                     Separator();
 
-                    SliderControls("Shadow BRDF Lookup Scale", ref skin.shadowLutScale, 0.0f, 1.0f);
-                    SliderControls("Shadow BRDF Lookup Bias", ref skin.shadowLutBias, 0.0f, 1.0f);
+                    SliderControls("Shadow BRDF Lookup Scale", ref this.skin.shadowLutScale, 0.0f, 1.0f);
+                    SliderControls("Shadow BRDF Lookup Bias", ref this.skin.shadowLutBias, 0.0f, 1.0f);
                 }
 
                 Separator();
 
-                SliderControls("Blur Weight", ref skin.normalBlurWeight, 0.0f, 1.0f);
+                SliderControls("Blur Weight", ref this.skin.normalBlurWeight, 0.0f, 1.0f);
             }
 
-            SliderControls("Blur Radius", ref skin.normalBlurRadius, 0.0f, 4.0f);
-            SliderControls("Blur Depth Correction", ref skin.normalBlurDepthRange, 0.0f, 20.0f);
-            SliderControls("Blur Iterations Count", ref skin.normalBlurIter, 0, 10);
+            SliderControls("Blur Radius", ref this.skin.normalBlurRadius, 0.0f, 4.0f);
+            SliderControls("Blur Depth Correction", ref this.skin.normalBlurDepthRange, 0.0f, 20.0f);
+            SliderControls("Blur Iterations Count", ref this.skin.normalBlurIter, 0, 10);
 
             Separator();
 
@@ -263,15 +254,7 @@ namespace HSSSS
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
-            GUILayout.Label("Thickness Sampling Method");
-
-            bool bakedThickness = GUILayout.Toolbar(Convert.ToUInt16(!this.skin.bakedThickness), thkLabels) == 0;
-
-            if (this.skin.bakedThickness != bakedThickness)
-            {
-                this.skin.bakedThickness = bakedThickness;
-                this.RefreshWindowSize();
-            }
+            OnOffToolbar("Thickness Sampling Method", new string[] { "On-the-fly", "Pre-baked" }, ref this.skin.bakedThickness);
 
             if (!this.skin.bakedThickness && !this.pcss.pcssEnabled)
             {
@@ -307,26 +290,12 @@ namespace HSSSS
 
             #region Soft Shadow
             // pcf iterations count
-            GUILayout.Label("PCF Shadow Quality");
-            Properties.PCFState pcfState = (Properties.PCFState)GUILayout.Toolbar((int)this.pcss.pcfState, pcfLabels);
-
-            if (this.pcss.pcfState != pcfState)
-            {
-                this.pcss.pcfState = pcfState;
-                this.RefreshWindowSize();
-            }
+            EnumToolbar("PCF Shadow Quality", ref this.pcss.pcfState);
 
             if (this.pcss.pcfState != Properties.PCFState.disable)
             {
                 // pcss soft shadow toggle
-                GUILayout.Label("Percentage Closer Soft Shadow");
-                bool pcssEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.pcss.pcssEnabled), new string[] { "Disable", "Enable" }) == 1;
-
-                if (this.pcss.pcssEnabled != pcssEnabled)
-                {
-                    this.pcss.pcssEnabled = pcssEnabled;
-                    this.RefreshWindowSize();
-                }
+                OnOffToolbar("Percentage Closer Soft Shadow", ref this.pcss.pcssEnabled);
 
                 Separator();
 
@@ -382,19 +351,13 @@ namespace HSSSS
 
             #region SSCS
             Separator();
-            GUILayout.Label("<b>Contact Shadow</b>");
-            bool sscsEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.sscs.enabled), new string[] { "Disable", "Enable" }) == 1;
 
-            if (this.sscs.enabled != sscsEnabled)
-            {
-                this.sscs.enabled = sscsEnabled;
-                this.RefreshWindowSize();
-            }
+            OnOffToolbar("<b>Contact Shadow</b>", ref this.sscs.enabled);
 
             if (this.sscs.enabled)
             {
-                GUILayout.Label("Contact Shadow Quality");
-                this.sscs.quality = (Properties.QualityPreset)GUILayout.Toolbar((int)this.sscs.quality, new string[] { "Low", "Medium", "High", "Ultra" });
+                EnumToolbar("Contact Shadow Quality", ref this.sscs.quality);
+
                 Separator();
 
                 SliderControls("Raytrace Radius (cm)", ref this.sscs.rayRadius, 0.0f, 50.0f);
@@ -410,23 +373,15 @@ namespace HSSSS
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
-            bool ssaoEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.ssao.enabled), new string[] { "Disable", "Enable" }) == 1;
-
-            if (this.ssao.enabled != ssaoEnabled)
-            {
-                this.ssao.enabled = ssaoEnabled;
-                this.RefreshWindowSize();
-            }
+            OnOffToolbar(ref this.ssao.enabled);
 
             if (this.ssao.enabled)
             {
                 Separator();
 
-                GUILayout.Label("Visibility Function");
-                this.ssao.usegtao = GUILayout.Toolbar(Convert.ToUInt16(this.ssao.usegtao), new string[] { "HBAO", "GTAO" }) == 1;
+                OnOffToolbar("Visibility Function", new string[] { "HBAO", "GTAO" }, ref this.ssao.usegtao);
 
-                GUILayout.Label("AO Quality");
-                this.ssao.quality = (Properties.QualityPreset)GUILayout.Toolbar((int)this.ssao.quality, new string[] { "Low", "Medium", "High", "Ultra" });
+                EnumToolbar("AO Quality", ref this.ssao.quality);
 
                 GUILayout.Label("Deinterleaved Sampling");
                 this.ssao.screenDiv = GUILayout.Toolbar(this.ssao.screenDiv, new string[] { "Off", "2x2", "4x4", "8x8" });
@@ -447,14 +402,17 @@ namespace HSSSS
                 SliderControls("Fade Depth (m)", ref this.ssao.fadeDepth, 1.0f, 1000.0f);
 
                 Separator();
-                GUILayout.Label("SSDO");
-                this.ssao.usessdo = GUILayout.Toolbar(Convert.ToUInt16(this.ssao.usessdo), new string[] { "Off", "On" }) == 1;
-                SliderControls("SSDO Light Apature", ref this.ssao.doApature, 0.0f, 1.0f);
+
+                OnOffToolbar("Directional Occlusion", ref this.ssao.usessdo);
+
+                if (this.ssao.usessdo)
+                {
+                    SliderControls("Directional Occlusion Light Apature", ref this.ssao.doApature, 0.0f, 1.0f);
+                }
 
                 Separator();
 
-                GUILayout.Label("Spatial Denoiser");
-                this.ssao.denoise = GUILayout.Toolbar(Convert.ToUInt16(this.ssao.denoise), new string[] { "Off", "On" }) == 1;
+                OnOffToolbar("Spatial Denoiser", ref this.ssao.denoise);
             }
         }
 
@@ -464,23 +422,14 @@ namespace HSSSS
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
-            bool ssgiEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.ssgi.enabled), new string[] { "Disable", "Enable" }) == 1;
-
-            if (this.ssgi.enabled != ssgiEnabled)
-            {
-                this.ssgi.enabled = ssgiEnabled;
-                this.RefreshWindowSize();
-            }
+            OnOffToolbar(ref this.ssgi.enabled);
 
             if (this.ssgi.enabled)
             {
                 Separator();
 
-                GUILayout.Label("GI Quality");
-                this.ssgi.quality = (Properties.QualityPreset)GUILayout.Toolbar((int)this.ssgi.quality, new string[] { "Low", "Medium", "High", "Ultra" });
-
-                GUILayout.Label("Sampling Resolution");
-                this.ssgi.samplescale = (Properties.RenderScale)GUILayout.Toolbar((int)this.ssgi.samplescale, new string[] { "Quarter", "Half", "Full" });
+                EnumToolbar("GI Quality", ref this.ssgi.quality);
+                EnumToolbar("Sampling Resolution", ref this.ssgi.samplescale);
 
                 Separator();
 
@@ -498,10 +447,10 @@ namespace HSSSS
                 SliderControls("Mean Thickness (m)", ref this.ssgi.meanDepth, 0.0f, 2.0f);
                 SliderControls("Fade Depth (m)", ref this.ssgi.fadeDepth, 1.0f, 1000.0f);
 
+
                 Separator();
 
-                GUILayout.Label("Spatial Denoiser");
-                this.ssgi.denoise = GUILayout.Toolbar(Convert.ToUInt16(this.ssgi.denoise), new string[] { "Off", "On" }) == 1;
+                OnOffToolbar("Spatial Denoiser", ref this.ssgi.denoise);
                 SliderControls("Temporal Denoiser", ref this.ssgi.mixWeight, 0.0f, 1.0f);
             }
         }
@@ -517,30 +466,32 @@ namespace HSSSS
             SliderControls("MicroDetail #2 Strength", ref this.skin.microDetailWeight_2, 0.0f, 1.0f);
             SliderControls("MicroDetail Tiling", ref this.skin.microDetailTiling, 0.1f, 100.0f);
 
-            // tessellation
             Separator();
-            GUILayout.Label("Tessellation");
-            bool tessEnabled = GUILayout.Toolbar(Convert.ToUInt16(this.tess.enabled), new string[] { "Disable", "Enable" }) == 1;
 
-            if (this.tess.enabled != tessEnabled)
-            {
-                this.tess.enabled = tessEnabled;
-                this.RefreshWindowSize();
-            }
+            // tessellation
+            OnOffToolbar("Tessellation", ref this.tess.enabled);
 
             if (this.tess.enabled)
             {
-
                 SliderControls("Phong Strength", ref this.tess.phong, 0.0f, 1.0f);
                 SliderControls("Edge Length", ref this.tess.edge, 2.0f, 50.0f);
             }
 
-            if (fixAlphaShadow)
-            {
-                Separator();
+            Separator();
+            
+            // wet skin replacer for some milks
+            OnOffToolbar("Wet Skin Overlay", ref this.misc.wetSkinTex);
+            // dedicated pom eye shader
+            OnOffToolbar("Dedicated POM Eye Shader<color=red>*</color>", ref this.misc.fixEyeball);
+            // dedicated overlay shader
+            OnOffToolbar("Dedicated Overlay Shader<color=red>*</color>", ref this.misc.fixOverlay);
 
-                SliderControls("Eyebrow Wrap Offset", ref this.skin.eyebrowoffset, 0.0f, 0.5f);
+            if (this.misc.fixOverlay)
+            {
+                SliderControls("Eyebrow Wrap Offset", ref this.misc.wrapOffset, 0.0f, 0.5f);
             }
+
+            GUILayout.Label("<color=red>*Reload the scene or character to apply the changes</color>", new GUIStyle { fontSize = tetraSpace });
         }
 
         private void Presets()
@@ -551,12 +502,7 @@ namespace HSSSS
             {
                 if (XmlParser.LoadExternalFile())
                 {
-                    this.skin = Properties.skin;
-                    this.ssao = Properties.ssao;
-                    this.ssgi = Properties.ssgi;
-                    this.sscs = Properties.sscs;
-                    this.pcss = Properties.pcss;
-                    this.tess = Properties.tess;
+                    this.ReadSettings();
 
                     Properties.UpdateSkin();
                     Properties.UpdatePCSS();
@@ -576,12 +522,7 @@ namespace HSSSS
 
             if (GUILayout.Button("Save Preset"))
             {
-                Properties.skin = this.skin;
-                Properties.ssao = this.ssao;
-                Properties.ssgi = this.ssgi;
-                Properties.sscs = this.sscs;
-                Properties.pcss = this.pcss;
-                Properties.tess = this.tess;
+                this.WriteSettings();
 
                 if (XmlParser.SaveExternalFile())
                 {
@@ -599,7 +540,150 @@ namespace HSSSS
             GUILayout.EndHorizontal();
         }
 
-        private static void SliderControls(string label, ref float value, float min, float max)
+        private void UpdateSettings()
+        {
+            this.WriteSettings();
+
+            switch (this.tabState)
+            {
+                case TabState.skinScattering:
+                    Properties.UpdateSkin();
+                    break;
+
+                case TabState.skinTransmission:
+                    Properties.UpdateSkin();
+                    break;
+
+                case TabState.lightShadow:
+                    Properties.UpdatePCSS();
+                    break;
+
+                case TabState.ssao:
+                    Properties.UpdateSSAO();
+                    break;
+
+                case TabState.ssgi:
+                    Properties.UpdateSSGI();
+                    break;
+
+                case TabState.miscellaneous:
+                    Properties.UpdateSkin();
+                    break;
+            }
+        }
+
+        private void ReadSettings()
+        {
+            this.skin = Properties.skin;
+            this.ssao = Properties.ssao;
+            this.ssgi = Properties.ssgi;
+            this.sscs = Properties.sscs;
+            this.pcss = Properties.pcss;
+            this.tess = Properties.tess;
+            this.misc = Properties.misc;
+        }
+
+        private void WriteSettings()
+        {
+            Properties.skin = this.skin;
+            Properties.ssao = this.ssao;
+            Properties.ssgi = this.ssgi;
+            Properties.sscs = this.sscs;
+            Properties.pcss = this.pcss;
+            Properties.tess = this.tess;
+            Properties.misc = this.misc;
+        }
+
+        private void EnumToolbar(string label, ref Properties.PCFState value)
+        {
+            GUILayout.Label(label);
+
+            Properties.PCFState temp = (Properties.PCFState)GUILayout.Toolbar((int)value, pcfLabels);
+
+            if (value != temp)
+            {
+                value = temp;
+                this.RefreshWindowSize();
+            }
+        }
+
+        private void EnumToolbar(string label, ref Properties.LUTProfile value)
+        {
+            GUILayout.Label(label);
+
+            Properties.LUTProfile temp = (Properties.LUTProfile)GUILayout.Toolbar((int)value, lutLabels);
+
+            if (value != temp)
+            {
+                value = temp;
+                this.RefreshWindowSize();
+            }
+        }
+
+        private void EnumToolbar(string label, ref Properties.RenderScale value)
+        {
+            GUILayout.Label(label);
+
+            Properties.RenderScale temp = (Properties.RenderScale)GUILayout.Toolbar((int)value, scalelabels);
+
+            if (value != temp)
+            {
+                value = temp;
+                this.RefreshWindowSize();
+            }
+        }
+
+        private void EnumToolbar(string label, ref Properties.QualityPreset value)
+        {
+            GUILayout.Label(label);
+
+            Properties.QualityPreset temp = (Properties.QualityPreset)GUILayout.Toolbar((int)value, qualitylabels);
+
+            if (value != temp)
+            {
+                value = temp;
+                this.RefreshWindowSize();
+            }
+        }
+
+        private void OnOffToolbar(ref bool value)
+        {
+            bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "Disable", "Enable" }) == 1;
+
+            if (value != temp)
+            {
+                value = temp;
+                this.RefreshWindowSize();
+            }
+        }
+
+        private void OnOffToolbar(string label, ref bool value)
+        {
+            GUILayout.Label(label);
+
+            bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "Disable", "Enable" }) == 1;
+
+            if (value != temp)
+            {
+                value = temp;
+                this.RefreshWindowSize();
+            }
+        }
+
+        private void OnOffToolbar(string label, string[] text, ref bool value)
+        {
+            GUILayout.Label(label);
+
+            bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), text) == 1;
+
+            if (value != temp)
+            {
+                value = temp;
+                this.RefreshWindowSize();
+            }
+        }
+
+        private void SliderControls(string label, ref float value, float min, float max)
         {
             GUILayout.Label(label);
 
@@ -615,7 +699,7 @@ namespace HSSSS
             GUILayout.EndHorizontal();
         }
 
-        private static void SliderControls(string label, ref int value, int min, int max)
+        private void SliderControls(string label, ref int value, int min, int max)
         {
             GUILayout.Label(label);
 
@@ -623,7 +707,7 @@ namespace HSSSS
 
             value = (int)GUILayout.HorizontalSlider(value, min, max);
 
-            if (int.TryParse(GUILayout.TextField(value.ToString("0.00"), GUILayout.Width(2 * octaSpace)), out int field))
+            if (int.TryParse(GUILayout.TextField(value.ToString("00"), GUILayout.Width(2 * octaSpace)), out int field))
             {
                 value = field;
             }
@@ -631,7 +715,7 @@ namespace HSSSS
             GUILayout.EndHorizontal();
         }
 
-        private static void RGBControls(string label, ref Vector3 rgb)
+        private void RGBControls(string label, ref Vector3 rgb)
         {
             GUIStyle style = new GUIStyle
             {
@@ -668,7 +752,7 @@ namespace HSSSS
             GUILayout.EndHorizontal();
         }
 
-        private static void Separator(bool vertical = false)
+        private void Separator(bool vertical = false)
         {
             GUILayout.Space(doubleSpace);
 
@@ -683,44 +767,6 @@ namespace HSSSS
             }
 
             GUILayout.Space(singleSpace);
-        }
-
-        private void UpdateSettings(bool force = false)
-        {
-            switch (this.tabState)
-            {
-                case TabState.skinScattering:
-                    Properties.skin = this.skin;
-                    Properties.UpdateSkin();
-                    break;
-
-                case TabState.skinTransmission:
-                    Properties.skin = this.skin;
-                    Properties.UpdateSkin();
-                    break;
-
-                case TabState.lightShadow:
-                    Properties.pcss = this.pcss;
-                    Properties.sscs = this.sscs;
-                    Properties.UpdatePCSS();
-                    break;
-
-                case TabState.ssao:
-                    Properties.ssao = this.ssao;
-                    Properties.UpdateSSAO();
-                    break;
-
-                case TabState.ssgi:
-                    Properties.ssgi = this.ssgi;
-                    Properties.UpdateSSGI();
-                    break;
-
-                case TabState.miscellaneous:
-                    Properties.skin = this.skin;
-                    Properties.tess = this.tess;
-                    Properties.UpdateSkin();
-                    break;
-            }
         }
     }
 }

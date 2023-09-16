@@ -165,6 +165,7 @@ namespace HSSSS
             ReadAsset<Material>(ref eyebrow, "Eyebrow", "eyebrow material");
             ReadAsset<Material>(ref eyelash, "Eyelash", "eyelash material");
             ReadAsset<Material>(ref sclera, "Sclera", "sclera material");
+            ReadAsset<Material>(ref cornea, "Cornea", "cornea material");
 
             // eye shade
             ReadAsset<Material>(ref eyeshade, "Eyeshade", "eye shade material");
@@ -175,17 +176,6 @@ namespace HSSSS
             // wet materials
             ReadAsset<Material>(ref bodywet, "Bodywet", "body wet material");
             ReadAsset<Material>(ref headwet, "Headwet", "head wet material");
-
-            // cornea
-            if (Properties.misc.fixEyeball)
-            {
-                ReadAsset<Material>(ref cornea, "Cornea", "cornea material");
-            }
-
-            else
-            {
-                ReadAsset<Material>(ref cornea, "OverlayForward", "cornea material");
-            }
         }
 
         private static void LoadMiscellaneous()
@@ -233,11 +223,11 @@ namespace HSSSS
                 }
             }
 
-            if (HSSSS.fixAlphaShadow)
+            if (Properties.misc.fixOverlay)
             {
                 eyebrow.SetFloat("_Phong", Properties.tess.phong);
                 eyebrow.SetFloat("_EdgeLength", Properties.tess.edge);
-                eyebrow.SetFloat("_VertexWrapOffset", Properties.skin.eyebrowoffset);
+                eyebrow.SetFloat("_VertexWrapOffset", Properties.misc.wrapOffset);
             }
 
             skin.SetFloat("_DetailNormalMapScale_2", Properties.skin.microDetailWeight_1);

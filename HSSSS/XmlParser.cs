@@ -209,8 +209,25 @@ namespace HSSSS
                     writer.WriteElementString("EdgeLength", XmlConvert.ToString(Properties.tess.edge));
                 }
                 writer.WriteEndElement();
-                // eyebrow wrap
-                writer.WriteElementString("EyebrowOffset", XmlConvert.ToString(Properties.skin.eyebrowoffset));
+                // dedicated eye shader
+                writer.WriteStartElement("POMEyeShader");
+                {
+                    writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.misc.fixEyeball));
+                }
+                writer.WriteEndElement();
+                // overlay shader
+                writer.WriteStartElement("OverlayShader");
+                {
+                    writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.misc.fixOverlay));
+                    writer.WriteElementString("WrapOffset", XmlConvert.ToString(Properties.misc.wrapOffset));
+                }
+                writer.WriteEndElement();
+                // wet skin overlay
+                writer.WriteStartElement("WetSkinOverlay");
+                {
+                    writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.misc.wetSkinTex));
+                }
+                writer.WriteEndElement();
             }
             writer.WriteEndElement();
         }
@@ -369,15 +386,21 @@ namespace HSSSS
             
             prefix = "HSSSS/Miscellaneous";
 
+            // microdetails
             XmlQuery<float>("/MicroDetails/Weight_1", ref Properties.skin.microDetailWeight_1);
             XmlQuery<float>("/MicroDetails/Weight_2", ref Properties.skin.microDetailWeight_2);
             XmlQuery<float>("/MicroDetails/Tiling", ref Properties.skin.microDetailTiling);
-
+            // tessellation
             XmlQuery<bool>("/Tessellation", "Enabled", ref Properties.tess.enabled);
             XmlQuery<float>("/Tessellation/Phong", ref Properties.tess.phong);
             XmlQuery<float>("/Tessellation/EdgeLength", ref Properties.tess.edge);
-
-            XmlQuery<float>("/EyebrowOffset", ref Properties.skin.eyebrowoffset);
+            // dedicated eye shader
+            XmlQuery<bool>("/POMEyeShader", "Enabled", ref Properties.misc.fixEyeball);
+            // fix overlay shadow
+            XmlQuery<bool>("/OverlayShader", "Enabled", ref Properties.misc.fixOverlay);
+            XmlQuery<float>("/OverlayShader/WrapOffset", ref Properties.misc.wrapOffset);
+            // wet skin overlay
+            XmlQuery<bool>("/WetSkinOverlay", "Enabled", ref Properties.misc.wetSkinTex);
 
             prefix = null;
 

@@ -38,8 +38,6 @@ namespace HSSSS
         public static bool isStudio;
         public static bool isEnabled;
         public static bool hsrCompatible;
-        public static bool fixAlphaShadow;
-        public static bool useEyePOMShader;
         public static bool useCustomThickness;
 
         public static string femaleBodyCustom;
@@ -160,7 +158,6 @@ namespace HSSSS
             {
                 if (this.windowObj == null)
                 {
-                    ConfigWindow.fixAlphaShadow = fixAlphaShadow;
                     ConfigWindow.hsrCompatible = hsrCompatible;
                     ConfigWindow.uiScale = uiScale;
                     this.windowObj = new GameObject("HSSSS.ConfigWindow");
@@ -225,10 +222,6 @@ namespace HSSSS
         {
             // enable & disable plugin
             isEnabled = ModPrefs.GetBool("HSSSS", "Enabled", true, true);
-            // shadow fix for overlay materials
-            fixAlphaShadow = ModPrefs.GetBool("HSSSS", "FixShadow", true, true);
-            // dedicated eye shader which supports pom/sss
-            useEyePOMShader = ModPrefs.GetBool("HSSSS", "EyePOMShader", true, true);
             // whether to use custom thickness map instead of the built-in texture
             useCustomThickness = ModPrefs.GetBool("HSSSS", "CustomThickness", false, true);
             // custom thickness texture location
@@ -273,13 +266,6 @@ namespace HSSSS
             }
             // ui window scale
             uiScale = ModPrefs.GetInt("HSSSS", "UIScale", 4, true);
-
-            if (hsrCompatible)
-            {
-                fixAlphaShadow = false;
-                useEyePOMShader = false;
-                useCustomThickness = false;
-            }
         }
 
         private void InternalShaderReplacer()

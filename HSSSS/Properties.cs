@@ -74,8 +74,6 @@ namespace HSSSS
             public float microDetailWeight_1;
             public float microDetailWeight_2;
             public float microDetailTiling;
-
-            public float eyebrowoffset;
         }
 
         public struct PCSSProperties
@@ -185,9 +183,7 @@ namespace HSSSS
             microDetailWeight_1 = 0.32f,
             microDetailWeight_2 = 0.32f,
 
-            microDetailTiling = 64.0f,
-
-            eyebrowoffset = 0.1f
+            microDetailTiling = 64.0f
         };
 
         public static PCSSProperties pcss = new PCSSProperties()
@@ -265,6 +261,7 @@ namespace HSSSS
         {
             AssetLoader.RefreshMaterials();
             MaterialReplacer.MilkReplacer();
+
             HSSSS.DeferredRenderer.UpdateSkinSettings();
 
             var CharacterManager = Singleton<Manager.Character>.Instance;
@@ -333,7 +330,7 @@ namespace HSSSS
 
                         if (mat.HasProperty("_VertexWrapOffset"))
                         {
-                            mat.SetFloat("_VertexWrapOffset", Properties.skin.eyebrowoffset);
+                            mat.SetFloat("_VertexWrapOffset", Properties.misc.wrapOffset);
                         }
                     }
                 }

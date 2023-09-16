@@ -147,7 +147,7 @@ namespace HSSSS
                 }
             }
 
-            if (HSSSS.fixAlphaShadow)
+            if (Properties.misc.fixOverlay)
             {
                 if (objHead)
                 {
@@ -184,7 +184,7 @@ namespace HSSSS
                     }
 
                     // tears
-                    for (int i = 1; i < 4; i++)
+                    for (int i = 1; i < 4; i ++)
                     {
                         GameObject objTears = objHead.transform.Find("cf_N_head/N_namida/cf_O_namida" + i.ToString("00")).gameObject;
 
@@ -207,13 +207,6 @@ namespace HSSSS
                                     {
                                         material.shader = AssetLoader.liquid.shader;
                                         material.CopyPropertiesFromMaterial(AssetLoader.liquid);
-                                        /*
-                                        ShaderReplacer(liquidMaterial, material);
-                                        material.SetColor("_Color", new Color(0.6f, 0.6f, 0.6f, 0.6f));
-                                        material.SetColor("_EmissionColor", new Color(0.0f, 0.0f, 0.0f, 1.0f));
-                                        material.renderQueue = 2453;
-                                        Console.WriteLine("#### HSSSS Replaced " + material.name);
-                                        */
                                     }
                                 }
                             }
@@ -251,83 +244,91 @@ namespace HSSSS
 
                 if (material)
                 {
-                    switch (material.name)
+                    if (Properties.misc.wetSkinTex && material.name == "cf_M_k_kaosiru01")
                     {
-                        case "cf_M_k_kaosiru01":
-                            material.shader = AssetLoader.headwet.shader;
-                            material.CopyPropertiesFromMaterial(AssetLoader.headwet);
-                            Console.WriteLine("#### HSSSS Replaced " + material.name);
-                            break;
-
-                        case "cf_M_k_munesiru01":
-                            material.shader = AssetLoader.bodywet.shader;
-                            material.CopyPropertiesFromMaterial(AssetLoader.bodywet);
-                            Console.WriteLine("#### HSSSS Replaced " + material.name);
-                            break;
-
-                        default:
-                            ShaderReplacer(AssetLoader.milk, material);
-                            material.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 0.2f));
-                            Console.WriteLine("#### HSSSS Replaced " + material.name);
-                            break;
+                        material.shader = AssetLoader.headwet.shader;
+                        material.CopyPropertiesFromMaterial(AssetLoader.headwet);
                     }
+
+                    else if (Properties.misc.wetSkinTex && material.name == "cf_M_k_munesiru01")
+                    {
+                        material.shader = AssetLoader.bodywet.shader;
+                        material.CopyPropertiesFromMaterial(AssetLoader.bodywet);
+                    }
+
+                    else
+                    {
+                        ShaderReplacer(AssetLoader.milk, material);
+                        material.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 0.2f));
+                    }
+
+                    if (!Properties.misc.fixOverlay)
+                    {
+                        material.renderQueue = 3000;
+                    }
+
                 }
             }
         }
 
-        private static void ObjectParser(Material material, CharReference.TagObjKey tag)
+        private static void ObjectParser(Material material, CharReference.TagObjKey key)
         {
-            switch (tag)
+            if (key == CharReference.TagObjKey.ObjNip)
             {
-                case CharReference.TagObjKey.ObjUnderHair:
-                    ShaderReplacer(AssetLoader.overlay, material);
-                    break;
+                ShaderReplacer(AssetLoader.overlay, material);
+            }
 
-                case CharReference.TagObjKey.ObjEyelashes:
-                    ShaderReplacer(AssetLoader.eyelash, material);
-                    break;
+            else if (key == CharReference.TagObjKey.ObjNail)
+            {
+                ShaderReplacer(AssetLoader.nail, material);
+            }
 
-                case CharReference.TagObjKey.ObjEyebrow:
-                    ShaderReplacer(AssetLoader.eyebrow, material);
-                    break;
+            else if (key == CharReference.TagObjKey.ObjEyeW)
+            {
+                ShaderReplacer(AssetLoader.sclera, material);
+                material.SetFloat("_MaterialType", 0.0f);
+            }
 
-                case CharReference.TagObjKey.ObjEyeHi:
-                    ShaderReplacer(AssetLoader.eyeoverlay, material);
-                    material.renderQueue = 2451;
-                    break;
-
-                case CharReference.TagObjKey.ObjEyeW:
-                    ShaderReplacer(AssetLoader.sclera, material);
-                    break;
-
-                case CharReference.TagObjKey.ObjEyeL:
+            else if (key == CharReference.TagObjKey.ObjEyeL || key == CharReference.TagObjKey.ObjEyeR)
+            {
+                if (Properties.misc.fixEyeball)
+                {
                     ShaderReplacer(AssetLoader.cornea, material);
-                    if (HSSSS.useEyePOMShader)
-                    {
-                        material.SetTexture("_SpecGlossMap", null);
-                        material.SetTexture("_EmissionMap", material.GetTexture("_MainTex"));
-                    }
-                    break;
+                    material.SetTexture("_SpecGlossMap", null);
+                    material.SetTexture("_EmissionMap", material.GetTexture("_MainTex"));
+                }
 
-                case CharReference.TagObjKey.ObjEyeR:
-                    ShaderReplacer(AssetLoader.cornea, material);
-                    if (HSSSS.useEyePOMShader)
-                    {
-                        material.SetTexture("_SpecGlossMap", null);
-                        material.SetTexture("_EmissionMap", material.GetTexture("_MainTex"));
-                    }
-                    break;
-
-                case CharReference.TagObjKey.ObjNip:
+                else
+                {
                     ShaderReplacer(AssetLoader.overlay, material);
-                    break;
+                    material.SetFloat("_MaterialType", 0.0f);
+                }
+            }
 
-                case CharReference.TagObjKey.ObjNail:
-                    ShaderReplacer(AssetLoader.nail, material);
-                    break;
+            else if (Properties.misc.fixOverlay)
+            {
+                switch (key)
+                {
+                    case CharReference.TagObjKey.ObjUnderHair:
+                        ShaderReplacer(AssetLoader.overlay, material);
+                        break;
 
-                default:
-                    break;
+                    case CharReference.TagObjKey.ObjEyelashes:
+                        ShaderReplacer(AssetLoader.eyelash, material);
+                        break;
+
+                    case CharReference.TagObjKey.ObjEyebrow:
+                        ShaderReplacer(AssetLoader.eyebrow, material);
+                        break;
+
+                    case CharReference.TagObjKey.ObjEyeHi:
+                        ShaderReplacer(AssetLoader.eyeoverlay, material);
+                        material.renderQueue = 2451;
+                        break;
+
+                    default:
+                        break;
+                }
             }
         }
 
