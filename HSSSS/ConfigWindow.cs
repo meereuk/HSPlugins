@@ -717,7 +717,7 @@ namespace HSSSS
 
             value = (int)GUILayout.HorizontalSlider(value, min, max);
 
-            if (int.TryParse(GUILayout.TextField(value.ToString("00"), GUILayout.Width(2 * octaSpace)), out int field))
+            if (int.TryParse(GUILayout.TextField(value.ToString(), GUILayout.Width(2 * octaSpace)), out int field))
             {
                 value = field;
             }

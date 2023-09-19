@@ -16,6 +16,15 @@ namespace HSSSS
         private static Material prePass;
         private static Material mainPass;
 
+        public struct RGBTextures
+        {
+            public RenderTexture r;
+            public RenderTexture g;
+            public RenderTexture b;
+        }
+
+        private RGBTextures specular;
+
         public void Awake()
         {
             prePass = new Material(AssetLoader.sssPrePass);
@@ -26,17 +35,114 @@ namespace HSSSS
         {
             this.mCamera = GetComponent<Camera>();
             this.RefreshProperties();
-            this.InitializeBuffers();
+            this.SecupCommandBuffers();
         }
 
         public void OnDisable()
         {
-            this.DestroyBuffers();
+            this.RemoveCommandBuffers();
         }
 
         private void OnPreRender()
         {
             Shader.SetGlobalInt("_FrameCount", Time.frameCount);
+
+            if (Properties.skin.lutProfile == Properties.LUTProfile.jimenez)
+            {
+                this.SetupSpecularRT();
+            }
+        }
+
+        private void OnPostRender()
+        {
+            if (Properties.skin.lutProfile == Properties.LUTProfile.jimenez)
+            {
+                this.specular.r.Release();
+                this.specular.g.Release();
+                this.specular.b.Release();
+            }
+        }
+
+        private void SetupSpecularRT()
+        {
+            int width = this.mCamera.pixelWidth;
+            int height = this.mCamera.pixelHeight;
+
+            if (this.mCamera.targetTexture)
+            {
+                width = this.mCamera.targetTexture.width;
+                height = this.mCamera.targetTexture.height;
+            }
+
+            this.specular.r = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear)
+            {
+                enableRandomWrite = true,
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                generateMips = false
+            };
+
+            this.specular.g = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear)
+            {
+                enableRandomWrite = true,
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                generateMips = false
+            };
+
+            this.specular.b = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear)
+            {
+                enableRandomWrite = true,
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                generateMips = false
+            };
+
+            this.specular.r.SetGlobalShaderProperty("_SpecularBufferR");
+            this.specular.g.SetGlobalShaderProperty("_SpecularBufferG");
+            this.specular.b.SetGlobalShaderProperty("_SpecularBufferB");
+
+            this.specular.r.Create();
+            this.specular.g.Create();
+            this.specular.b.Create();
+
+            RenderTexture rt = RenderTexture.active;
+            RenderTexture.active = this.specular.r;
+            GL.Clear(true, true, Color.black);
+            RenderTexture.active = this.specular.g;
+            GL.Clear(true, true, Color.black);
+            RenderTexture.active = this.specular.b;
+            GL.Clear(true, true, Color.black);
+            RenderTexture.active = rt;
+
+            Graphics.ClearRandomWriteTargets();
+            Graphics.SetRandomWriteTarget(1, this.specular.r);
+            Graphics.SetRandomWriteTarget(2, this.specular.g);
+            Graphics.SetRandomWriteTarget(3, this.specular.b);
+        }
+
+        private void RemoveSpecularRT()
+        {
+            if (this.specular.r)
+            {
+                this.specular.r.Release();
+                DestroyImmediate(this.specular.r);
+                this.specular.r = null;
+            }
+
+            if (this.specular.g)
+            {
+                this.specular.g.Release();
+                DestroyImmediate(this.specular.g);
+                this.specular.g = null;
+            }
+
+            if (this.specular.b)
+            {
+                this.specular.b.Release();
+                DestroyImmediate(this.specular.b);
+                this.specular.b = null;
+            }
         }
 
         #region Properties Control
@@ -135,7 +241,6 @@ namespace HSSSS
         #region Commandbuffer Control
         private void SetupDiffuseBlurBuffer()
         {
-            int ambiRT = Shader.PropertyToID("_AmbientDiffuseBuffer");
             int copyRT = Shader.PropertyToID("_DeferredTransmissionBuffer");
             int flipRT = Shader.PropertyToID("_TemporaryFlipRenderTexture");
             int flopRT = Shader.PropertyToID("_TemporaryFlopRenderTexture");
@@ -150,17 +255,8 @@ namespace HSSSS
 
             // get temporary rendertextures
             this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
-            this.copyBuffer.GetTemporaryRT(ambiRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-
             // extract thickness map from gbuffer 3
             this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, prePass, 0);
-
-            // extract ambient diffuse
-            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, ambiRT, prePass, 1);
-
-            // spare gbuffer 3's alpha channel (for specular)
-            this.copyBuffer.Blit(ambiRT, BuiltinRenderTextureType.CameraTarget);
-
             // add commandbuffer
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
 
@@ -195,7 +291,6 @@ namespace HSSSS
             this.blurBuffer.ReleaseTemporaryRT(flipRT);
             this.blurBuffer.ReleaseTemporaryRT(flopRT);
             this.blurBuffer.ReleaseTemporaryRT(copyRT);
-            this.blurBuffer.ReleaseTemporaryRT(ambiRT);
 
             // add commandbuffer
             this.mCamera.AddCommandBuffer(CameraEvent.AfterLighting, this.blurBuffer);
@@ -203,7 +298,7 @@ namespace HSSSS
 
         private void SetupNormalBlurBuffer()
         {
-            int specRT = Shader.PropertyToID("_AmbientReflectionBuffer");
+            int ambiRT = Shader.PropertyToID("_AmbientReflectionBuffer");
             int copyRT = Shader.PropertyToID("_DeferredTransmissionBuffer");
             int buffRT = Shader.PropertyToID("_DeferredBlurredNormalBuffer");
             int flipRT = Shader.PropertyToID("_TemporaryFlipRenderTexture");
@@ -219,14 +314,14 @@ namespace HSSSS
 
             // get temporary rendertextures
             this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
-            this.copyBuffer.GetTemporaryRT(specRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.copyBuffer.GetTemporaryRT(ambiRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
             // extract thickness map from gbuffer 3
             this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, prePass, 0);
 
             // ambient reflections
-            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, specRT, prePass, 2);
-            this.copyBuffer.Blit(specRT, BuiltinRenderTextureType.CameraTarget);
+            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, ambiRT, prePass, 2);
+            this.copyBuffer.Blit(ambiRT, BuiltinRenderTextureType.CameraTarget);
 
             // add commandbuffer
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
@@ -266,12 +361,12 @@ namespace HSSSS
             this.blurBuffer.ReleaseTemporaryRT(flopRT);
             this.blurBuffer.ReleaseTemporaryRT(buffRT);
             this.blurBuffer.ReleaseTemporaryRT(copyRT);
-            this.blurBuffer.ReleaseTemporaryRT(specRT);
+            this.blurBuffer.ReleaseTemporaryRT(ambiRT);
 
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.blurBuffer);
         }
 
-        private void InitDummyBuffer()
+        private void SetupDummyBuffer()
         {
             int copyRT = Shader.PropertyToID("_DeferredTransmissionBuffer");
 
@@ -294,12 +389,12 @@ namespace HSSSS
             this.mCamera.AddCommandBuffer(CameraEvent.AfterGBuffer, this.copyBuffer);
         }
 
-        private void InitializeBuffers()
+        private void SecupCommandBuffers()
         {
             // buffer 0: hsr compatible buffer
             if (HSSSS.hsrCompatible)
             {
-                this.InitDummyBuffer();
+                this.SetupDummyBuffer();
             }
 
             else
@@ -318,7 +413,7 @@ namespace HSSSS
             }
         }
 
-        private void DestroyBuffers()
+        private void RemoveCommandBuffers()
         {
             foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(CameraEvent.BeforeLighting))
             {
@@ -349,8 +444,13 @@ namespace HSSSS
             this.RefreshLookupProperties();
             this.RefreshTransmissionProperties();
 
-            this.DestroyBuffers();
-            this.InitializeBuffers();
+            this.RemoveCommandBuffers();
+            this.SecupCommandBuffers();
+
+            if (Properties.skin.lutProfile != Properties.LUTProfile.jimenez)
+            {
+                this.RemoveSpecularRT();
+            }
         }
         #endregion
     }

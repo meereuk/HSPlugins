@@ -386,11 +386,13 @@ namespace HSSSS
             if (ssao.enabled)
             {
                 HSSSS.SSAORenderer.UpdateSSAOSettings();
+                Shader.SetGlobalInt("_UseAmbientOcclusion", 1);
             }
 
             else
             {
                 Shader.SetGlobalInt("_UseDirectOcclusion", 0);
+                Shader.SetGlobalInt("_UseAmbientOcclusion", 0);
             }
         }
 
