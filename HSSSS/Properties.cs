@@ -55,11 +55,13 @@ namespace HSSSS
             public float shadowLutBias;
             public float shadowLutScale;
 
-            public float normalBlurWeight;
-            public float normalBlurRadius;
-            public float normalBlurDepthRange;
+            public float sssBlurWeight;
+            public float sssBlurRadius;
+            public float sssBlurDepthRange;
 
-            public int normalBlurIter;
+            public int sssBlurIter;
+
+            public bool sssBlurAlbedo;
 
             public Vector3 colorBleedWeights;
             public Vector3 transAbsorption;
@@ -161,11 +163,13 @@ namespace HSSSS
             shadowLutBias = 0.0f,
             shadowLutScale = 1.0f,
 
-            normalBlurWeight = 1.0f,
-            normalBlurRadius = 0.2f,
-            normalBlurDepthRange = 1.0f,
+            sssBlurWeight = 1.0f,
+            sssBlurRadius = 0.2f,
+            sssBlurDepthRange = 1.0f,
 
-            normalBlurIter = 1,
+            sssBlurIter = 1,
+
+            sssBlurAlbedo = true,
 
             colorBleedWeights = new Vector3(0.40f, 0.15f, 0.20f),
             transAbsorption = new Vector3(-8.00f, -48.0f, -64.0f),
@@ -381,28 +385,34 @@ namespace HSSSS
 
         public static void UpdateSSAO()
         {
-            HSSSS.SSAORenderer.enabled = ssao.enabled;
-
-            if (ssao.enabled)
+            if (HSSSS.SSAORenderer)
             {
-                HSSSS.SSAORenderer.UpdateSSAOSettings();
-                Shader.SetGlobalInt("_UseAmbientOcclusion", 1);
-            }
+                HSSSS.SSAORenderer.enabled = ssao.enabled;
 
-            else
-            {
-                Shader.SetGlobalInt("_UseDirectOcclusion", 0);
-                Shader.SetGlobalInt("_UseAmbientOcclusion", 0);
+                if (ssao.enabled)
+                {
+                    HSSSS.SSAORenderer.UpdateSSAOSettings();
+                    Shader.SetGlobalInt("_UseAmbientOcclusion", 1);
+                }
+
+                else
+                {
+                    Shader.SetGlobalInt("_UseDirectOcclusion", 0);
+                    Shader.SetGlobalInt("_UseAmbientOcclusion", 0);
+                }
             }
         }
 
         public static void UpdateSSGI()
         {
-            HSSSS.SSGIRenderer.enabled = ssgi.enabled;
-
-            if (ssgi.enabled)
+            if (HSSSS.SSGIRenderer)
             {
-                HSSSS.SSGIRenderer.UpdateSSGISettings();
+                HSSSS.SSGIRenderer.enabled = ssgi.enabled;
+
+                if (ssgi.enabled)
+                {
+                    HSSSS.SSGIRenderer.UpdateSSGISettings();
+                }
             }
         }
     }

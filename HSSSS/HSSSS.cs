@@ -2,7 +2,6 @@
 using System.IO;
 using System.Xml;
 using System.Reflection;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Studio;
@@ -127,7 +126,7 @@ namespace HSSSS
         {
             if (isEnabled && level >= 3)
             {
-                if (this.PostFxInitializer())
+                if (this.SetupImageEffects())
                 {
                     Console.WriteLine("#### HSSSS: Successfully initialized the camera effects");
 
@@ -296,7 +295,7 @@ namespace HSSSS
             }
         }
 
-        private bool PostFxInitializer()
+        private bool SetupImageEffects()
         {
             if (isStudio)
             {
@@ -306,49 +305,62 @@ namespace HSSSS
 
             else
             {
-                if (Camera.main != null)
-                {
-                    mainCamera = Camera.main.gameObject;
-                    mainCamera.GetComponent<Camera>();
-                }
+                mainCamera = Camera.main.gameObject;
+                mainCamera.GetComponent<Camera>();
             }
 
-            if (null != mainCamera)
+            if (mainCamera)
             {
-                if (CameraProjector == null)
-                {
-                    CameraProjector = mainCamera.gameObject.AddComponent<CameraProjector>();
-                }
-
                 if (DeferredRenderer == null)
                 {
                     DeferredRenderer = mainCamera.gameObject.AddComponent<DeferredRenderer>();
                 }
 
-                if (SSAORenderer == null)
+                if (hsrCompatible)
                 {
-                    SSAORenderer = mainCamera.gameObject.AddComponent<SSAORenderer>();
-                }
+                    if (DeferredRenderer)
+                    {
+                        return true;
+                    }
 
-                if (SSGIRenderer == null)
-                {
-                    SSGIRenderer = mainCamera.gameObject.AddComponent<SSGIRenderer>();
-                }
-
-                if (CameraProjector == null)
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Initialize Camera Projector");
-                }
-
-                if (DeferredRenderer == null || SSAORenderer == null || SSGIRenderer == null)
-                {
-                    Console.WriteLine("#### HSSSS: Failed to Initialize Post FX");
+                    else
+                    {
+                        return false;
+                    }
                 }
 
                 else
                 {
-                    return true;
+                    if (CameraProjector == null)
+                    {
+                        CameraProjector = mainCamera.gameObject.AddComponent<CameraProjector>();
+                    }
+
+                    if (SSAORenderer == null)
+                    {
+                        SSAORenderer = mainCamera.gameObject.AddComponent<SSAORenderer>();
+                    }
+
+                    if (SSGIRenderer == null)
+                    {
+                        SSGIRenderer = mainCamera.gameObject.AddComponent<SSGIRenderer>();
+                    }
+
+                    if (DeferredRenderer && CameraProjector && SSAORenderer && SSGIRenderer)
+                    {
+                        return true;
+                    }
+
+                    else
+                    {
+                        return false;
+                    }
                 }
+            }
+
+            else
+            {
+                Console.WriteLine("#### HSSSS: Couldn't find the main camera");
             }
 
             return false;

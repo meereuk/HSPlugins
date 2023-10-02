@@ -1,6 +1,5 @@
 ﻿using System;
 using UnityEngine;
-using static Manager.KeyInput.Pad;
 
 namespace HSSSS
 {
@@ -218,7 +217,12 @@ namespace HSSSS
 
             Separator();
 
-            if (this.skin.lutProfile != Properties.LUTProfile.jimenez)
+            if (this.skin.lutProfile == Properties.LUTProfile.jimenez)
+            {
+                OnOffToolbar("Albedo Blur", ref this.skin.sssBlurAlbedo);
+            }
+
+            else
             {
                 // skin diffusion brdf
                 SliderControls("Skin BRDF Lookup Scale", ref this.skin.skinLutScale, 0.0f, 1.0f);
@@ -235,12 +239,12 @@ namespace HSSSS
 
                 Separator();
 
-                SliderControls("Blur Weight", ref this.skin.normalBlurWeight, 0.0f, 1.0f);
+                SliderControls("Blur Weight", ref this.skin.sssBlurWeight, 0.0f, 1.0f);
             }
 
-            SliderControls("Blur Radius", ref this.skin.normalBlurRadius, 0.0f, 4.0f);
-            SliderControls("Blur Depth Correction", ref this.skin.normalBlurDepthRange, 0.0f, 20.0f);
-            SliderControls("Blur Iterations Count", ref this.skin.normalBlurIter, 0, 10);
+            SliderControls("Blur Radius", ref this.skin.sssBlurRadius, 0.0f, 4.0f);
+            SliderControls("Blur Depth Correction", ref this.skin.sssBlurDepthRange, 0.0f, 20.0f);
+            SliderControls("Blur Iterations Count", ref this.skin.sssBlurIter, 0, 10);
 
             Separator();
 
@@ -574,6 +578,7 @@ namespace HSSSS
 
                 case TabState.ssgi:
                     Properties.UpdateSSGI();
+                    Properties.UpdateSkin();
                     break;
 
                 case TabState.miscellaneous:

@@ -38,10 +38,11 @@ namespace HSSSS
                 // normal blur
                 writer.WriteStartElement("NormalBlur");
                 {
-                    writer.WriteElementString("Weight", XmlConvert.ToString(Properties.skin.normalBlurWeight));
-                    writer.WriteElementString("Radius", XmlConvert.ToString(Properties.skin.normalBlurRadius));
-                    writer.WriteElementString("CorrectionDepth", XmlConvert.ToString(Properties.skin.normalBlurDepthRange));
-                    writer.WriteElementString("Iterations", XmlConvert.ToString(Properties.skin.normalBlurIter));
+                    writer.WriteElementString("Weight", XmlConvert.ToString(Properties.skin.sssBlurWeight));
+                    writer.WriteElementString("Radius", XmlConvert.ToString(Properties.skin.sssBlurRadius));
+                    writer.WriteElementString("CorrectionDepth", XmlConvert.ToString(Properties.skin.sssBlurDepthRange));
+                    writer.WriteElementString("Iterations", XmlConvert.ToString(Properties.skin.sssBlurIter));
+                    writer.WriteElementString("BlurAlbedo", XmlConvert.ToString(Properties.skin.sssBlurAlbedo));
                 }
                 writer.WriteEndElement();
 
@@ -264,10 +265,11 @@ namespace HSSSS
             XmlQuery<float>("/Shadow/Scale", ref Properties.skin.shadowLutScale);
             XmlQuery<float>("/Shadow/Bias", ref Properties.skin.shadowLutBias);
             // normal/diffuse blur
-            XmlQuery<float>("/NormalBlur/Weight", ref Properties.skin.normalBlurWeight);
-            XmlQuery<float>("/NormalBlur/Radius", ref Properties.skin.normalBlurRadius);
-            XmlQuery<float>("/NormalBlur/CorrectionDepth", ref Properties.skin.normalBlurDepthRange);
-            XmlQuery<int>("/NormalBlur/Iterations", ref Properties.skin.normalBlurIter);
+            XmlQuery<float>("/NormalBlur/Weight", ref Properties.skin.sssBlurWeight);
+            XmlQuery<float>("/NormalBlur/Radius", ref Properties.skin.sssBlurRadius);
+            XmlQuery<float>("/NormalBlur/CorrectionDepth", ref Properties.skin.sssBlurDepthRange);
+            XmlQuery<int>("/NormalBlur/Iterations", ref Properties.skin.sssBlurIter);
+            XmlQuery<bool>("/NormalBlur/BlurAlbedo", ref Properties.skin.sssBlurAlbedo);
             // color bleeding ao
             XmlQuery<float>("/AOBleeding/Red", ref Properties.skin.colorBleedWeights.x);
             XmlQuery<float>("/AOBleeding/Green", ref Properties.skin.colorBleedWeights.y);
