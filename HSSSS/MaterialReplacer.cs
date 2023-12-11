@@ -312,7 +312,6 @@ namespace HSSSS
             else if (key == CharReference.TagObjKey.ObjEyeW)
             {
                 ShaderReplacer(AssetLoader.sclera, material);
-                material.SetFloat("_MaterialType", 0.0f);
             }
 
             else if (key == CharReference.TagObjKey.ObjEyeL || key == CharReference.TagObjKey.ObjEyeR)
@@ -326,8 +325,7 @@ namespace HSSSS
 
                 else
                 {
-                    ShaderReplacer(AssetLoader.overlay, material);
-                    material.SetFloat("_MaterialType", 0.0f);
+                    ShaderReplacer(AssetLoader.eyeoverlay, material);
                 }
             }
 
