@@ -195,6 +195,7 @@ namespace HSSSS
                 {
                     writer.WriteElementString("Weight_1", XmlConvert.ToString(Properties.skin.microDetailWeight_1));
                     writer.WriteElementString("Weight_2", XmlConvert.ToString(Properties.skin.microDetailWeight_2));
+                    writer.WriteElementString("Occlusion", XmlConvert.ToString(Properties.skin.microDetailOcclusion));
                     writer.WriteElementString("Tiling", XmlConvert.ToString(Properties.skin.microDetailTiling));
                 }
                 writer.WriteEndElement();
@@ -383,6 +384,7 @@ namespace HSSSS
             // microdetails
             XmlQuery<float>("/MicroDetails/Weight_1", ref Properties.skin.microDetailWeight_1);
             XmlQuery<float>("/MicroDetails/Weight_2", ref Properties.skin.microDetailWeight_2);
+            XmlQuery<float>("/MicroDetails/Occlusion", ref Properties.skin.microDetailOcclusion);
             XmlQuery<float>("/MicroDetails/Tiling", ref Properties.skin.microDetailTiling);
             // tessellation
             XmlQuery<bool>("/Tessellation", "Enabled", ref Properties.tess.enabled);

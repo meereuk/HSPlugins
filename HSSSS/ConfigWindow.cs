@@ -468,6 +468,7 @@ namespace HSSSS
             // skin microdetails
             SliderControls("MicroDetail #1 Strength", ref this.skin.microDetailWeight_1, 0.0f, 1.0f);
             SliderControls("MicroDetail #2 Strength", ref this.skin.microDetailWeight_2, 0.0f, 1.0f);
+            SliderControls("MicroDetail Occlusion", ref this.skin.microDetailOcclusion, 0.0f, 1.0f);
             SliderControls("MicroDetail Tiling", ref this.skin.microDetailTiling, 0.1f, 100.0f);
 
             Separator();

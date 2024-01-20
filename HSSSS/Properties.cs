@@ -78,6 +78,7 @@ namespace HSSSS
 
             public float microDetailWeight_1;
             public float microDetailWeight_2;
+            public float microDetailOcclusion;
             public float microDetailTiling;
         }
 
@@ -184,6 +185,7 @@ namespace HSSSS
 
             microDetailWeight_1 = 0.32f,
             microDetailWeight_2 = 0.32f,
+            microDetailOcclusion = 1.0f,
 
             microDetailTiling = 64.0f
         };
@@ -317,6 +319,11 @@ namespace HSSSS
                         if (mat.HasProperty("_DetailSkinPoreMap"))
                         {
                             mat.SetTextureScale("_DetailSkinPoreMap", new Vector2(Properties.skin.microDetailTiling, Properties.skin.microDetailTiling));
+                        }
+
+                        if (mat.HasProperty("_PoreOcclusionStrength"))
+                        {
+                            mat.SetFloat("_PoreOcclusionStrength", Properties.skin.microDetailOcclusion);
                         }
 
                         if (mat.HasProperty("_Phong"))
