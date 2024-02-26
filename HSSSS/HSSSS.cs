@@ -400,7 +400,12 @@ namespace HSSSS
 
                 harmony.Patch(
                     AccessTools.Method(typeof(CharFemaleBody), nameof(CharFemaleBody.Reload)), null,
-                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ReplaceMisc))
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ReplaceMiscFemale))
+                    );
+
+                harmony.Patch(
+                    AccessTools.Method(typeof(CharMaleBody), nameof(CharMaleBody.Reload)), null,
+                    new HarmonyMethod(typeof(MaterialReplacer), nameof(MaterialReplacer.ReplaceMiscMale))
                     );
 
                 harmony.Patch(

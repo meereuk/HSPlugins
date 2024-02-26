@@ -89,7 +89,7 @@ namespace HSSSS
             ReplaceCommon(___chaInfo, CharReference.TagObjKey.ObjNail);
         }
 
-        public static void ReplaceMisc(CharFemaleBody __instance)
+        public static void ReplaceMiscFemale(CharFemaleBody __instance)
         {
             // face blush
             if (null != __instance.matHohoAka)
@@ -122,71 +122,31 @@ namespace HSSSS
                 }
             }
 
-            // tongue
             GameObject objHead = __instance.objHead;
 
             if (objHead)
             {
-                GameObject objTongue = null;
-
+                // tongue
                 if (objHead.transform.Find("cf_N_head/cf_O_sita"))
                 {
-                    objTongue = objHead.transform.Find("cf_N_head/cf_O_sita").gameObject;
+                    ObjectReplacer(objHead.transform.Find("cf_N_head/cf_O_sita").gameObject, AssetLoader.skin);
                 }
 
-                if (objTongue)
-                {
-                    Material material = objTongue.GetComponent<Renderer>().material;
-
-                    if (material)
-                    {
-                        if (WillReplaceShader(material.shader))
-                        {
-                            ShaderReplacer(AssetLoader.skin, material);
-                            Console.WriteLine("#### HSSSS Replaced " + material.name);
-                        }
-                    }
-                }
-            }
-
-            if (Properties.misc.fixOverlay)
-            {
-                if (objHead)
+                if (Properties.misc.fixOverlay)
                 {
                     // eye shade
-                    GameObject objShade = null;
-
                     if (objHead.transform.Find("cf_N_head/cf_O_eyekage"))
                     {
-                        objShade = objHead.transform.Find("cf_N_head/cf_O_eyekage").gameObject;
+                        ObjectReplacer(objHead.transform.Find("cf_N_head/cf_O_eyekage").gameObject, AssetLoader.eyeshade, false);
                     }
 
                     else if (objHead.transform.Find("cf_N_head/cf_O_eyekage1"))
                     {
-                        objShade = objHead.transform.Find("cf_N_head/cf_O_eyekage1").gameObject;
-                    }
-
-                    if (objShade)
-                    {
-                        Renderer renderer = objShade.GetComponent<Renderer>();
-
-                        if (renderer)
-                        {
-                            Material material = renderer.sharedMaterial;
-
-                            if (material)
-                            {
-                                if (WillReplaceShader(material.shader))
-                                {
-                                    ShaderReplacer(AssetLoader.eyeshade, material);
-                                    Console.WriteLine("#### HSSSS Replaced " + material.name);
-                                }
-                            }
-                        }
+                        ObjectReplacer(objHead.transform.Find("cf_N_head/cf_O_eyekage1").gameObject, AssetLoader.eyeshade, false);
                     }
 
                     // tears
-                    for (int i = 1; i < 4; i ++)
+                    for (int i = 1; i < 4; i++)
                     {
                         GameObject objTears = objHead.transform.Find("cf_N_head/N_namida/cf_O_namida" + i.ToString("00")).gameObject;
 
@@ -213,6 +173,51 @@ namespace HSSSS
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        public static void ReplaceMiscMale(CharMaleBody __instance)
+        {
+            GameObject objHead = __instance.objHead;
+
+            if (objHead)
+            {
+                // tongue
+                if (objHead.transform.Find("cm_N_O_head/cm_O_sita"))
+                {
+                    ObjectReplacer(objHead.transform.Find("cm_N_O_head/cm_O_sita").gameObject, AssetLoader.skin);
+                }
+
+                // eye highlights
+                if (Properties.misc.fixOverlay)
+                {
+                    if (objHead.transform.Find("cm_N_O_head/cm_O_eyeHi_R"))
+                    {
+                        ObjectReplacer(objHead.transform.Find("cm_N_O_head/cm_O_eyeHi_R").gameObject, AssetLoader.eyeoverlay);
+                    }
+
+                    if (objHead.transform.Find("cm_N_O_head/cm_O_eyeHi_L"))
+                    {
+                        ObjectReplacer(objHead.transform.Find("cm_N_O_head/cm_O_eyeHi_L").gameObject, AssetLoader.eyeoverlay);
+                    }
+                }
+            }
+
+            // public hair
+            if (Properties.misc.fixOverlay)
+            {
+                foreach (GameObject objBody in __instance.chaInfo.GetTagInfo(CharReference.TagObjKey.ObjSkinBody))
+                {
+                    if (objBody.transform.parent.FindChild("O_mnpk"))
+                    {
+                        ObjectReplacer(objBody.transform.parent.FindChild("O_mnpk").gameObject, AssetLoader.overlay);
+                    }
+
+                    if (objBody.transform.FindChild("O_mnpk"))
+                    {
+                        ObjectReplacer(objBody.transform.FindChild("O_mnpk").gameObject, AssetLoader.overlay);
                     }
                 }
             }
@@ -293,6 +298,27 @@ namespace HSSSS
                         material.renderQueue = 3000;
                     }
 
+                }
+            }
+        }
+
+        private static void ObjectReplacer(GameObject gameObject, Material replace, bool receiveShadow = true)
+        {
+            if (gameObject)
+            {
+                Renderer renderer = gameObject.GetComponent<Renderer>();
+
+                if (renderer)
+                {
+                    Material material = renderer.sharedMaterial;
+
+                    if (WillReplaceShader(material.shader))
+                    {
+                        ShaderReplacer(replace, material);
+                        Console.WriteLine("#### HSSSS Replaced " + material.name);
+                    }
+
+                    renderer.receiveShadows = receiveShadow;
                 }
             }
         }
