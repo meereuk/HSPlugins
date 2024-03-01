@@ -57,6 +57,9 @@ namespace HSSSS
         private CommandBuffer mBuffer;
         private string bufferName;
 
+        private static int dirResolution = 4096;
+        private static int spotResolution = 2048;
+
         private void Awake()
         {
             this.mLight = GetComponent<Light>();
@@ -65,15 +68,7 @@ namespace HSSSS
 
         private void Reset()
         {
-            if (this.mLight)
-            {
-                if (this.HasCommandBuffer())
-                {
-                    this.mLight.RemoveCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
-                }
-
-                this.InitializeCommandBuffer();
-            }
+            this.ResetCommandBuffer();
         }
 
         private void OnEnable()
@@ -110,17 +105,30 @@ namespace HSSSS
 
             if (this.mLight.type == LightType.Directional)
             {
-                this.mBuffer.GetTemporaryRT(targetID, 4096, 4096, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+                this.mBuffer.GetTemporaryRT(targetID, dirResolution, dirResolution, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             }
 
             else if (this.mLight.type == LightType.Spot)
             {
-                this.mBuffer.GetTemporaryRT(targetID, 2048, 2048, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+                this.mBuffer.GetTemporaryRT(targetID, spotResolution, spotResolution, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             }
 
             this.mBuffer.Blit(sourceID, targetID);
             this.mBuffer.ReleaseTemporaryRT(targetID);
             this.mLight.AddCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
+        }
+
+        public void ResetCommandBuffer()
+        {
+            if (this.mLight)
+            {
+                if (this.HasCommandBuffer())
+                {
+                    this.mLight.RemoveCommandBuffer(LightEvent.AfterShadowMap, this.mBuffer);
+                }
+
+                this.InitializeCommandBuffer();
+            }
         }
 
         private bool HasCommandBuffer()
@@ -134,6 +142,32 @@ namespace HSSSS
             }
 
             return false;
+        }
+
+        public static void UpdateShadowMapRes(Properties.HighResShadow highRes)
+        {
+            switch (highRes)
+            {
+                case Properties.HighResShadow.disable:
+                    dirResolution = 4096;
+                    spotResolution = 2048;
+                    break;
+
+                case Properties.HighResShadow.high:
+                    dirResolution = 4096;
+                    spotResolution = 4096;
+                    break;
+
+                case Properties.HighResShadow.ultra:
+                    dirResolution = 8192;
+                    spotResolution = 8192;
+                    break;
+
+                default:
+                    dirResolution = 4096;
+                    spotResolution = 2048;
+                    break;
+            }
         }
     }
 }

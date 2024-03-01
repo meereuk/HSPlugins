@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace HSSSS
@@ -12,6 +11,13 @@ namespace HSSSS
             nvidia1,
             nvidia2,
             jimenez
+        }
+
+        public enum HighResShadow
+        {
+            disable,
+            high,
+            ultra
         }
 
         public enum PCFState
@@ -84,6 +90,7 @@ namespace HSSSS
 
         public struct PCSSProperties
         {
+            public HighResShadow highRes;
             public PCFState pcfState;
             public bool pcssEnabled;
 
@@ -192,6 +199,7 @@ namespace HSSSS
 
         public static PCSSProperties pcss = new PCSSProperties()
         {
+            highRes = HighResShadow.disable,
             pcfState = PCFState.disable,
             pcssEnabled = false,
 
@@ -353,6 +361,20 @@ namespace HSSSS
 
             if (HSSSS.isStudio)
             {
+                // high-res shadow map
+                ShadowMapDispatcher.UpdateShadowMapRes(pcss.highRes);
+
+                foreach (Light light in UnityEngine.Resources.FindObjectsOfTypeAll<Light>())
+                {
+                    if (light)
+                    {
+                        if (light.GetComponent<ShadowMapDispatcher>())
+                        {
+                            light.GetComponent<ShadowMapDispatcher>().ResetCommandBuffer();
+                        }
+                    }
+                }
+
                 // pcf & pcss shadow
                 if (pcss.pcfState == PCFState.disable)
                 {

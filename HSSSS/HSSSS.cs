@@ -7,6 +7,7 @@ using UnityEngine.Rendering;
 using Studio;
 using Harmony;
 using IllusionPlugin;
+using JetBrains.Annotations;
 
 namespace HSSSS
 {
@@ -14,7 +15,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.7.2"; } }
+        public string Version { get { return "1.7.3b2"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -151,6 +152,7 @@ namespace HSSSS
 
         public void OnUpdate()
         {
+            Console.WriteLine(RenderSettings.skybox.GetTexture("_Tex"));
         }
 
         public void OnFixedUpdate()
@@ -311,6 +313,7 @@ namespace HSSSS
 
             if (mainCamera)
             {
+                // main sss renderer
                 if (DeferredRenderer == null)
                 {
                     DeferredRenderer = mainCamera.gameObject.AddComponent<DeferredRenderer>();
@@ -318,11 +321,13 @@ namespace HSSSS
 
                 if (hsrCompatible)
                 {
+                    // no problem?
                     if (DeferredRenderer)
                     {
                         return true;
                     }
 
+                    // problem!
                     else
                     {
                         return false;
@@ -331,26 +336,31 @@ namespace HSSSS
 
                 else
                 {
+                    // projection matrix calculator
                     if (CameraProjector == null)
                     {
                         CameraProjector = mainCamera.gameObject.AddComponent<CameraProjector>();
                     }
 
+                    // ssao
                     if (SSAORenderer == null)
                     {
                         SSAORenderer = mainCamera.gameObject.AddComponent<SSAORenderer>();
                     }
 
+                    // ssgi
                     if (SSGIRenderer == null)
                     {
                         SSGIRenderer = mainCamera.gameObject.AddComponent<SSGIRenderer>();
                     }
 
+                    // is everything okay?
                     if (DeferredRenderer && CameraProjector && SSAORenderer && SSGIRenderer)
                     {
                         return true;
                     }
 
+                    // not okay
                     else
                     {
                         return false;

@@ -44,6 +44,7 @@ namespace HSSSS
         private readonly string[] tabLabels = new string[] { "Skin Scattering", "Transmission", "Soft Shadow", "Ambient Occlusion", "Global Illumination", "Miscellaneous" };
         private readonly string[] lutLabels = new string[] { "Penner", "FaceWorks #1", "FaceWorks #2", "Jimenez" };
         private readonly string[] pcfLabels = new string[] { "Off", "Low", "Medium", "High", "Ultra" };
+        private readonly string[] hsmLabels = new string[] { "Default", "4096x4096", "8192x8192" };
 
         private readonly string[] scalelabels = new string[] { "Quarter", "Half", "Full" };
         private readonly string[] qualitylabels = new string[] { "Low", "Medium", "High", "Ultra" };
@@ -293,6 +294,9 @@ namespace HSSSS
             GUILayout.Space(doubleSpace);
 
             #region Soft Shadow
+            // high-res shadow map
+            EnumToolbar("High-Res ShadowMap", ref this.pcss.highRes);
+
             // pcf iterations count
             EnumToolbar("PCF Shadow Quality", ref this.pcss.pcfState);
 
@@ -608,6 +612,19 @@ namespace HSSSS
             Properties.pcss = this.pcss;
             Properties.tess = this.tess;
             Properties.misc = this.misc;
+        }
+
+        private void EnumToolbar(string label, ref Properties.HighResShadow value)
+        {
+            GUILayout.Label(label);
+
+            Properties.HighResShadow temp = (Properties.HighResShadow)GUILayout.Toolbar((int)value, hsmLabels);
+
+            if (value != temp)
+            {
+                value = temp;
+                this.RefreshWindowSize();
+            }
         }
 
         private void EnumToolbar(string label, ref Properties.PCFState value)
