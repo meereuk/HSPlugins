@@ -15,7 +15,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.7.3b2"; } }
+        public string Version { get { return "1.8.0b1"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -152,7 +152,6 @@ namespace HSSSS
 
         public void OnUpdate()
         {
-            Console.WriteLine(RenderSettings.skybox.GetTexture("_Tex"));
         }
 
         public void OnFixedUpdate()
@@ -461,12 +460,9 @@ namespace HSSSS
 
         private static void ShadowMapPatcher(OCILight __instance)
         {
-            if (__instance.lightType == LightType.Directional || __instance.lightType == LightType.Spot)
+            if (__instance.light.gameObject.GetComponent<ScreenSpaceShadows>() == null)
             {
-                if (__instance.light.gameObject.GetComponent<ShadowMapDispatcher>() == null)
-                {
-                    __instance.light.gameObject.AddComponent<ShadowMapDispatcher>();
-                }
+                __instance.light.gameObject.AddComponent<ScreenSpaceShadows>();
             }
         }
         #endregion

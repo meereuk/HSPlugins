@@ -167,20 +167,20 @@ namespace HSSSS
         {
             GUI.skin = AssetLoader.gui;
             // button
-            GUI.skin.button.margin.top = singleSpace;
-            GUI.skin.button.margin.left = singleSpace;
-            GUI.skin.button.margin.right = singleSpace;
-            GUI.skin.button.margin.bottom = singleSpace;
+            GUI.skin.button.margin.top = doubleSpace;
+            GUI.skin.button.margin.left = doubleSpace;
+            GUI.skin.button.margin.right = doubleSpace;
+            GUI.skin.button.margin.bottom = doubleSpace;
             GUI.skin.button.fontSize = tetraSpace;
             GUI.skin.button.fixedHeight = octaSpace;
             // label
             GUI.skin.label.fixedHeight = hexaSpace;
             GUI.skin.label.fontSize = tetraSpace;
             // text field
-            GUI.skin.textField.margin.top = singleSpace;
-            GUI.skin.textField.margin.left = singleSpace;
-            GUI.skin.textField.margin.right = singleSpace;
-            GUI.skin.textField.margin.bottom = singleSpace;
+            GUI.skin.textField.margin.top = doubleSpace;
+            GUI.skin.textField.margin.left = doubleSpace;
+            GUI.skin.textField.margin.right = doubleSpace;
+            GUI.skin.textField.margin.bottom = doubleSpace;
             GUI.skin.textField.fontSize = tetraSpace;
             GUI.skin.textField.fixedHeight = octaSpace;
             // window
@@ -190,10 +190,10 @@ namespace HSSSS
             GUI.skin.window.padding.bottom = tetraSpace;
             GUI.skin.window.fontSize = octaSpace;
             // slider
-            GUI.skin.horizontalSlider.margin.top = singleSpace;
-            GUI.skin.horizontalSlider.margin.left = singleSpace;
-            GUI.skin.horizontalSlider.margin.right = singleSpace;
-            GUI.skin.horizontalSlider.margin.bottom = singleSpace;
+            GUI.skin.horizontalSlider.margin.top = doubleSpace;
+            GUI.skin.horizontalSlider.margin.left = doubleSpace;
+            GUI.skin.horizontalSlider.margin.right = doubleSpace;
+            GUI.skin.horizontalSlider.margin.bottom = doubleSpace;
             GUI.skin.horizontalSlider.padding.top = singleSpace;
             GUI.skin.horizontalSlider.padding.left = singleSpace;
             GUI.skin.horizontalSlider.padding.right = singleSpace;
@@ -206,7 +206,7 @@ namespace HSSSS
 
         private void SkinScattering()
         {
-            GUILayout.Label("<b>Skin Scattering</b>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white><b>Skin Scattering</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
@@ -255,7 +255,7 @@ namespace HSSSS
 
         private void Transmission()
         {
-            GUILayout.Label("<b>Transmission</b>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white><b>Transmission</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
@@ -289,7 +289,7 @@ namespace HSSSS
 
         private void SoftShadow()
         {
-            GUILayout.Label("<b>Soft Shadows</b>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white><b>Soft Shadows</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
@@ -304,6 +304,9 @@ namespace HSSSS
             {
                 // pcss soft shadow toggle
                 OnOffToolbar("Percentage Closer Soft Shadow", ref this.pcss.pcssEnabled);
+
+                // sparse rendering
+                OnOffToolbar("Sparse Rendering", ref this.pcss.checkerboard);
 
                 Separator();
 
@@ -377,7 +380,7 @@ namespace HSSSS
 
         private void AmbientOcclusion()
         {
-            GUILayout.Label("<b>Ambient Occlusion</b>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white><b>Ambient Occlusion</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
@@ -391,8 +394,7 @@ namespace HSSSS
 
                 EnumToolbar("AO Quality", ref this.ssao.quality);
 
-                GUILayout.Label("Deinterleaved Sampling");
-                this.ssao.screenDiv = GUILayout.Toolbar(this.ssao.screenDiv, new string[] { "Off", "2x2", "4x4", "8x8" });
+                GUILayout.Label("Sparse Rendering");
 
                 Separator();
 
@@ -426,7 +428,7 @@ namespace HSSSS
 
         private void GlobalIllumination()
         {
-            GUILayout.Label("<b>Global Illumination</b>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white><b>Global Illumination</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
@@ -447,7 +449,7 @@ namespace HSSSS
 
                 Separator();
 
-                SliderControls("Raytrace Radius (m)", ref this.ssgi.rayRadius, 0.0f, 4.0f);
+                SliderControls("Raytrace Radius (m)", ref this.ssgi.rayRadius, 0.0f, 50.0f);
                 SliderControls("Raytrace Stride", ref this.ssgi.rayStride, 1, 4);
 
                 Separator();
@@ -465,7 +467,7 @@ namespace HSSSS
 
         private void Miscellaneous()
         {
-            GUILayout.Label("<b>Miscellaneous</b>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white><b>Miscellaneous</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 

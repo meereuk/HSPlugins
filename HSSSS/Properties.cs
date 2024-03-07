@@ -93,6 +93,7 @@ namespace HSSSS
             public HighResShadow highRes;
             public PCFState pcfState;
             public bool pcssEnabled;
+            public bool checkerboard;
 
             public Vector3 pointLightPenumbra;
             public Vector3 spotLightPenumbra;
@@ -115,7 +116,6 @@ namespace HSSSS
             public float fadeDepth;
             public float doApature;
             public int rayStride;
-            public int screenDiv;
         }
 
         public struct SSGIProperties
@@ -202,6 +202,7 @@ namespace HSSSS
             highRes = HighResShadow.disable,
             pcfState = PCFState.disable,
             pcssEnabled = false,
+            checkerboard = false,
 
             dirLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
             spotLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
@@ -223,8 +224,7 @@ namespace HSSSS
             meanDepth = 0.5f,
             fadeDepth = 100.0f,
             doApature = 0.5f,
-            rayStride = 2,
-            screenDiv = 1
+            rayStride = 2
         };
 
         public static SSGIProperties ssgi = new SSGIProperties()
@@ -355,60 +355,18 @@ namespace HSSSS
 
         public static void UpdatePCSS()
         {
-            Shader.DisableKeyword("_PCF_ON");
-            Shader.DisableKeyword("_PCSS_ON");
-            Shader.DisableKeyword("_SSCS_ON");
-
             if (HSSSS.isStudio)
             {
-                // high-res shadow map
-                ShadowMapDispatcher.UpdateShadowMapRes(pcss.highRes);
-
                 foreach (Light light in UnityEngine.Resources.FindObjectsOfTypeAll<Light>())
                 {
                     if (light)
                     {
-                        if (light.GetComponent<ShadowMapDispatcher>())
+                        if (light.GetComponent<ScreenSpaceShadows>())
                         {
-                            light.GetComponent<ShadowMapDispatcher>().ResetCommandBuffer();
+                            light.GetComponent<ScreenSpaceShadows>().UpdateSettings();
                         }
                     }
                 }
-
-                // pcf & pcss shadow
-                if (pcss.pcfState == PCFState.disable)
-                {
-                    pcss.pcssEnabled = false;
-                }
-
-                else
-                {
-                    Shader.EnableKeyword("_PCF_ON");
-                    Shader.SetGlobalInt("_SoftShadowNumIter", (int)pcss.pcfState + 2);
-                    Shader.SetGlobalTexture("_ShadowJitterTexture", AssetLoader.blueNoise);
-                }
-
-                if (pcss.pcssEnabled)
-                {
-                    Shader.DisableKeyword("_PCF_ON");
-                    Shader.EnableKeyword("_PCSS_ON");
-                }
-
-                Shader.SetGlobalVector("_DirLightPenumbra", pcss.dirLightPenumbra);
-                Shader.SetGlobalVector("_SpotLightPenumbra", pcss.spotLightPenumbra);
-                Shader.SetGlobalVector("_PointLightPenumbra", pcss.pointLightPenumbra);
-
-                // sscs shadow
-                if (sscs.enabled)
-                {
-                    Shader.EnableKeyword("_SSCS_ON");
-                }
-
-                Shader.SetGlobalFloat("_SSCSRayLength", sscs.rayRadius);
-                Shader.SetGlobalFloat("_SSCSMeanDepth", sscs.meanDepth);
-                Shader.SetGlobalFloat("_SSCSDepthBias", sscs.depthBias);
-                Shader.SetGlobalFloat("_SSCSMeanDepth", sscs.meanDepth);
-                Shader.SetGlobalInt(  "_SSCSRayStride", (int)sscs.quality + 4);
             }
         }
 

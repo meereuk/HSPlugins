@@ -125,8 +125,6 @@ namespace HSSSS
                 writer.WriteElementString("UseSSDO", XmlConvert.ToString(Properties.ssao.usessdo));
                 // quality
                 writer.WriteElementString("Quality", Convert.ToString(Properties.ssao.quality));
-                // deinterleaving
-                writer.WriteElementString("ScreenDiv", XmlConvert.ToString(Properties.ssao.screenDiv));
                 // intensity
                 writer.WriteElementString("Intensity", XmlConvert.ToString(Properties.ssao.intensity));
                 // light bias
@@ -324,7 +322,6 @@ namespace HSSSS
             XmlQuery<bool>("/UseGTAO", ref Properties.ssao.usegtao);
 
             XmlQuery<Properties.QualityPreset>("/Quality", ref Properties.ssao.quality);
-            XmlQuery<int>("/ScreenDiv", ref Properties.ssao.screenDiv);
 
             XmlQuery<float>("/Intensity", ref Properties.ssao.intensity);
             XmlQuery<float>("/LightBias", ref Properties.ssao.lightBias);

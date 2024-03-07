@@ -520,24 +520,23 @@ namespace HSSSS
 
             // decode pass
             this.mBuffer.Blit(flip, flop, this.mMaterial, 10);
+            this.mBuffer.Blit(flop, flip, this.mMaterial, 11);
 
             // spatio noise filtering
             if (Properties.ssao.denoise)
             {
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 11);
                 this.mBuffer.Blit(flip, flop, this.mMaterial, 12);
                 this.mBuffer.Blit(flop, flip, this.mMaterial, 13);
-                this.mBuffer.Blit(flip, flop);
             }
 
-            this.mBuffer.SetGlobalTexture("_SSDOBentNormalTexture", flop);
+            this.mBuffer.SetGlobalTexture("_SSDOBentNormalTexture", flip);
 
             // diffuse occlusion
-            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flip, this.mMaterial, 15);
-            this.mBuffer.Blit(flip, BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flop, this.mMaterial, 15);
+            this.mBuffer.Blit(flop, BuiltinRenderTextureType.CameraTarget);
             // specular occlusion
-            this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flip, this.mMaterial, 16);
-            this.mBuffer.Blit(flip, BuiltinRenderTextureType.Reflections);
+            this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flop, this.mMaterial, 16);
+            this.mBuffer.Blit(flop, BuiltinRenderTextureType.Reflections);
             // direct occlusion
 
             this.mBuffer.ReleaseTemporaryRT(flip);
@@ -573,7 +572,6 @@ namespace HSSSS
                 this.mMaterial.SetFloat("_SSAOLightBias", Properties.ssao.lightBias);
                 this.mMaterial.SetFloat("_SSAOMeanDepth", Properties.ssao.meanDepth);
                 this.mMaterial.SetInt(  "_SSAORayStride", Properties.ssao.rayStride);
-                this.mMaterial.SetInt(  "_SSAOScreenDiv", Properties.ssao.screenDiv);
 
                 Shader.SetGlobalInt("_UseDirectOcclusion", Properties.ssao.usessdo ? 1 : 0);
                 Shader.SetGlobalFloat("_SSDOLightApatureScale", Properties.ssao.doApature);

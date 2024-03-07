@@ -17,6 +17,9 @@ namespace HSSSS
         public static Shader sssPrePass = null;
         public static Shader sssMainPass = null;
 
+        // soft shadows
+        public static Shader softShadows = null;
+
         // ssao & ssgi
         public static Shader ssao = null;
         public static Shader ssgi = null;
@@ -184,6 +187,7 @@ namespace HSSSS
             ReadAsset<Shader>(ref deferredReflection, "InternalDeferredReflections", "deferred reflection shader");
             ReadAsset<Shader>(ref sssPrePass, "SSSPrePass", "SSS prepass shader");
             ReadAsset<Shader>(ref sssMainPass, "SSSMainPass", "SSS mainpass shader");
+            ReadAsset<Shader>(ref softShadows, "SoftShadows", "Soft shadow shader");
             ReadAsset<Shader>(ref ssao, "SSAO", "SSAO shader");
             ReadAsset<Shader>(ref ssgi, "SSGI", "SSGI shader");
             ReadAsset<GUISkin>(ref gui, "GUISkin", "GUI skin");
