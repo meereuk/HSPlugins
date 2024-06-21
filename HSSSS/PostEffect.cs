@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -449,7 +450,6 @@ namespace HSSSS
         private Camera mCamera;
         private Material mMaterial;
         private CommandBuffer mBuffer;
-        private RenderTexture bentnormal;
         private readonly string bufferName = "HSSSS.SSAO";
 
         private void Awake()
@@ -509,7 +509,7 @@ namespace HSSSS
             // gtao
             if (Properties.ssao.usegtao)
             {
-                this.mBuffer.Blit(zbf0, flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 6);
+                this.mBuffer.Blit(zbf0, flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 2);
             }
             
             // hbao
@@ -519,23 +519,32 @@ namespace HSSSS
             }
 
             // decode pass
-            this.mBuffer.Blit(flip, flop, this.mMaterial, 10);
-            this.mBuffer.Blit(flop, flip, this.mMaterial, 11);
+            if (Properties.ssao.sparse)
+            {
+                this.mBuffer.Blit(flip, flop, this.mMaterial, 6);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 7);
+            }
 
             // spatio noise filtering
             if (Properties.ssao.denoise)
             {
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 12);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 13);
+                this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 9);
+                this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 9);
+                this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 9);
+                this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 9);
             }
 
             this.mBuffer.SetGlobalTexture("_SSDOBentNormalTexture", flip);
 
             // diffuse occlusion
-            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flop, this.mMaterial, 15);
+            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flop, this.mMaterial, 11);
             this.mBuffer.Blit(flop, BuiltinRenderTextureType.CameraTarget);
             // specular occlusion
-            this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flop, this.mMaterial, 16);
+            this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flop, this.mMaterial, 12);
             this.mBuffer.Blit(flop, BuiltinRenderTextureType.Reflections);
             // direct occlusion
 
@@ -572,8 +581,9 @@ namespace HSSSS
                 this.mMaterial.SetFloat("_SSAOLightBias", Properties.ssao.lightBias);
                 this.mMaterial.SetFloat("_SSAOMeanDepth", Properties.ssao.meanDepth);
                 this.mMaterial.SetInt(  "_SSAORayStride", Properties.ssao.rayStride);
+                this.mMaterial.SetInt(  "_SSAOUseSparse", Properties.ssao.sparse ? 1 : 0);
 
-                Shader.SetGlobalInt("_UseDirectOcclusion", Properties.ssao.usessdo ? 1 : 0);
+                Shader.SetGlobalInt("_DirectOcclusion", Properties.ssao.usessdo ? 1 : 0);
                 Shader.SetGlobalFloat("_SSDOLightApatureScale", Properties.ssao.doApature);
 
                 this.RemoveCommandBuffer();
@@ -669,10 +679,10 @@ namespace HSSSS
             this.mBuffer = new CommandBuffer() { name = "HSSSS.SSGI" };
             
             this.mBuffer.GetTemporaryRT(irad[0], -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(irad[1], this.mCamera.pixelWidth / 2, this.mCamera.pixelHeight / 2, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(irad[2], this.mCamera.pixelWidth / 4, this.mCamera.pixelHeight / 4, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(irad[3], this.mCamera.pixelWidth / 8, this.mCamera.pixelHeight / 8, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(irad[4], this.mCamera.pixelWidth / 16, this.mCamera.pixelHeight / 16, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(irad[1], this.mCamera.pixelWidth / 2, this.mCamera.pixelHeight / 2, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(irad[2], this.mCamera.pixelWidth / 4, this.mCamera.pixelHeight / 4, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(irad[3], this.mCamera.pixelWidth / 8, this.mCamera.pixelHeight / 8, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(irad[4], this.mCamera.pixelWidth / 16, this.mCamera.pixelHeight / 16, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
 
             this.mBuffer.GetTemporaryRT(flip[0], -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(flip[1], -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
@@ -839,6 +849,89 @@ namespace HSSSS
             }
         }
     }
+
+    public class TAAURenderer : MonoBehaviour
+    {
+        private Camera mCamera;
+        private Material mMaterial;
+        private CommandBuffer mBuffer;
+        private RenderTexture history;
+
+        private readonly string bufferName = "HSSSS.TAAU";
+        private static CameraEvent cameraEvent = CameraEvent.BeforeImageEffects;
+
+        private void Awake()
+        {
+            this.mCamera = GetComponent<Camera>();
+            this.mMaterial = new Material(AssetLoader.taau);
+        }
+
+        private void OnEnable()
+        {
+            if (this.mCamera && Properties.taau.enabled)
+            {
+                this.history = new RenderTexture(this.mCamera.pixelWidth, this.mCamera.pixelHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                this.history.SetGlobalShaderProperty("_FrameBufferHistory");
+                this.history.Create();
+
+                RenderTexture rt = RenderTexture.active;
+                RenderTexture.active = this.history;
+                GL.Clear(true, true, Color.black);
+                RenderTexture.active = rt;
+
+                this.SetupCommandBuffer();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (this.mCamera && this.mBuffer != null)
+            {
+                this.RemoveCommandBuffer();
+
+                this.history.Release();
+                this.history = null;
+            }
+        }
+
+        private void SetupCommandBuffer()
+        {
+            RenderTargetIdentifier hist = new RenderTargetIdentifier(this.history);
+            int buff = Shader.PropertyToID("_TAAUTemporaryBuffer");
+
+            this.mBuffer = new CommandBuffer() { name = this.bufferName };
+            this.mBuffer.GetTemporaryRT(buff, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+
+            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, buff, mMaterial, Convert.ToUInt16(Properties.taau.upscale));
+            this.mBuffer.Blit(buff, BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, hist);
+
+            this.mCamera.AddCommandBuffer(cameraEvent, this.mBuffer);
+        }
+
+        private void RemoveCommandBuffer()
+        {
+            foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(cameraEvent))
+            {
+                if (buffer.name == this.bufferName)
+                {
+                    this.mCamera.RemoveCommandBuffer(cameraEvent, buffer);
+                }
+            }
+
+            this.mBuffer = null;
+        }
+
+        public void UpdateSettings()
+        {
+            if (this.enabled && this.mMaterial)
+            {
+                this.mMaterial.SetFloat("_TemporalMixFactor", Properties.taau.mixWeight);
+                this.RemoveCommandBuffer();
+                this.SetupCommandBuffer();
+            }
+        }
+    }
     
     public class CameraProjector : MonoBehaviour
     {
@@ -886,6 +979,11 @@ namespace HSSSS
             if (mCamera != null)
             {
                 this.UpdateMatrices();
+            }
+
+            foreach (KeyValuePair<Guid, ScreenSpaceShadows> spot in HSSSS.spotDict)
+            {
+                spot.Value.UpdateProjectionMatrix();
             }
         }
 

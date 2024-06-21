@@ -82,6 +82,8 @@ namespace HSSSS
 
             public float thicknessBias;
 
+            public bool microDetails;
+
             public float microDetailWeight_1;
             public float microDetailWeight_2;
             public float microDetailOcclusion;
@@ -106,6 +108,7 @@ namespace HSSSS
             public bool usegtao;
             public bool usessdo;
             public bool denoise;
+            public bool sparse;
 
             public QualityPreset quality;
 
@@ -124,8 +127,6 @@ namespace HSSSS
             public bool denoise;
 
             public QualityPreset quality;
-            public RenderScale samplescale;
-            public RenderScale renderscale;
 
             public float intensity;
             public float secondary;
@@ -135,6 +136,13 @@ namespace HSSSS
             public float fadeDepth;
             public float mixWeight;
             public int rayStride;
+        }
+
+        public struct TAAUProperties
+        {
+            public bool enabled;
+            public bool upscale;
+            public float mixWeight;
         }
 
         public struct SSCSProperties
@@ -190,9 +198,11 @@ namespace HSSSS
             transFalloff = 2.0f,
             thicknessBias = 0.5f,
 
-            microDetailWeight_1 = 0.32f,
-            microDetailWeight_2 = 0.32f,
-            microDetailOcclusion = 1.0f,
+            microDetails = false,
+
+            microDetailWeight_1 = 0.5f,
+            microDetailWeight_2 = 0.5f,
+            microDetailOcclusion = 0.5f,
 
             microDetailTiling = 64.0f
         };
@@ -215,6 +225,7 @@ namespace HSSSS
             usegtao = false,
             usessdo = false,
             denoise = false,
+            sparse =  false,
 
             quality = QualityPreset.medium,
 
@@ -233,7 +244,6 @@ namespace HSSSS
             denoise = false,
 
             quality = QualityPreset.medium,
-            samplescale = RenderScale.half,
 
             intensity = 1.0f,
             secondary = 1.0f,
@@ -243,6 +253,13 @@ namespace HSSSS
             fadeDepth = 100.0f,
             mixWeight = 0.5f,
             rayStride = 2
+        };
+
+        public static TAAUProperties taau = new TAAUProperties()
+        {
+            enabled = false,
+            upscale = false,
+            mixWeight = 0.5f
         };
 
         public static SSCSProperties sscs = new SSCSProperties()
@@ -399,6 +416,19 @@ namespace HSSSS
                 if (ssgi.enabled)
                 {
                     HSSSS.SSGIRenderer.UpdateSSGISettings();
+                }
+            }
+        }
+
+        public static void UpdateTAAU()
+        {
+            if (HSSSS.TAAURenderer)
+            {
+                HSSSS.TAAURenderer.enabled = taau.enabled;
+
+                if (taau.enabled)
+                {
+                    HSSSS.TAAURenderer.UpdateSettings();
                 }
             }
         }

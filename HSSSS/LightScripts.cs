@@ -12,7 +12,7 @@ namespace HSSSS
         private Material mMaterial;
         private Texture mCookie;
 
-        private void Awake()
+        private void OnEnable()
         {
             this.mLight = GetComponent<Light>();
 
@@ -37,10 +37,10 @@ namespace HSSSS
             }
         }
 
-        private void OnDestroy()
+        private void OnDisable()
         {
-            DestroyImmediate(this.mMaterial);
-            DestroyImmediate(this.mRenderer);
+            Destroy(this.mMaterial);
+            Destroy(this.mRenderer);
         }
 
         private void Update()
@@ -60,9 +60,13 @@ namespace HSSSS
         private CommandBuffer bBuffer;
         // shadow calculation buffer (for all)
         private CommandBuffer mBuffer;
+        // unique guid
+        public Guid guid;
 
         private void OnEnable()
         {
+            guid = Guid.NewGuid();
+
             this.mMaterial = new Material(AssetLoader.softShadows);
 
             this.mMaterial.SetTexture("_BlueNoise", AssetLoader.blueNoise);
@@ -76,12 +80,24 @@ namespace HSSSS
             if (this.mLight)
             {
                 this.SetupCommandBuffer();
+
+                if (this.mLight.type == LightType.Spot)
+                {
+                    HSSSS.spotDict.Add(guid, this);
+                    Console.WriteLine("Adding" + guid.ToString());
+                }
             }
         }
 
         private void OnDisable()
         {
             this.RemoveCommandBuffer();
+
+            if (this.mLight.type == LightType.Spot)
+            {
+                HSSSS.spotDict.Remove(guid);
+                Console.WriteLine("Deleting" + guid.ToString());
+            }
         }
 
         private void Reset()
@@ -92,11 +108,6 @@ namespace HSSSS
 
         private void Update()
         {
-            if (this.mLight.type == LightType.Spot)
-            {
-                this.UpdateProjectionMatrix();
-            }
-
             this.mMaterial.SetFloat("_SlopeBiasScale", this.mLight.shadowNormalBias);
         }
 
@@ -193,8 +204,22 @@ namespace HSSSS
             }
         }
         
-        private void UpdateProjectionMatrix()
+        public void UpdateProjectionMatrix()
         {
+            // light projection
+            float near = this.mLight.shadowNearPlane;
+            float far = this.mLight.range;
+
+            Vector4 Params = new Vector4(
+                1.0f - far / near,
+                far / near,
+                1.0f / far - 1.0f / near,
+                1.0f / near
+            );
+
+            this.mMaterial.SetVector("_ShadowDepthParams", Params);
+
+            // shadow coordinates
             Matrix4x4 LightClip = Matrix4x4.TRS(new Vector3(0.5f, 0.5f, 0.5f), Quaternion.identity, new Vector3(0.5f, 0.5f, 0.5f));
             Matrix4x4 LightView = Matrix4x4.TRS(this.mLight.transform.position, this.mLight.transform.rotation, Vector3.one).inverse;
             Matrix4x4 LightProj = Matrix4x4.Perspective(this.mLight.spotAngle, 1, this.mLight.shadowNearPlane, this.mLight.range);

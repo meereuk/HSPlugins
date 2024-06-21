@@ -149,10 +149,6 @@ namespace HSSSS
                 writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.ssgi.enabled));
                 // quality
                 writer.WriteElementString("Quality", Convert.ToString(Properties.ssgi.quality));
-                // sampling resolution
-                writer.WriteElementString("SampleScale", Convert.ToString(Properties.ssgi.samplescale));
-                // rendering resolution
-                writer.WriteElementString("RenderScale", Convert.ToString(Properties.ssgi.renderscale));
                 // primary gain
                 writer.WriteElementString("Intensity", XmlConvert.ToString(Properties.ssgi.intensity));
                 // secondary gain
@@ -191,6 +187,7 @@ namespace HSSSS
                 // skin microdetails
                 writer.WriteStartElement("MicroDetails");
                 {
+                    writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.skin.microDetails));
                     writer.WriteElementString("Weight_1", XmlConvert.ToString(Properties.skin.microDetailWeight_1));
                     writer.WriteElementString("Weight_2", XmlConvert.ToString(Properties.skin.microDetailWeight_2));
                     writer.WriteElementString("Occlusion", XmlConvert.ToString(Properties.skin.microDetailOcclusion));
@@ -345,8 +342,6 @@ namespace HSSSS
 
             XmlQuery<bool>("", "Enabled", ref Properties.ssgi.enabled);
             XmlQuery<Properties.QualityPreset>("/Quality", ref Properties.ssgi.quality);
-            XmlQuery<Properties.RenderScale>("/SampleScale", ref Properties.ssgi.samplescale);
-            XmlQuery<Properties.RenderScale>("/RenderScale", ref Properties.ssgi.renderscale);
 
             XmlQuery<float>("/Intensity", ref Properties.ssgi.intensity);
             XmlQuery<float>("/Secondary", ref Properties.ssgi.secondary);
@@ -379,6 +374,7 @@ namespace HSSSS
             prefix = "HSSSS/Miscellaneous";
 
             // microdetails
+            XmlQuery<bool>("/MicroDetails", "Enabled", ref Properties.skin.microDetails);
             XmlQuery<float>("/MicroDetails/Weight_1", ref Properties.skin.microDetailWeight_1);
             XmlQuery<float>("/MicroDetails/Weight_2", ref Properties.skin.microDetailWeight_2);
             XmlQuery<float>("/MicroDetails/Occlusion", ref Properties.skin.microDetailOcclusion);

@@ -26,6 +26,7 @@ namespace HSSSS
         private Properties.SSAOProperties ssao;
         private Properties.SSGIProperties ssgi;
         private Properties.SSCSProperties sscs;
+        private Properties.TAAUProperties taau;
         private Properties.TESSProperties tess;
         private Properties.MiscProperties misc;
 
@@ -36,18 +37,28 @@ namespace HSSSS
             lightShadow,
             ssao,
             ssgi,
+            taau,
             miscellaneous
         };
 
         private TabState tabState;
 
-        private readonly string[] tabLabels = new string[] { "Skin Scattering", "Transmission", "Soft Shadow", "Ambient Occlusion", "Global Illumination", "Miscellaneous" };
-        private readonly string[] lutLabels = new string[] { "Penner", "FaceWorks #1", "FaceWorks #2", "Jimenez" };
-        private readonly string[] pcfLabels = new string[] { "Off", "Low", "Medium", "High", "Ultra" };
-        private readonly string[] hsmLabels = new string[] { "Default", "4096x4096", "8192x8192" };
+        private readonly string[] tabLabels = new string[] {
+            "SKIN SCATTERING",
+            "TRANSMISSION",
+            "SOFT SHADOWS",
+            "AMBIENT OCCLUSION",
+            "GLOBAL ILLUMINATION",
+            "TEMPORAL UPSCALING",
+            "MISCELLANEOUS"
+        };
 
-        private readonly string[] scalelabels = new string[] { "Quarter", "Half", "Full" };
-        private readonly string[] qualitylabels = new string[] { "Low", "Medium", "High", "Ultra" };
+        private readonly string[] lutLabels = new string[] { "PENNER", "FACEWORKS A", "FACEWORKS B", "JIMENEZ" };
+        private readonly string[] pcfLabels = new string[] { "OFF", "LOW", "MEDIUM", "HIGH", "ULTRA" };
+        private readonly string[] hsmLabels = new string[] { "DEFAULT", "4096x4096", "8192x8192" };
+
+        private readonly string[] scalelabels = new string[] { "QUARTER", "HALF", "FULL" };
+        private readonly string[] qualitylabels = new string[] { "LOW", "MEDIUM", "HIGH", "ULTRA" };
         #endregion
 
         public void Awake()
@@ -129,8 +140,15 @@ namespace HSSSS
                                 this.GlobalIllumination();
                                 break;
 
+                            case TabState.taau:
+                                this.TemporalAntiAliasing();
+                                break;
+
                             case TabState.miscellaneous:
                                 this.Miscellaneous();
+                                break;
+
+                            default:
                                 break;
                         }
                     }
@@ -149,7 +167,7 @@ namespace HSSSS
             // version
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
-            GUILayout.Label("HSSSS version " + HSSSS.pluginVersion);
+            GUILayout.Label("VERSION " + HSSSS.pluginVersion);
             GUILayout.EndHorizontal();
 
             this.UpdateSettings();
@@ -182,7 +200,7 @@ namespace HSSSS
             GUI.skin.textField.margin.right = doubleSpace;
             GUI.skin.textField.margin.bottom = doubleSpace;
             GUI.skin.textField.fontSize = tetraSpace;
-            GUI.skin.textField.fixedHeight = octaSpace;
+            GUI.skin.textField.fixedHeight = tetraSpace + doubleSpace;
             // window
             GUI.skin.window.padding.top = tetraSpace;
             GUI.skin.window.padding.left = tetraSpace;
@@ -199,14 +217,14 @@ namespace HSSSS
             GUI.skin.horizontalSlider.padding.right = singleSpace;
             GUI.skin.horizontalSlider.padding.bottom = singleSpace;
             GUI.skin.horizontalSlider.fontSize = tetraSpace;
-            GUI.skin.horizontalSlider.fixedHeight = octaSpace;
+            GUI.skin.horizontalSlider.fixedHeight = tetraSpace + doubleSpace;
             // slider thumb
             GUI.skin.horizontalSliderThumb.fixedWidth = tetraSpace;
         }
 
         private void SkinScattering()
         {
-            GUILayout.Label("<color=white><b>Skin Scattering</b></color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white><b>SKIN SCATTERING</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
@@ -214,113 +232,113 @@ namespace HSSSS
             //SliderControls("Scattering Weight", ref skin.sssWeight, 0.0f, 1.0f);
 
             // profiles
-            EnumToolbar("Scattering Profile", ref this.skin.lutProfile);
+            EnumToolbar("SCATTERING PROFILE", ref this.skin.lutProfile);
 
             Separator();
 
             if (this.skin.lutProfile == Properties.LUTProfile.jimenez)
             {
-                OnOffToolbar("Albedo Blur", ref this.skin.sssBlurAlbedo);
+                OnOffToolbar("ALBEDO BLUR", ref this.skin.sssBlurAlbedo);
             }
 
             else
             {
                 // skin diffusion brdf
-                SliderControls("Skin BRDF Lookup Scale", ref this.skin.skinLutScale, 0.0f, 1.0f);
-                SliderControls("Skin BRDF Lookup Bias", ref this.skin.skinLutBias, 0.0f, 1.0f);
+                SliderControls("SKIN BRDF LOOKUP SCALE", ref this.skin.skinLutScale, 0.0f, 1.0f);
+                SliderControls("SKIN BRDF LOOKUP BIAS", ref this.skin.skinLutBias, 0.0f, 1.0f);
 
                 // shadow penumbra brdf
                 if (this.skin.lutProfile == Properties.LUTProfile.nvidia2)
                 {
                     Separator();
 
-                    SliderControls("Shadow BRDF Lookup Scale", ref this.skin.shadowLutScale, 0.0f, 1.0f);
-                    SliderControls("Shadow BRDF Lookup Bias", ref this.skin.shadowLutBias, 0.0f, 1.0f);
+                    SliderControls("SHADOW BRDF LOOKUP SCALE", ref this.skin.shadowLutScale, 0.0f, 1.0f);
+                    SliderControls("SHADOW BRDF LOOKUP BIAS", ref this.skin.shadowLutBias, 0.0f, 1.0f);
                 }
 
                 Separator();
 
-                SliderControls("Blur Weight", ref this.skin.sssBlurWeight, 0.0f, 1.0f);
+                SliderControls("BLUR WEIGHT", ref this.skin.sssBlurWeight, 0.0f, 1.0f);
             }
 
-            SliderControls("Blur Radius", ref this.skin.sssBlurRadius, 0.0f, 4.0f);
-            SliderControls("Blur Depth Correction", ref this.skin.sssBlurDepthRange, 0.0f, 20.0f);
-            SliderControls("Blur Iterations Count", ref this.skin.sssBlurIter, 0, 10);
+            SliderControls("BLUR RADIUS", ref this.skin.sssBlurRadius, 0.0f, 4.0f);
+            SliderControls("BLUR DEPTH CORRECTION", ref this.skin.sssBlurDepthRange, 0.0f, 20.0f);
+            SliderControls("BLUR ITERATIONS COUNT", ref this.skin.sssBlurIter, 0, 10);
 
             Separator();
 
             // ambient occlusion
-            RGBControls("AO Color Bleeding", ref this.skin.colorBleedWeights);
+            RGBControls("AO COLOR BLEEDING", ref this.skin.colorBleedWeights);
         }
 
         private void Transmission()
         {
-            GUILayout.Label("<color=white><b>Transmission</b></color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white><b>TRANSMISSION</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
-            OnOffToolbar("Thickness Sampling Method", new string[] { "On-the-fly", "Pre-baked" }, ref this.skin.bakedThickness);
+            OnOffToolbar("THICKNESS SAMPLING METHOD", new string[] { "ON-THE-FLY", "PRE-BAKED" }, ref this.skin.bakedThickness);
 
             if (!this.skin.bakedThickness && !this.pcss.pcssEnabled)
             {
                 GUILayout.Label("<color=red>TURN ON PCSS SOFT SHADOW TO USE THIS OPTION!</color>");
             }
 
-            SliderControls("Transmission Weight", ref skin.transWeight, 0.0f, 1.0f);
+            SliderControls("TRANSMISSION WEIGHT", ref skin.transWeight, 0.0f, 1.0f);
 
             if (this.skin.bakedThickness)
             {
-                SliderControls("Transmission Distortion", ref skin.transDistortion, 0.0f, 1.0f);
-                SliderControls("Transmission Shadow Weight", ref skin.transShadowWeight, 0.0f, 1.0f);
+                SliderControls("TRANSMISSION DISTORTION", ref skin.transDistortion, 0.0f, 1.0f);
+                SliderControls("TRANSMISSION SHADOW WEIGHT", ref skin.transShadowWeight, 0.0f, 1.0f);
             }
 
             else
             {
-                SliderControls("Transmission Thickness Bias", ref skin.thicknessBias, 0.0f, 5.0f);
+                SliderControls("TRANSMISSION THICKNESS BIAS", ref skin.thicknessBias, 0.0f, 5.0f);
             }
 
-            SliderControls("Transmission Falloff", ref skin.transFalloff, 1.0f, 20.0f);
+            SliderControls("TRANSMISSION FALLOFF", ref skin.transFalloff, 1.0f, 20.0f);
 
             if (this.skin.bakedThickness)
             {
-                RGBControls("Transmission Absorption", ref this.skin.transAbsorption);
+                RGBControls("TRANSMISSION ABSORPTION", ref this.skin.transAbsorption);
             }
         }
 
         private void SoftShadow()
         {
-            GUILayout.Label("<color=white><b>Soft Shadows</b></color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white><b>SOFT SHADOWS</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
             #region Soft Shadow
             // high-res shadow map
-            EnumToolbar("High-Res ShadowMap", ref this.pcss.highRes);
+            EnumToolbar("HIGH-RES SHADOWMAP", ref this.pcss.highRes);
 
             // pcf iterations count
-            EnumToolbar("PCF Shadow Quality", ref this.pcss.pcfState);
+            EnumToolbar("PCF SHADOW QUALITY", ref this.pcss.pcfState);
+
+            // sparse rendering
+            OnOffToolbar("SPARSE RENDERING", ref this.pcss.checkerboard);
 
             if (this.pcss.pcfState != Properties.PCFState.disable)
             {
                 // pcss soft shadow toggle
-                OnOffToolbar("Percentage Closer Soft Shadow", ref this.pcss.pcssEnabled);
-
-                // sparse rendering
-                OnOffToolbar("Sparse Rendering", ref this.pcss.checkerboard);
+                OnOffToolbar("PERCENTAGE CLOSER SOFT SHADOW", ref this.pcss.pcssEnabled);
 
                 Separator();
 
                 // directional lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("Directional Light / Blocker Search Radius (cm)", ref this.pcss.dirLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("Directional Light / Light Radius (cm)", ref this.pcss.dirLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("Directional Light / Minimum Penumbra (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("SEARCH RADIUS (tangent)", ref this.pcss.dirLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("LIGHT RADIUS (tangent)", ref this.pcss.dirLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("MINIMUM PENUMBRA (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("Directional Light / Penumbra Scale (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 Separator();
@@ -328,14 +346,14 @@ namespace HSSSS
                 // spot lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("Spot Light / Blocker Search Radius (cm)", ref this.pcss.spotLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("Spot Light / Light Radius (cm)", ref this.pcss.spotLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("Spot Light / Minimum Penumbra (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("SEARCH RADIUS (cm)", ref this.pcss.spotLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("LIGHT RADIUS (cm)", ref this.pcss.spotLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("MINIMUM PENUMBRA (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("Spot Light / Penumbra Scale (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 Separator();
@@ -343,14 +361,14 @@ namespace HSSSS
                 // point lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("Point Light / Blocker Search Radius (cm)", ref this.pcss.pointLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("Point Light / Light Radius (cm)", ref this.pcss.pointLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("Point Light / Minimum Penumbra (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("SEARCH RADIUS (cm)", ref this.pcss.pointLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("LIGHT RADIUS (cm)", ref this.pcss.pointLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("MINIMUM PENUMBRA (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("Point Light / Penumbra Scale (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
                 }
             }
 
@@ -363,24 +381,24 @@ namespace HSSSS
             #region SSCS
             Separator();
 
-            OnOffToolbar("<b>Contact Shadow</b>", ref this.sscs.enabled);
+            OnOffToolbar("<b>CONTACT SHADOW</b>", ref this.sscs.enabled);
 
             if (this.sscs.enabled)
             {
-                EnumToolbar("Contact Shadow Quality", ref this.sscs.quality);
+                EnumToolbar("CONTACT SHADOW QUALITY", ref this.sscs.quality);
 
                 Separator();
 
-                SliderControls("Raytrace Radius (cm)", ref this.sscs.rayRadius, 0.0f, 50.0f);
-                SliderControls("Raytrace Depth Bias (cm)", ref this.sscs.depthBias, 0.0f, 1.0f);
-                SliderControls("Mean Thickness (m)", ref this.sscs.meanDepth, 0.0f, 2.0f);
+                SliderControls("RAYTRACE RADIUS (cm)", ref this.sscs.rayRadius, 0.0f, 50.0f);
+                SliderControls("RAYTRACE DEPTH BIAS (cm)", ref this.sscs.depthBias, 0.0f, 1.0f);
+                SliderControls("MEAN THICKNESS (m)", ref this.sscs.meanDepth, 0.0f, 2.0f);
             }
             #endregion
         }
 
         private void AmbientOcclusion()
         {
-            GUILayout.Label("<color=white><b>Ambient Occlusion</b></color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white>AMBIENT OCCLUSION</color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
@@ -390,45 +408,45 @@ namespace HSSSS
             {
                 Separator();
 
-                OnOffToolbar("Visibility Function", new string[] { "HBAO", "GTAO" }, ref this.ssao.usegtao);
+                OnOffToolbar("VISIBILITY FUNCTION", new string[] { "HBAO", "GTAO" }, ref this.ssao.usegtao);
 
-                EnumToolbar("AO Quality", ref this.ssao.quality);
+                EnumToolbar("SSAO QUALITY", ref this.ssao.quality);
 
-                GUILayout.Label("Sparse Rendering");
-
-                Separator();
-
-                SliderControls("Occlusion Intensity", ref this.ssao.intensity, 0.1f, 10.0f);
-                SliderControls("Occlusion Bias", ref this.ssao.lightBias, 0.0f, 1.0f);
+                OnOffToolbar("SPARSE RENDERING", ref this.ssao.sparse);
 
                 Separator();
 
-                SliderControls("Raytrace Radius (m)", ref this.ssao.rayRadius, 0.0f, 1.0f);
-                SliderControls("Raytrace Stride", ref this.ssao.rayStride, 1, 4);
+                SliderControls("OCCLUSION INTENSITY", ref this.ssao.intensity, 0.1f, 10.0f);
+                SliderControls("OCCLUSION BIAS", ref this.ssao.lightBias, 0.0f, 1.0f);
 
                 Separator();
 
-                SliderControls("Mean Thickness (m)", ref this.ssao.meanDepth, 0.0f, 2.00f);
-                SliderControls("Fade Depth (m)", ref this.ssao.fadeDepth, 1.0f, 1000.0f);
+                SliderControls("RAYTRACE RADIUS (METER)", ref this.ssao.rayRadius, 0.0f, 1.0f);
+                SliderControls("RAYTRACE STRIDE", ref this.ssao.rayStride, 1, 4);
 
                 Separator();
 
-                OnOffToolbar("Directional Occlusion", ref this.ssao.usessdo);
+                SliderControls("MEAN THICKNESS (METER)", ref this.ssao.meanDepth, 0.0f, 2.00f);
+                SliderControls("FADE DEPTH (METER)", ref this.ssao.fadeDepth, 1.0f, 1000.0f);
+
+                Separator();
+
+                OnOffToolbar("DIRECTIONAL OCCLUSION", ref this.ssao.usessdo);
 
                 if (this.ssao.usessdo)
                 {
-                    SliderControls("Directional Occlusion Light Apature", ref this.ssao.doApature, 0.0f, 1.0f);
+                    SliderControls("LIGHT APATURE", ref this.ssao.doApature, 0.0f, 1.0f);
                 }
 
                 Separator();
 
-                OnOffToolbar("Spatial Denoiser", ref this.ssao.denoise);
+                OnOffToolbar("SPATIAL DENOISER", ref this.ssao.denoise);
             }
         }
 
         private void GlobalIllumination()
         {
-            GUILayout.Label("<color=white><b>Global Illumination</b></color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white>GLOBAL ILLUMINATION</color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
@@ -438,60 +456,82 @@ namespace HSSSS
             {
                 Separator();
 
-                EnumToolbar("GI Quality", ref this.ssgi.quality);
-                EnumToolbar("Sampling Resolution", ref this.ssgi.samplescale);
+                EnumToolbar("GI QUALITY", ref this.ssgi.quality);
 
                 Separator();
 
-                SliderControls("First Bounce Gain", ref this.ssgi.intensity, 0.1f, 100.0f);
-                SliderControls("Second Bounce Gain", ref this.ssgi.secondary, 0.1f, 100.0f);
-                SliderControls("Minimum Roughness", ref this.ssgi.roughness, 0.1f, 0.5f);
+                SliderControls("1ST BOUNCE GAIN", ref this.ssgi.intensity, 0.1f, 100.0f);
+                SliderControls("2ND BOUNCE GAIN", ref this.ssgi.secondary, 0.1f, 100.0f);
+                SliderControls("MINIMUM ROUGHNESS", ref this.ssgi.roughness, 0.1f, 0.5f);
 
                 Separator();
 
-                SliderControls("Raytrace Radius (m)", ref this.ssgi.rayRadius, 0.0f, 50.0f);
-                SliderControls("Raytrace Stride", ref this.ssgi.rayStride, 1, 4);
+                SliderControls("RAYTRACE RADIUS (METER)", ref this.ssgi.rayRadius, 0.0f, 50.0f);
+                SliderControls("RAYTRACE STRIDE", ref this.ssgi.rayStride, 1, 4);
 
                 Separator();
 
-                SliderControls("Mean Thickness (m)", ref this.ssgi.meanDepth, 0.0f, 2.0f);
-                SliderControls("Fade Depth (m)", ref this.ssgi.fadeDepth, 1.0f, 1000.0f);
+                SliderControls("MEAN THICKNESS (METER)", ref this.ssgi.meanDepth, 0.0f, 2.0f);
+                SliderControls("FADE DEPTH (METER)", ref this.ssgi.fadeDepth, 1.0f, 1000.0f);
 
 
                 Separator();
 
-                OnOffToolbar("Spatial Denoiser", ref this.ssgi.denoise);
-                SliderControls("Temporal Denoiser", ref this.ssgi.mixWeight, 0.0f, 1.0f);
+                OnOffToolbar("SPATIAL DENOISER", ref this.ssgi.denoise);
+                SliderControls("TEMPORAL DENOISER", ref this.ssgi.mixWeight, 0.0f, 1.0f);
+            }
+        }
+
+        private void TemporalAntiAliasing()
+        {
+            GUILayout.Label("<color=white>TEMPORAL UPSCALING</color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Box("", GUILayout.Height(2));
+            GUILayout.Space(doubleSpace);
+
+            OnOffToolbar(ref this.taau.enabled);
+
+            if (this.taau.enabled)
+            {
+                Separator();
+
+                OnOffToolbar("TAA METHOD", new string[] { "JUST MIX", "UPSCALE" }, ref this.taau.upscale);
+
+                SliderControls("MIX WEIGHT", ref this.taau.mixWeight, 0.0f, 1.0f);
             }
         }
 
         private void Miscellaneous()
         {
-            GUILayout.Label("<color=white><b>Miscellaneous</b></color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white>MISCELLANEOUS</color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
             // skin microdetails
-            SliderControls("MicroDetail #1 Strength", ref this.skin.microDetailWeight_1, 0.0f, 1.0f);
-            SliderControls("MicroDetail #2 Strength", ref this.skin.microDetailWeight_2, 0.0f, 1.0f);
-            SliderControls("MicroDetail Occlusion", ref this.skin.microDetailOcclusion, 0.0f, 1.0f);
-            SliderControls("MicroDetail Tiling", ref this.skin.microDetailTiling, 0.1f, 100.0f);
+            OnOffToolbar("MICRODETAILS", ref this.skin.microDetails);
+
+            if (this.skin.microDetails)
+            {
+                SliderControls("DETAIL NORMAL #1", ref this.skin.microDetailWeight_1, 0.0f, 1.0f);
+                SliderControls("DETAIL NORMAL #2", ref this.skin.microDetailWeight_2, 0.0f, 1.0f);
+                SliderControls("DETAIL OCCLUSION", ref this.skin.microDetailOcclusion, 0.0f, 1.0f);
+                SliderControls("TEXTURE TILING", ref this.skin.microDetailTiling, 0.1f, 100.0f);
+            }
 
             Separator();
 
             // tessellation
-            OnOffToolbar("Tessellation", ref this.tess.enabled);
+            OnOffToolbar("TESSELLATION", ref this.tess.enabled);
 
             if (this.tess.enabled)
             {
-                SliderControls("Phong Strength", ref this.tess.phong, 0.0f, 1.0f);
-                SliderControls("Edge Length", ref this.tess.edge, 2.0f, 50.0f);
+                SliderControls("SOFTENING", ref this.tess.phong, 0.0f, 1.0f);
+                SliderControls("SUBDIVISION", ref this.tess.edge, 2.0f, 50.0f);
             }
 
             Separator();
             
             // wet skin replacer for some milks
-            OnOffToolbar("Wet Skin Overlay", ref this.misc.wetOverlay);
+            OnOffToolbar("CONDENSATION OVERLAY", ref this.misc.wetOverlay);
 
             if (this.misc.wetOverlay != Properties.misc.wetOverlay)
             {
@@ -503,13 +543,13 @@ namespace HSSSS
 
 
             // dedicated pom eye shader
-            OnOffToolbar("Dedicated POM Eye Shader<color=red>*</color>", ref this.misc.fixEyeball);
+            OnOffToolbar("DEDICATED POM EYE SHADER<color=red>*</color>", ref this.misc.fixEyeball);
             // dedicated overlay shader
-            OnOffToolbar("Dedicated Overlay Shader<color=red>*</color>", ref this.misc.fixOverlay);
+            OnOffToolbar("DEDICATED OVERLAY SHADER<color=red>*</color>", ref this.misc.fixOverlay);
 
             if (this.misc.fixOverlay)
             {
-                SliderControls("Eyebrow Wrap Offset", ref this.misc.wrapOffset, 0.0f, 0.5f);
+                SliderControls("EYEBROW WRAP OFFSET", ref this.misc.wrapOffset, 0.0f, 0.5f);
             }
 
             GUILayout.Label("<color=red>*Reload the scene or character to apply the changes</color>", new GUIStyle { fontSize = tetraSpace });
@@ -519,7 +559,7 @@ namespace HSSSS
         {
             GUILayout.BeginHorizontal();
 
-            if (GUILayout.Button("Load Preset"))
+            if (GUILayout.Button("LOAD PRESET"))
             {
                 if (XmlParser.LoadExternalFile())
                 {
@@ -529,6 +569,7 @@ namespace HSSSS
                     Properties.UpdatePCSS();
                     Properties.UpdateSSAO();
                     Properties.UpdateSSGI();
+                    Properties.UpdateTAAU();
 
                     Console.WriteLine("#### HSSSS: Loaded Configurations");
                 }
@@ -541,7 +582,7 @@ namespace HSSSS
                 this.RefreshWindowSize();
             }
 
-            if (GUILayout.Button("Save Preset"))
+            if (GUILayout.Button("SAVE PRESET"))
             {
                 this.WriteSettings();
 
@@ -588,8 +629,15 @@ namespace HSSSS
                     Properties.UpdateSkin();
                     break;
 
+                case TabState.taau:
+                    Properties.UpdateTAAU();
+                    break;
+
                 case TabState.miscellaneous:
                     Properties.UpdateSkin();
+                    break;
+
+                default:
                     break;
             }
         }
@@ -599,6 +647,7 @@ namespace HSSSS
             this.skin = Properties.skin;
             this.ssao = Properties.ssao;
             this.ssgi = Properties.ssgi;
+            this.taau = Properties.taau;
             this.sscs = Properties.sscs;
             this.pcss = Properties.pcss;
             this.tess = Properties.tess;
@@ -610,6 +659,7 @@ namespace HSSSS
             Properties.skin = this.skin;
             Properties.ssao = this.ssao;
             Properties.ssgi = this.ssgi;
+            Properties.taau = this.taau;
             Properties.sscs = this.sscs;
             Properties.pcss = this.pcss;
             Properties.tess = this.tess;
@@ -683,7 +733,7 @@ namespace HSSSS
 
         private void OnOffToolbar(ref bool value)
         {
-            bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "Disable", "Enable" }) == 1;
+            bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "DISABLE", "ENABLE" }) == 1;
 
             if (value != temp)
             {
@@ -696,7 +746,7 @@ namespace HSSSS
         {
             GUILayout.Label(label);
 
-            bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "Disable", "Enable" }) == 1;
+            bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "DISABLE", "ENABLE" }) == 1;
 
             if (value != temp)
             {
@@ -763,21 +813,21 @@ namespace HSSSS
 
             GUILayout.BeginHorizontal();
 
-            GUILayout.Label("<color=red>Red</color>", style);
+            GUILayout.Label("<color=red>RED</color>", style);
 
             if (float.TryParse(GUILayout.TextField(rgb.x.ToString("0.00"), GUILayout.Width(3 * octaSpace)), out float r))
             {
                 rgb.x = r;
             }
 
-            GUILayout.Label("<color=green>Green</color>", style);
+            GUILayout.Label("<color=green>GREEN</color>", style);
 
             if (float.TryParse(GUILayout.TextField(rgb.y.ToString("0.00"), GUILayout.Width(3 * octaSpace)), out float g))
             {
                 rgb.y = g;
             }
 
-            GUILayout.Label("<color=blue>Blue</color>", style);
+            GUILayout.Label("<color=blue>BLUE</color>", style);
 
             if (float.TryParse(GUILayout.TextField(rgb.z.ToString("0.00"), GUILayout.Width(3 * octaSpace)), out float b))
             {
@@ -789,19 +839,19 @@ namespace HSSSS
 
         private void Separator(bool vertical = false)
         {
-            GUILayout.Space(doubleSpace);
+            GUILayout.Space(tetraSpace);
 
             if (vertical)
             {
-                GUILayout.Box("", GUILayout.Width(1));
+                GUILayout.Box("", GUILayout.Width(2));
             }
 
             else
             {
-                GUILayout.Box("", GUILayout.Height(1));
+                GUILayout.Box("", GUILayout.Height(2));
             }
 
-            GUILayout.Space(singleSpace);
+            GUILayout.Space(doubleSpace);
         }
     }
 }

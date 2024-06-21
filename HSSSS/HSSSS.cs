@@ -8,6 +8,7 @@ using Studio;
 using Harmony;
 using IllusionPlugin;
 using JetBrains.Annotations;
+using System.Collections.Generic;
 
 namespace HSSSS
 {
@@ -15,7 +16,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "1.8.0b1"; } }
+        public string Version { get { return "2.0.0"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -32,7 +33,10 @@ namespace HSSSS
         public static DeferredRenderer DeferredRenderer = null;
         public static SSAORenderer SSAORenderer = null;
         public static SSGIRenderer SSGIRenderer = null;
+        public static TAAURenderer TAAURenderer = null;
         private static GameObject mainCamera = null;
+
+        public static Dictionary<Guid, ScreenSpaceShadows> spotDict = new Dictionary<Guid, ScreenSpaceShadows>();
 
         // modprefs.ini options
         public static bool isStudio;
@@ -134,6 +138,7 @@ namespace HSSSS
                     Properties.UpdateSkin();
                     Properties.UpdateSSAO();
                     Properties.UpdateSSGI();
+                    Properties.UpdateTAAU();
                     Properties.UpdatePCSS();
                 }
 
@@ -186,6 +191,8 @@ namespace HSSSS
         #region Scene Methods
         private void OnSceneLoad(string path, XmlNode node)
         {
+            spotDict = new Dictionary<Guid, ScreenSpaceShadows>();
+
             if (node != null)
             {
                 try
@@ -194,6 +201,7 @@ namespace HSSSS
                     Properties.UpdateSkin();
                     Properties.UpdateSSAO();
                     Properties.UpdateSSGI();
+                    Properties.UpdateTAAU();
                     Properties.UpdatePCSS();
                     Console.WriteLine("#### HSSSS: Loaded Configurations from the Scene File");
                 }
@@ -353,8 +361,14 @@ namespace HSSSS
                         SSGIRenderer = mainCamera.gameObject.AddComponent<SSGIRenderer>();
                     }
 
+                    // taau
+                    if (TAAURenderer == null)
+                    {
+                        TAAURenderer = mainCamera.gameObject.AddComponent<TAAURenderer>();
+                    }
+
                     // is everything okay?
-                    if (DeferredRenderer && CameraProjector && SSAORenderer && SSGIRenderer)
+                    if (DeferredRenderer && CameraProjector && SSAORenderer && SSGIRenderer && TAAURenderer)
                     {
                         return true;
                     }

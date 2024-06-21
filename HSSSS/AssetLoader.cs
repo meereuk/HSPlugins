@@ -20,9 +20,10 @@ namespace HSSSS
         // soft shadows
         public static Shader softShadows = null;
 
-        // ssao & ssgi
+        // ssao & ssgi & taau
         public static Shader ssao = null;
         public static Shader ssgi = null;
+        public static Shader taau = null;
 
         public static GUISkin gui = null;
 
@@ -52,6 +53,7 @@ namespace HSSSS
 
         public static Material bodywet = null;
         public static Material headwet = null;
+        public static Material headtears = null;
 
         public static Material overlay = null;
         public static Material eyebrow = null;
@@ -179,6 +181,7 @@ namespace HSSSS
             // wet materials
             ReadAsset<Material>(ref bodywet, "Bodywet", "body wet material");
             ReadAsset<Material>(ref headwet, "Headwet", "head wet material");
+            ReadAsset<Material>(ref headtears, "Headtears", "head tears material");
         }
 
         private static void LoadMiscellaneous()
@@ -190,6 +193,7 @@ namespace HSSSS
             ReadAsset<Shader>(ref softShadows, "SoftShadows", "Soft shadow shader");
             ReadAsset<Shader>(ref ssao, "SSAO", "SSAO shader");
             ReadAsset<Shader>(ref ssgi, "SSGI", "SSGI shader");
+            ReadAsset<Shader>(ref taau, "TemporalAntiAliasing", "Temporal Anti Aliasing");
             ReadAsset<GUISkin>(ref gui, "GUISkin", "GUI skin");
         }
 
@@ -214,7 +218,15 @@ namespace HSSSS
                 {
                     if (Properties.tess.enabled)
                     {
-                        material.shader.maximumLOD = 400;
+                        if (Properties.skin.microDetails)
+                        {
+                            material.shader.maximumLOD = 450;
+                        }
+
+                        else
+                        {
+                            material.shader.maximumLOD = 400;
+                        }
 
                         material.SetFloat("_Phong", Properties.tess.phong);
                         material.SetFloat("_EdgeLength", Properties.tess.edge);
@@ -222,7 +234,15 @@ namespace HSSSS
 
                     else
                     {
-                        material.shader.maximumLOD = 300;
+                        if (Properties.skin.microDetails)
+                        {
+                            material.shader.maximumLOD = 350;
+                        }
+
+                        else
+                        {
+                            material.shader.maximumLOD = 300;
+                        }
                     }
                 }
             }
