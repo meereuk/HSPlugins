@@ -119,8 +119,6 @@ namespace HSSSS
             writer.WriteStartElement("AmbientOcclusion");
             {
                 writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.ssao.enabled));
-                // visibility function
-                writer.WriteElementString("UseGTAO", XmlConvert.ToString(Properties.ssao.usegtao));
                 // direct occlusion
                 writer.WriteElementString("UseSSDO", XmlConvert.ToString(Properties.ssao.usessdo));
                 // quality
@@ -316,7 +314,6 @@ namespace HSSSS
             prefix = "HSSSS/AmbientOcclusion";
 
             XmlQuery<bool>("", "Enabled", ref Properties.ssao.enabled);
-            XmlQuery<bool>("/UseGTAO", ref Properties.ssao.usegtao);
 
             XmlQuery<Properties.QualityPreset>("/Quality", ref Properties.ssao.quality);
 
@@ -395,12 +392,12 @@ namespace HSSSS
 
         }
 
-        public static bool SaveExternalFile()
+        public static bool SaveExternalFile(string file)
         {
             try
             {
                 XmlWriterSettings settings = new XmlWriterSettings() { Indent = true };
-                XmlWriter writer = XmlWriter.Create(HSSSS.configFile, settings);
+                XmlWriter writer = XmlWriter.Create(file, settings);
                 writer.WriteStartElement("HSSSS");
                 SaveXml(writer);
                 writer.WriteEndElement();
@@ -415,12 +412,12 @@ namespace HSSSS
             }
         }
 
-        public static bool LoadExternalFile()
+        public static bool LoadExternalFile(string file)
         {
             try
             {
                 XmlDocument config = new XmlDocument();
-                config.Load(HSSSS.configFile);
+                config.Load(file);
                 XmlParser.LoadXml(config.LastChild);
                 return true;
             }

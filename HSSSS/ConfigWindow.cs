@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Linq;
 using UnityEngine;
 
 namespace HSSSS
@@ -9,15 +11,20 @@ namespace HSSSS
         public static bool hsrCompatible;
 
         public static int uiScale;
+        public static int presetNum;
+
+        public static string presetName = "default";
 
         private static int singleSpace;
         private static int doubleSpace;
         private static int tetraSpace;
         private static int hexaSpace;
         private static int octaSpace;
+        private static int decaSpace;
 
         private static Vector2 windowSize;
         private static Vector2 windowPosition;
+        private static Vector2 scrollPosition;
 
         private Rect configWindow;
 
@@ -38,7 +45,8 @@ namespace HSSSS
             ssao,
             ssgi,
             taau,
-            miscellaneous
+            miscellaneous,
+            preset
         };
 
         private TabState tabState;
@@ -50,7 +58,8 @@ namespace HSSSS
             "AMBIENT OCCLUSION",
             "GLOBAL ILLUMINATION",
             "TEMPORAL UPSCALING",
-            "MISCELLANEOUS"
+            "MISCELLANEOUS",
+            "PRESET"
         };
 
         private readonly string[] lutLabels = new string[] { "PENNER", "FACEWORKS A", "FACEWORKS B", "JIMENEZ" };
@@ -63,13 +72,14 @@ namespace HSSSS
 
         public void Awake()
         {
-            windowSize = new Vector2(192.0f * uiScale, 192.0f);
+            windowSize = new Vector2(224.0f * uiScale, 192.0f * uiScale);
 
             singleSpace = uiScale;
             doubleSpace = uiScale * 2;
             tetraSpace = uiScale * 4;
             hexaSpace = uiScale * 6;
             octaSpace = uiScale * 8;
+            decaSpace = uiScale * 10;
 
             this.configWindow = new Rect(windowPosition, windowSize);
             this.tabState = TabState.skinScattering;
@@ -105,7 +115,6 @@ namespace HSSSS
                             if (this.tabState != tmpState)
                             {
                                 this.tabState = tmpState;
-                                this.RefreshWindowSize();
                             }
                         }
                         GUILayout.EndHorizontal();
@@ -148,6 +157,10 @@ namespace HSSSS
                                 this.Miscellaneous();
                                 break;
 
+                            case TabState.preset:
+                                this.PresetsControl();
+                                break;
+
                             default:
                                 break;
                         }
@@ -161,24 +174,16 @@ namespace HSSSS
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
-            // save and load
-            this.Presets();
-
             // version
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
-            GUILayout.Label("VERSION " + HSSSS.pluginVersion);
+            GUILayout.Label("HSSSS VERSION " + HSSSS.pluginVersion);
             GUILayout.EndHorizontal();
 
             this.UpdateSettings();
             GUI.DragWindow();
 
             windowPosition = this.configWindow.position;
-        }
-
-        private void RefreshWindowSize()
-        {
-            this.configWindow.size = windowSize;
         }
 
         private void RefreshGUISkin()
@@ -191,6 +196,9 @@ namespace HSSSS
             GUI.skin.button.margin.bottom = doubleSpace;
             GUI.skin.button.fontSize = tetraSpace;
             GUI.skin.button.fixedHeight = octaSpace;
+            // toggle
+            GUI.skin.toggle.fontSize = tetraSpace;
+            GUI.skin.toggle.fixedHeight = octaSpace;
             // label
             GUI.skin.label.fixedHeight = hexaSpace;
             GUI.skin.label.fontSize = tetraSpace;
@@ -200,7 +208,7 @@ namespace HSSSS
             GUI.skin.textField.margin.right = doubleSpace;
             GUI.skin.textField.margin.bottom = doubleSpace;
             GUI.skin.textField.fontSize = tetraSpace;
-            GUI.skin.textField.fixedHeight = tetraSpace + doubleSpace;
+            GUI.skin.textField.fixedHeight = hexaSpace;
             // window
             GUI.skin.window.padding.top = tetraSpace;
             GUI.skin.window.padding.left = tetraSpace;
@@ -212,14 +220,22 @@ namespace HSSSS
             GUI.skin.horizontalSlider.margin.left = doubleSpace;
             GUI.skin.horizontalSlider.margin.right = doubleSpace;
             GUI.skin.horizontalSlider.margin.bottom = doubleSpace;
-            GUI.skin.horizontalSlider.padding.top = singleSpace;
-            GUI.skin.horizontalSlider.padding.left = singleSpace;
-            GUI.skin.horizontalSlider.padding.right = singleSpace;
-            GUI.skin.horizontalSlider.padding.bottom = singleSpace;
+            GUI.skin.horizontalSlider.padding.top = 1;
+            GUI.skin.horizontalSlider.padding.left = 1;
+            GUI.skin.horizontalSlider.padding.right = 1;
+            GUI.skin.horizontalSlider.padding.bottom = 1;
             GUI.skin.horizontalSlider.fontSize = tetraSpace;
-            GUI.skin.horizontalSlider.fixedHeight = tetraSpace + doubleSpace;
+            GUI.skin.horizontalSlider.fixedHeight = hexaSpace;
             // slider thumb
             GUI.skin.horizontalSliderThumb.fixedWidth = tetraSpace;
+            // scroll
+            GUI.skin.verticalScrollbar.margin.left = tetraSpace;
+            GUI.skin.verticalScrollbar.padding.top = 1;
+            GUI.skin.verticalScrollbar.padding.left = 1;
+            GUI.skin.verticalScrollbar.padding.right = 1;
+            GUI.skin.verticalScrollbar.padding.bottom = 1;
+            GUI.skin.verticalScrollbar.fixedWidth = tetraSpace;
+            GUI.skin.verticalScrollbarThumb.stretchWidth = true;
         }
 
         private void SkinScattering()
@@ -228,8 +244,7 @@ namespace HSSSS
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
-            // weight
-            //SliderControls("Scattering Weight", ref skin.sssWeight, 0.0f, 1.0f);
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true)});
 
             // profiles
             EnumToolbar("SCATTERING PROFILE", ref this.skin.lutProfile);
@@ -269,6 +284,8 @@ namespace HSSSS
 
             // ambient occlusion
             RGBControls("AO COLOR BLEEDING", ref this.skin.colorBleedWeights);
+
+            GUILayout.EndScrollView();
         }
 
         private void Transmission()
@@ -276,6 +293,8 @@ namespace HSSSS
             GUILayout.Label("<color=white><b>TRANSMISSION</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
+
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
 
             OnOffToolbar("THICKNESS SAMPLING METHOD", new string[] { "ON-THE-FLY", "PRE-BAKED" }, ref this.skin.bakedThickness);
 
@@ -303,6 +322,8 @@ namespace HSSSS
             {
                 RGBControls("TRANSMISSION ABSORPTION", ref this.skin.transAbsorption);
             }
+
+            GUILayout.EndScrollView();
         }
 
         private void SoftShadow()
@@ -310,6 +331,8 @@ namespace HSSSS
             GUILayout.Label("<color=white><b>SOFT SHADOWS</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
+
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
 
             #region Soft Shadow
             // high-res shadow map
@@ -328,12 +351,11 @@ namespace HSSSS
 
                 Separator();
 
-                // directional lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("SEARCH RADIUS (tangent)", ref this.pcss.dirLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("LIGHT RADIUS (tangent)", ref this.pcss.dirLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("MINIMUM PENUMBRA (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / SEARCH RADIUS (tangent)", ref this.pcss.dirLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / LIGHT RADIUS (tangent)", ref this.pcss.dirLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / MINIMUM PENUMBRA (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
@@ -341,14 +363,14 @@ namespace HSSSS
                     SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
-                Separator();
+                Separator(width: 1);
 
                 // spot lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("SEARCH RADIUS (cm)", ref this.pcss.spotLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("LIGHT RADIUS (cm)", ref this.pcss.spotLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("MINIMUM PENUMBRA (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("SPOT / SEARCH RADIUS (cm)", ref this.pcss.spotLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("SPOT / LIGHT RADIUS (cm)", ref this.pcss.spotLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("SPOT / MINIMUM PENUMBRA (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
@@ -356,14 +378,14 @@ namespace HSSSS
                     SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
-                Separator();
+                Separator(width: 1);
 
                 // point lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("SEARCH RADIUS (cm)", ref this.pcss.pointLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("LIGHT RADIUS (cm)", ref this.pcss.pointLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("MINIMUM PENUMBRA (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("POINT / SEARCH RADIUS (cm)", ref this.pcss.pointLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("POINT / LIGHT RADIUS (cm)", ref this.pcss.pointLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("POINT / MINIMUM PENUMBRA (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
@@ -394,6 +416,8 @@ namespace HSSSS
                 SliderControls("MEAN THICKNESS (m)", ref this.sscs.meanDepth, 0.0f, 2.0f);
             }
             #endregion
+
+            GUILayout.EndScrollView();
         }
 
         private void AmbientOcclusion()
@@ -402,13 +426,13 @@ namespace HSSSS
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
+
             OnOffToolbar(ref this.ssao.enabled);
 
             if (this.ssao.enabled)
             {
                 Separator();
-
-                OnOffToolbar("VISIBILITY FUNCTION", new string[] { "HBAO", "GTAO" }, ref this.ssao.usegtao);
 
                 EnumToolbar("SSAO QUALITY", ref this.ssao.quality);
 
@@ -442,6 +466,8 @@ namespace HSSSS
 
                 OnOffToolbar("SPATIAL DENOISER", ref this.ssao.denoise);
             }
+
+            GUILayout.EndScrollView();
         }
 
         private void GlobalIllumination()
@@ -449,6 +475,8 @@ namespace HSSSS
             GUILayout.Label("<color=white>GLOBAL ILLUMINATION</color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
+
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
 
             OnOffToolbar(ref this.ssgi.enabled);
 
@@ -480,6 +508,8 @@ namespace HSSSS
                 OnOffToolbar("SPATIAL DENOISER", ref this.ssgi.denoise);
                 SliderControls("TEMPORAL DENOISER", ref this.ssgi.mixWeight, 0.0f, 1.0f);
             }
+
+            GUILayout.EndScrollView();
         }
 
         private void TemporalAntiAliasing()
@@ -487,6 +517,8 @@ namespace HSSSS
             GUILayout.Label("<color=white>TEMPORAL UPSCALING</color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
+
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
 
             OnOffToolbar(ref this.taau.enabled);
 
@@ -498,6 +530,8 @@ namespace HSSSS
 
                 SliderControls("MIX WEIGHT", ref this.taau.mixWeight, 0.0f, 1.0f);
             }
+
+            GUILayout.EndScrollView();
         }
 
         private void Miscellaneous()
@@ -505,6 +539,8 @@ namespace HSSSS
             GUILayout.Label("<color=white>MISCELLANEOUS</color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
+
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
 
             // skin microdetails
             OnOffToolbar("MICRODETAILS", ref this.skin.microDetails);
@@ -553,15 +589,33 @@ namespace HSSSS
             }
 
             GUILayout.Label("<color=red>*Reload the scene or character to apply the changes</color>", new GUIStyle { fontSize = tetraSpace });
+
+            GUILayout.EndScrollView();
         }
 
-        private void Presets()
+        private void PresetsControl()
         {
+            GUILayout.Label("<color=white>PRESETS</color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Box("", GUILayout.Height(2));
+            GUILayout.Space(doubleSpace);
+
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
+
+            string[] files = Directory.GetFiles(HSSSS.configLocation, "*.xml", SearchOption.TopDirectoryOnly).Select(file => Path.GetFileNameWithoutExtension(file)).ToArray();
+
+            GUILayout.EndScrollView();
+
+            presetNum = GUILayout.SelectionGrid(presetNum, files, 1);
+            string path = Path.Combine(HSSSS.configLocation, files[presetNum] + ".xml");
+
+            Separator();
+
+            #region 1
             GUILayout.BeginHorizontal();
 
-            if (GUILayout.Button("LOAD PRESET"))
+            if (GUILayout.Button("LOAD FROM <color=orange>" + files[presetNum] + "</color>"))
             {
-                if (XmlParser.LoadExternalFile())
+                if (XmlParser.LoadExternalFile(path))
                 {
                     this.ReadSettings();
 
@@ -578,15 +632,13 @@ namespace HSSSS
                 {
                     Console.WriteLine("#### HSSSS: Failed to Load Configuration");
                 }
-
-                this.RefreshWindowSize();
             }
 
-            if (GUILayout.Button("SAVE PRESET"))
+            if (GUILayout.Button("SAVE TO <color=orange>" + files[presetNum] + "</color>"))
             {
                 this.WriteSettings();
 
-                if (XmlParser.SaveExternalFile())
+                if (XmlParser.SaveExternalFile(path))
                 {
                     Console.WriteLine("#### HSSSS: Saved Configurations");
                 }
@@ -595,11 +647,50 @@ namespace HSSSS
                 {
                     Console.WriteLine("#### HSSSS: Failed to Save Configurations");
                 }
-
-                this.RefreshWindowSize();
             }
 
+            if (GUILayout.Button("DELETE <color=orange>" + files[presetNum] + "</color>"))
+            {
+                if (File.Exists(path))
+                {
+                    try
+                    {
+                        File.Delete(path);
+                    }
+
+                    catch
+                    {
+                        Console.WriteLine("#### HSSSS: Failed to Delete Preset File");
+                    }
+                }
+            }
+            
             GUILayout.EndHorizontal();
+            #endregion
+
+            Separator();
+
+            #region 2
+            presetName = GUILayout.TextField(presetName, GUILayout.ExpandWidth(true));
+
+            if (GUILayout.Button("SAVE NEW"))
+            {
+                string newpath = Path.Combine(HSSSS.configLocation, presetName + ".xml");
+
+                this.WriteSettings();
+
+                if (XmlParser.SaveExternalFile(newpath))
+                {
+                    Console.WriteLine("#### HSSSS: Succesfully Saved New Preset");
+                }
+
+                else
+                {
+                    Console.WriteLine("#### HSSSS: Failed to Save New Preset");
+                }
+
+            }
+            #endregion
         }
 
         private void UpdateSettings()
@@ -675,7 +766,6 @@ namespace HSSSS
             if (value != temp)
             {
                 value = temp;
-                this.RefreshWindowSize();
             }
         }
 
@@ -688,7 +778,6 @@ namespace HSSSS
             if (value != temp)
             {
                 value = temp;
-                this.RefreshWindowSize();
             }
         }
 
@@ -701,7 +790,6 @@ namespace HSSSS
             if (value != temp)
             {
                 value = temp;
-                this.RefreshWindowSize();
             }
         }
 
@@ -714,7 +802,6 @@ namespace HSSSS
             if (value != temp)
             {
                 value = temp;
-                this.RefreshWindowSize();
             }
         }
 
@@ -727,7 +814,6 @@ namespace HSSSS
             if (value != temp)
             {
                 value = temp;
-                this.RefreshWindowSize();
             }
         }
 
@@ -738,7 +824,6 @@ namespace HSSSS
             if (value != temp)
             {
                 value = temp;
-                this.RefreshWindowSize();
             }
         }
 
@@ -751,7 +836,6 @@ namespace HSSSS
             if (value != temp)
             {
                 value = temp;
-                this.RefreshWindowSize();
             }
         }
 
@@ -764,7 +848,16 @@ namespace HSSSS
             if (value != temp)
             {
                 value = temp;
-                this.RefreshWindowSize();
+            }
+        }
+
+        private void ToggleControls(string label, ref bool value)
+        {
+            bool temp = GUILayout.Toggle(value, label);
+
+            if (value != temp)
+            {
+                value = temp;
             }
         }
 
@@ -805,7 +898,7 @@ namespace HSSSS
             GUIStyle style = new GUIStyle
             {
                 alignment = TextAnchor.MiddleCenter,
-                fixedHeight = octaSpace,
+                fixedHeight = decaSpace,
                 fontSize = tetraSpace
             };
 
@@ -837,18 +930,18 @@ namespace HSSSS
             GUILayout.EndHorizontal();
         }
 
-        private void Separator(bool vertical = false)
+        private void Separator(bool vertical = false, int width = 2)
         {
             GUILayout.Space(tetraSpace);
 
             if (vertical)
             {
-                GUILayout.Box("", GUILayout.Width(2));
+                GUILayout.Box("", GUILayout.Width(width));
             }
 
             else
             {
-                GUILayout.Box("", GUILayout.Height(2));
+                GUILayout.Box("", GUILayout.Height(width));
             }
 
             GUILayout.Space(doubleSpace);

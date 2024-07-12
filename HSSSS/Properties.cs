@@ -105,7 +105,6 @@ namespace HSSSS
         public struct SSAOProperties
         {
             public bool enabled;
-            public bool usegtao;
             public bool usessdo;
             public bool denoise;
             public bool sparse;
@@ -222,7 +221,6 @@ namespace HSSSS
         public static SSAOProperties ssao = new SSAOProperties()
         {
             enabled = false,
-            usegtao = false,
             usessdo = false,
             denoise = false,
             sparse =  false,

@@ -506,17 +506,8 @@ namespace HSSSS
             this.mBuffer.Blit(zbf1, zbf2, this.mMaterial, 1);
             this.mBuffer.Blit(zbf2, zbf3, this.mMaterial, 1);
 
-            // gtao
-            if (Properties.ssao.usegtao)
-            {
-                this.mBuffer.Blit(zbf0, flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 2);
-            }
-            
-            // hbao
-            else
-            {
-                this.mBuffer.Blit(zbf0, flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 2);
-            }
+            // gtao pass
+            this.mBuffer.Blit(zbf0, flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 2);
 
             // decode pass
             if (Properties.ssao.sparse)

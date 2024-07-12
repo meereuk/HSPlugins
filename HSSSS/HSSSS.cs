@@ -7,7 +7,6 @@ using UnityEngine.Rendering;
 using Studio;
 using Harmony;
 using IllusionPlugin;
-using JetBrains.Annotations;
 using System.Collections.Generic;
 
 namespace HSSSS
@@ -89,7 +88,7 @@ namespace HSSSS
             {
                 Console.WriteLine("#### HSSSS: The global maximum LOD value is... " + Shader.globalMaximumLOD.ToString());
 
-                if (XmlParser.LoadExternalFile())
+                if (XmlParser.LoadExternalFile(configFile))
                 {
                     Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
                 }
@@ -98,7 +97,7 @@ namespace HSSSS
                 {
                     Console.WriteLine("#### HSSSS: Could not load config.xml; writing a new one...");
 
-                    if (XmlParser.SaveExternalFile())
+                    if (XmlParser.SaveExternalFile(configFile))
                     {
                         Console.WriteLine("#### HSSSS: Successfully wrote a new configuration file");
                     }
