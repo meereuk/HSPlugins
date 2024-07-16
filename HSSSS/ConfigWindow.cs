@@ -51,23 +51,23 @@ namespace HSSSS
 
         private TabState tabState;
 
-        private readonly string[] tabLabels = new string[] {
+        private static readonly string[] tabLabels = new string[] {
             "SKIN SCATTERING",
             "TRANSMISSION",
             "SOFT SHADOWS",
             "AMBIENT OCCLUSION",
             "GLOBAL ILLUMINATION",
-            "TEMPORAL UPSCALING",
+            "FRAME ACCUMULATION",
             "MISCELLANEOUS",
             "PRESET"
         };
 
-        private readonly string[] lutLabels = new string[] { "PENNER", "FACEWORKS A", "FACEWORKS B", "JIMENEZ" };
-        private readonly string[] pcfLabels = new string[] { "OFF", "LOW", "MEDIUM", "HIGH", "ULTRA" };
-        private readonly string[] hsmLabels = new string[] { "DEFAULT", "4096x4096", "8192x8192" };
+        private static readonly string[] lutLabels = new string[] { "PENNER", "FACEWORKS A", "FACEWORKS B", "JIMENEZ" };
+        private static readonly string[] pcfLabels = new string[] { "OFF", "LOW", "MEDIUM", "HIGH", "ULTRA" };
+        private static readonly string[] hsmLabels = new string[] { "DEFAULT", "4096x4096", "8192x8192" };
 
-        private readonly string[] scalelabels = new string[] { "QUARTER", "HALF", "FULL" };
-        private readonly string[] qualitylabels = new string[] { "LOW", "MEDIUM", "HIGH", "ULTRA" };
+        private static readonly string[] scalelabels = new string[] { "QUARTER", "HALF", "FULL" };
+        private static readonly string[] qualitylabels = new string[] { "LOW", "MEDIUM", "HIGH", "ULTRA" };
         #endregion
 
         public void Awake()
@@ -98,7 +98,7 @@ namespace HSSSS
             if (hsrCompatible)
             {
                 this.tabState = TabState.lightShadow;
-                this.SoftShadow();
+                this.SoftShadows();
             }
 
             else
@@ -106,7 +106,7 @@ namespace HSSSS
                 GUILayout.BeginHorizontal();
                 {
                     // left column
-                    GUILayout.BeginVertical(GUILayout.Width(octaSpace * 5));
+                    GUILayout.BeginVertical(GUILayout.Width(octaSpace * 6));
                     {
                         GUILayout.BeginHorizontal(GUILayout.Height(octaSpace * tabLabels.Length));
                         {
@@ -121,7 +121,7 @@ namespace HSSSS
                     }
                     GUILayout.EndVertical();
 
-                    //
+                    // space
                     GUILayout.Space(tetraSpace);
 
                     // right column
@@ -138,7 +138,7 @@ namespace HSSSS
                                 break;
 
                             case TabState.lightShadow:
-                                this.SoftShadow();
+                                this.SoftShadows();
                                 break;
 
                             case TabState.ssao:
@@ -158,7 +158,7 @@ namespace HSSSS
                                 break;
 
                             case TabState.preset:
-                                this.PresetsControl();
+                                this.Presets();
                                 break;
 
                             default:
@@ -298,6 +298,8 @@ namespace HSSSS
 
             OnOffToolbar("THICKNESS SAMPLING METHOD", new string[] { "ON-THE-FLY", "PRE-BAKED" }, ref this.skin.bakedThickness);
 
+            Separator();
+
             if (!this.skin.bakedThickness && !this.pcss.pcssEnabled)
             {
                 GUILayout.Label("<color=red>TURN ON PCSS SOFT SHADOW TO USE THIS OPTION!</color>");
@@ -326,7 +328,7 @@ namespace HSSSS
             GUILayout.EndScrollView();
         }
 
-        private void SoftShadow()
+        private void SoftShadows()
         {
             GUILayout.Label("<color=white><b>SOFT SHADOWS</b></color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
@@ -334,17 +336,17 @@ namespace HSSSS
 
             scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
 
-            #region Soft Shadow
-            // high-res shadow map
-            EnumToolbar("HIGH-RES SHADOWMAP", ref this.pcss.highRes);
-
+            #region PCSS
             // pcf iterations count
             EnumToolbar("PCF SHADOW QUALITY", ref this.pcss.pcfState);
 
-            // sparse rendering
-            OnOffToolbar("SPARSE RENDERING", ref this.pcss.checkerboard);
+            if (this.pcss.pcfState == Properties.PCFState.disable)
+            {
+                this.pcss.pcssEnabled = false;
+                this.sscs.enabled = false;
+            }
 
-            if (this.pcss.pcfState != Properties.PCFState.disable)
+            else
             {
                 // pcss soft shadow toggle
                 OnOffToolbar("PERCENTAGE CLOSER SOFT SHADOW", ref this.pcss.pcssEnabled);
@@ -363,7 +365,7 @@ namespace HSSSS
                     SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
-                Separator(width: 1);
+                Separator();
 
                 // spot lights
                 if (this.pcss.pcssEnabled)
@@ -378,7 +380,7 @@ namespace HSSSS
                     SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
-                Separator(width: 1);
+                Separator();
 
                 // point lights
                 if (this.pcss.pcssEnabled)
@@ -393,27 +395,25 @@ namespace HSSSS
                     SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
                 }
             }
-
-            else
-            {
-                this.pcss.pcssEnabled = false;
-            }
             #endregion
 
             #region SSCS
             Separator();
 
-            OnOffToolbar("<b>CONTACT SHADOW</b>", ref this.sscs.enabled);
-
-            if (this.sscs.enabled)
+            if (this.pcss.pcfState != Properties.PCFState.disable)
             {
-                EnumToolbar("CONTACT SHADOW QUALITY", ref this.sscs.quality);
+                OnOffToolbar("<b>CONTACT SHADOWS</b>", ref this.sscs.enabled);
 
-                Separator();
+                if (this.sscs.enabled)
+                {
+                    EnumToolbar("SHADOW QUALITY", ref this.sscs.quality);
 
-                SliderControls("RAYTRACE RADIUS (cm)", ref this.sscs.rayRadius, 0.0f, 50.0f);
-                SliderControls("RAYTRACE DEPTH BIAS (cm)", ref this.sscs.depthBias, 0.0f, 1.0f);
-                SliderControls("MEAN THICKNESS (m)", ref this.sscs.meanDepth, 0.0f, 2.0f);
+                    Separator();
+
+                    SliderControls("RAYTRACE RADIUS (cm)", ref this.sscs.rayRadius, 0.02f, 10.0f);
+                    SliderControls("RAYTRACE DEPTH BIAS (cm)", ref this.sscs.depthBias, 0.0f, 1.0f);
+                    SliderControls("MEAN THICKNESS (m)", ref this.sscs.meanDepth, 0.0f, 2.0f);
+                }
             }
             #endregion
 
@@ -435,8 +435,6 @@ namespace HSSSS
                 Separator();
 
                 EnumToolbar("SSAO QUALITY", ref this.ssao.quality);
-
-                OnOffToolbar("SPARSE RENDERING", ref this.ssao.sparse);
 
                 Separator();
 
@@ -514,7 +512,7 @@ namespace HSSSS
 
         private void TemporalAntiAliasing()
         {
-            GUILayout.Label("<color=white>TEMPORAL UPSCALING</color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Label("<color=white>FRAME ACCUMULATION</color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
@@ -588,24 +586,23 @@ namespace HSSSS
                 SliderControls("EYEBROW WRAP OFFSET", ref this.misc.wrapOffset, 0.0f, 0.5f);
             }
 
-            GUILayout.Label("<color=red>*Reload the scene or character to apply the changes</color>", new GUIStyle { fontSize = tetraSpace });
-
             GUILayout.EndScrollView();
+
+            GUILayout.Label("<color=red>*Save & reload the current scene or waifus to apply the changes</color>", new GUIStyle { fontSize = tetraSpace });
         }
 
-        private void PresetsControl()
+        private void Presets()
         {
             GUILayout.Label("<color=white>PRESETS</color>", new GUIStyle { fontSize = octaSpace });
             GUILayout.Box("", GUILayout.Height(2));
             GUILayout.Space(doubleSpace);
 
-            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
-
             string[] files = Directory.GetFiles(HSSSS.configLocation, "*.xml", SearchOption.TopDirectoryOnly).Select(file => Path.GetFileNameWithoutExtension(file)).ToArray();
 
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
+            presetNum = GUILayout.SelectionGrid(presetNum, files, 1);
             GUILayout.EndScrollView();
 
-            presetNum = GUILayout.SelectionGrid(presetNum, files, 1);
             string path = Path.Combine(HSSSS.configLocation, files[presetNum] + ".xml");
 
             Separator();
@@ -619,11 +616,7 @@ namespace HSSSS
                 {
                     this.ReadSettings();
 
-                    Properties.UpdateSkin();
-                    Properties.UpdatePCSS();
-                    Properties.UpdateSSAO();
-                    Properties.UpdateSSGI();
-                    Properties.UpdateTAAU();
+                    Properties.UpdateAll();
 
                     Console.WriteLine("#### HSSSS: Loaded Configurations");
                 }
@@ -649,8 +642,13 @@ namespace HSSSS
                 }
             }
 
-            if (GUILayout.Button("DELETE <color=orange>" + files[presetNum] + "</color>"))
+            if (files.Length > 1 && GUILayout.Button("DELETE <color=orange>" + files[presetNum] + "</color>"))
             {
+                if (presetNum == files.Length - 1)
+                {
+                    presetNum = 0;
+                }
+
                 if (File.Exists(path))
                 {
                     try
@@ -668,7 +666,7 @@ namespace HSSSS
             GUILayout.EndHorizontal();
             #endregion
 
-            Separator();
+            GUILayout.Space(doubleSpace);
 
             #region 2
             presetName = GUILayout.TextField(presetName, GUILayout.ExpandWidth(true));
@@ -757,19 +755,8 @@ namespace HSSSS
             Properties.misc = this.misc;
         }
 
-        private void EnumToolbar(string label, ref Properties.HighResShadow value)
-        {
-            GUILayout.Label(label);
-
-            Properties.HighResShadow temp = (Properties.HighResShadow)GUILayout.Toolbar((int)value, hsmLabels);
-
-            if (value != temp)
-            {
-                value = temp;
-            }
-        }
-
-        private void EnumToolbar(string label, ref Properties.PCFState value)
+        #region Controls
+        private static void EnumToolbar(string label, ref Properties.PCFState value)
         {
             GUILayout.Label(label);
 
@@ -781,7 +768,7 @@ namespace HSSSS
             }
         }
 
-        private void EnumToolbar(string label, ref Properties.LUTProfile value)
+        private static void EnumToolbar(string label, ref Properties.LUTProfile value)
         {
             GUILayout.Label(label);
 
@@ -793,7 +780,7 @@ namespace HSSSS
             }
         }
 
-        private void EnumToolbar(string label, ref Properties.RenderScale value)
+        private static void EnumToolbar(string label, ref Properties.RenderScale value)
         {
             GUILayout.Label(label);
 
@@ -805,7 +792,7 @@ namespace HSSSS
             }
         }
 
-        private void EnumToolbar(string label, ref Properties.QualityPreset value)
+        private static void EnumToolbar(string label, ref Properties.QualityPreset value)
         {
             GUILayout.Label(label);
 
@@ -817,7 +804,7 @@ namespace HSSSS
             }
         }
 
-        private void OnOffToolbar(ref bool value)
+        private static void OnOffToolbar(ref bool value)
         {
             bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "DISABLE", "ENABLE" }) == 1;
 
@@ -827,7 +814,7 @@ namespace HSSSS
             }
         }
 
-        private void OnOffToolbar(string label, ref bool value)
+        private static void OnOffToolbar(string label, ref bool value)
         {
             GUILayout.Label(label);
 
@@ -839,7 +826,7 @@ namespace HSSSS
             }
         }
 
-        private void OnOffToolbar(string label, string[] text, ref bool value)
+        private static void OnOffToolbar(string label, string[] text, ref bool value)
         {
             GUILayout.Label(label);
 
@@ -851,7 +838,7 @@ namespace HSSSS
             }
         }
 
-        private void ToggleControls(string label, ref bool value)
+        private static void ToggleControls(string label, ref bool value)
         {
             bool temp = GUILayout.Toggle(value, label);
 
@@ -861,7 +848,7 @@ namespace HSSSS
             }
         }
 
-        private void SliderControls(string label, ref float value, float min, float max)
+        private static void SliderControls(string label, ref float value, float min, float max)
         {
             GUILayout.Label(label);
 
@@ -877,7 +864,7 @@ namespace HSSSS
             GUILayout.EndHorizontal();
         }
 
-        private void SliderControls(string label, ref int value, int min, int max)
+        private static void SliderControls(string label, ref int value, int min, int max)
         {
             GUILayout.Label(label);
 
@@ -893,13 +880,17 @@ namespace HSSSS
             GUILayout.EndHorizontal();
         }
 
-        private void RGBControls(string label, ref Vector3 rgb)
+        private static void RGBControls(string label, ref Vector3 rgb)
         {
             GUIStyle style = new GUIStyle
             {
                 alignment = TextAnchor.MiddleCenter,
                 fixedHeight = decaSpace,
-                fontSize = tetraSpace
+                fontSize = tetraSpace,
+                padding = new RectOffset { top = 0, left = 0, right = 0, bottom = 0},
+                margin = new RectOffset { top = 0, left = 0, right = 0, bottom = 0 },
+                border = new RectOffset { top = 0, left = 0, right = 0, bottom = 0 },
+                overflow = new RectOffset { top = 0, left = 0, right = 0, bottom = 0 }
             };
 
             GUILayout.Label(label);
@@ -930,7 +921,7 @@ namespace HSSSS
             GUILayout.EndHorizontal();
         }
 
-        private void Separator(bool vertical = false, int width = 2)
+        private static void Separator(bool vertical = false, int width = 1)
         {
             GUILayout.Space(tetraSpace);
 
@@ -946,5 +937,6 @@ namespace HSSSS
 
             GUILayout.Space(doubleSpace);
         }
+        #endregion
     }
 }

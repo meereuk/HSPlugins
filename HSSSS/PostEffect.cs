@@ -242,6 +242,7 @@ namespace HSSSS
         #endregion
 
         #region Commandbuffer Control
+
         private void SetupDiffuseBlurBuffer()
         {
             int copyRT = Shader.PropertyToID("_DeferredTransmissionBuffer");
@@ -509,13 +510,6 @@ namespace HSSSS
             // gtao pass
             this.mBuffer.Blit(zbf0, flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 2);
 
-            // decode pass
-            if (Properties.ssao.sparse)
-            {
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 6);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 7);
-            }
-
             // spatio noise filtering
             if (Properties.ssao.denoise)
             {
@@ -572,9 +566,8 @@ namespace HSSSS
                 this.mMaterial.SetFloat("_SSAOLightBias", Properties.ssao.lightBias);
                 this.mMaterial.SetFloat("_SSAOMeanDepth", Properties.ssao.meanDepth);
                 this.mMaterial.SetInt(  "_SSAORayStride", Properties.ssao.rayStride);
-                this.mMaterial.SetInt(  "_SSAOUseSparse", Properties.ssao.sparse ? 1 : 0);
 
-                Shader.SetGlobalInt("_DirectOcclusion", Properties.ssao.usessdo ? 1 : 0);
+                Shader.SetGlobalInt("_UseDirectOcclusion", Properties.ssao.usessdo ? 1 : 0);
                 Shader.SetGlobalFloat("_SSDOLightApatureScale", Properties.ssao.doApature);
 
                 this.RemoveCommandBuffer();

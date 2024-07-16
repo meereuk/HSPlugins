@@ -13,13 +13,6 @@ namespace HSSSS
             jimenez
         }
 
-        public enum HighResShadow
-        {
-            disable,
-            high,
-            ultra
-        }
-
         public enum PCFState
         {
             disable,
@@ -92,10 +85,8 @@ namespace HSSSS
 
         public struct PCSSProperties
         {
-            public HighResShadow highRes;
             public PCFState pcfState;
             public bool pcssEnabled;
-            public bool checkerboard;
 
             public Vector3 pointLightPenumbra;
             public Vector3 spotLightPenumbra;
@@ -107,7 +98,6 @@ namespace HSSSS
             public bool enabled;
             public bool usessdo;
             public bool denoise;
-            public bool sparse;
 
             public QualityPreset quality;
 
@@ -208,10 +198,8 @@ namespace HSSSS
 
         public static PCSSProperties pcss = new PCSSProperties()
         {
-            highRes = HighResShadow.disable,
             pcfState = PCFState.disable,
             pcssEnabled = false,
-            checkerboard = false,
 
             dirLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
             spotLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
@@ -223,7 +211,6 @@ namespace HSSSS
             enabled = false,
             usessdo = false,
             denoise = false,
-            sparse =  false,
 
             quality = QualityPreset.medium,
 
@@ -372,6 +359,13 @@ namespace HSSSS
         {
             if (HSSSS.isStudio)
             {
+                Shader.DisableKeyword("_PCF_ON");
+
+                if (Properties.pcss.pcfState != PCFState.disable)
+                {
+                    Shader.EnableKeyword("_PCF_ON");
+                }
+
                 foreach (Light light in UnityEngine.Resources.FindObjectsOfTypeAll<Light>())
                 {
                     if (light)
@@ -429,6 +423,15 @@ namespace HSSSS
                     HSSSS.TAAURenderer.UpdateSettings();
                 }
             }
+        }
+
+        public static void UpdateAll()
+        {
+            UpdateSkin();
+            UpdatePCSS();
+            UpdateSSAO();
+            UpdateSSGI();
+            UpdateTAAU();
         }
     }
 }

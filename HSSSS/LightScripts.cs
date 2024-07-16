@@ -51,7 +51,6 @@ namespace HSSSS
         }
     }
 
-
     public class ScreenSpaceShadows : MonoBehaviour
     {
         private Light mLight;
@@ -70,10 +69,14 @@ namespace HSSSS
             this.mMaterial = new Material(AssetLoader.softShadows);
 
             this.mMaterial.SetTexture("_BlueNoise", AssetLoader.blueNoise);
-            this.mMaterial.SetInt("_SparseRendering", Convert.ToInt16(Properties.pcss.checkerboard));
+
             this.mMaterial.SetVector("_DirLightPenumbra", Properties.pcss.dirLightPenumbra);
             this.mMaterial.SetVector("_SpotLightPenumbra", Properties.pcss.spotLightPenumbra);
             this.mMaterial.SetVector("_PointLightPenumbra", Properties.pcss.pointLightPenumbra);
+
+            this.mMaterial.SetFloat("_SSCSRayLength", Properties.sscs.rayRadius * 0.01f);
+            this.mMaterial.SetFloat("_SSCSDepthBias", Properties.sscs.depthBias * 0.001f);
+            this.mMaterial.SetFloat("_SSCSMeanDepth", Properties.sscs.meanDepth);
 
             this.mLight = GetComponent<Light>();
 
@@ -123,41 +126,35 @@ namespace HSSSS
 
             RenderTargetIdentifier source = BuiltinRenderTextureType.CurrentActive;
             int target = Shader.PropertyToID("_ScreenSpaceShadowMap");
+            int flipsm = Shader.PropertyToID("_TemporaryFlipShadowMap");
+            int flopsm = Shader.PropertyToID("_TemporaryFlopShadowMap");
 
             this.mBuffer = new CommandBuffer() { name = "HSSSS.ScreenSpaceShadow" };
             this.mBuffer.SetShadowSamplingMode(source, ShadowSamplingMode.RawDepth);
-            this.mBuffer.GetTemporaryRT(target, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(target, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RGHalf, RenderTextureReadWrite.Linear);
 
-            // sparse rendering
-            if (Properties.pcss.checkerboard)
+            // full rendering
+            if (Properties.sscs.enabled)
             {
-                int flipsm = Shader.PropertyToID("_TemporaryFlipShadowMap");
-                int flopsm = Shader.PropertyToID("_TemporaryFlopShadowMap");
+                this.mBuffer.GetTemporaryRT(flipsm, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RGHalf, RenderTextureReadWrite.Linear);
+                this.mBuffer.GetTemporaryRT(flopsm, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RGHalf, RenderTextureReadWrite.Linear);
 
-                this.mBuffer.GetTemporaryRT(flipsm, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
-                this.mBuffer.GetTemporaryRT(flopsm, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
-
-                // shadow calculation
+                // just shadow calculation
                 this.mBuffer.Blit(source, flipsm, this.mMaterial, pass);
+                this.mBuffer.Blit(source, flopsm, this.mMaterial, 10 + Convert.ToInt16(Properties.sscs.quality));
+                this.mBuffer.Blit(source, target, this.mMaterial, 14);
 
-                // un-checkerboarding
-                this.mBuffer.Blit(flipsm, flopsm, this.mMaterial, 8);
-                // median interpolation
-                this.mBuffer.Blit(flopsm, flipsm, this.mMaterial, 9);
-                this.mBuffer.Blit(flipsm, target);
-
+                this.mBuffer.ReleaseTemporaryRT(target);
                 this.mBuffer.ReleaseTemporaryRT(flipsm);
                 this.mBuffer.ReleaseTemporaryRT(flopsm);
             }
 
-            // full rendering
             else
             {
-                // just shadow calculation
                 this.mBuffer.Blit(source, target, this.mMaterial, pass);
-            }
 
-            this.mBuffer.ReleaseTemporaryRT(target);
+                this.mBuffer.ReleaseTemporaryRT(target);
+            }
 
             // directional light needs additional shadowmap blit pass
             if (this.mLight.type == LightType.Directional)
@@ -241,10 +238,13 @@ namespace HSSSS
 
             if (this.mMaterial)
             {
-                this.mMaterial.SetInt("_SparseRendering", Convert.ToInt16(Properties.pcss.checkerboard));
                 this.mMaterial.SetVector("_DirLightPenumbra", Properties.pcss.dirLightPenumbra);
                 this.mMaterial.SetVector("_SpotLightPenumbra", Properties.pcss.spotLightPenumbra);
                 this.mMaterial.SetVector("_PointLightPenumbra", Properties.pcss.pointLightPenumbra);
+
+                this.mMaterial.SetFloat("_SSCSRayLength", Properties.sscs.rayRadius * 0.01f);
+                this.mMaterial.SetFloat("_SSCSDepthBias", Properties.sscs.depthBias * 0.001f);
+                this.mMaterial.SetFloat("_SSCSMeanDepth", Properties.sscs.meanDepth);
             }
         }
     }

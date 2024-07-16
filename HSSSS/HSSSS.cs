@@ -15,7 +15,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "2.0.0"; } }
+        public string Version { get { return "2.0.0b1"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 
@@ -75,7 +75,7 @@ namespace HSSSS
 
             pluginLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             configLocation = Path.Combine(pluginLocation, this.Name);
-            configFile = Path.Combine(configLocation, "config.xml");
+            configFile = Path.Combine(configLocation, "default.xml");
 
             if (!Directory.Exists(configLocation))
             {
@@ -90,12 +90,12 @@ namespace HSSSS
 
                 if (XmlParser.LoadExternalFile(configFile))
                 {
-                    Console.WriteLine("#### HSSSS: Successfully loaded config.xml");
+                    Console.WriteLine("#### HSSSS: Successfully loaded default.xml");
                 }
 
                 else
                 {
-                    Console.WriteLine("#### HSSSS: Could not load config.xml; writing a new one...");
+                    Console.WriteLine("#### HSSSS: Could not load default.xml; writing a new one...");
 
                     if (XmlParser.SaveExternalFile(configFile))
                     {
@@ -134,11 +134,7 @@ namespace HSSSS
                 {
                     Console.WriteLine("#### HSSSS: Successfully initialized the camera effects");
 
-                    Properties.UpdateSkin();
-                    Properties.UpdateSSAO();
-                    Properties.UpdateSSGI();
-                    Properties.UpdateTAAU();
-                    Properties.UpdatePCSS();
+                    Properties.UpdateAll();
                 }
 
                 else
@@ -197,11 +193,9 @@ namespace HSSSS
                 try
                 {
                     XmlParser.LoadXml(node);
-                    Properties.UpdateSkin();
-                    Properties.UpdateSSAO();
-                    Properties.UpdateSSGI();
-                    Properties.UpdateTAAU();
-                    Properties.UpdatePCSS();
+
+                    Properties.UpdateAll();
+
                     Console.WriteLine("#### HSSSS: Loaded Configurations from the Scene File");
                 }
 
