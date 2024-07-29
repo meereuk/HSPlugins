@@ -32,9 +32,9 @@ namespace HSSSS
 
         public enum RenderScale
         {
-            quarter,
+            full,
             half,
-            full
+            quarter
         }
 
         public enum MilkPart
@@ -100,6 +100,7 @@ namespace HSSSS
             public bool denoise;
 
             public QualityPreset quality;
+            public RenderScale subsample;
 
             public float intensity;
             public float lightBias;
@@ -213,6 +214,7 @@ namespace HSSSS
             denoise = false,
 
             quality = QualityPreset.medium,
+            subsample = RenderScale.full,
 
             intensity = 1.0f,
             lightBias = 0.0f,

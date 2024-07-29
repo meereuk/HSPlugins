@@ -66,7 +66,7 @@ namespace HSSSS
         private static readonly string[] pcfLabels = new string[] { "OFF", "LOW", "MEDIUM", "HIGH", "ULTRA" };
         private static readonly string[] hsmLabels = new string[] { "DEFAULT", "4096x4096", "8192x8192" };
 
-        private static readonly string[] scalelabels = new string[] { "QUARTER", "HALF", "FULL" };
+        private static readonly string[] scalelabels = new string[] { "FULL", "HALF", "QUARTER" };
         private static readonly string[] qualitylabels = new string[] { "LOW", "MEDIUM", "HIGH", "ULTRA" };
         #endregion
 
@@ -355,14 +355,14 @@ namespace HSSSS
 
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("DIRECTIONAL / SEARCH RADIUS (tangent)", ref this.pcss.dirLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("DIRECTIONAL / LIGHT RADIUS (tangent)", ref this.pcss.dirLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("DIRECTIONAL / MINIMUM PENUMBRA (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / SEARCH RADIUS (TANGENT / 100)", ref this.pcss.dirLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / LIGHT RADIUS (TANGENT / 100)", ref this.pcss.dirLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / MINIMUM PENUMBRA (MILIMETER)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("PENUMBRA SCALE (MILIMETER)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 Separator();
@@ -370,14 +370,14 @@ namespace HSSSS
                 // spot lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("SPOT / SEARCH RADIUS (cm)", ref this.pcss.spotLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("SPOT / LIGHT RADIUS (cm)", ref this.pcss.spotLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("SPOT / MINIMUM PENUMBRA (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("SPOT / SEARCH RADIUS (CENTIMETER)", ref this.pcss.spotLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("SPOT / LIGHT RADIUS (CENTIMETER)", ref this.pcss.spotLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("SPOT / MINIMUM PENUMBRA (MILIMETER)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("PENUMBRA SCALE (MILIMETER)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 Separator();
@@ -385,14 +385,14 @@ namespace HSSSS
                 // point lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("POINT / SEARCH RADIUS (cm)", ref this.pcss.pointLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("POINT / LIGHT RADIUS (cm)", ref this.pcss.pointLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("POINT / MINIMUM PENUMBRA (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("POINT / SEARCH RADIUS (CENTIMETER)", ref this.pcss.pointLightPenumbra.x, 0.0f, 20.0f);
+                    SliderControls("POINT / LIGHT RADIUS (CENTIMETER)", ref this.pcss.pointLightPenumbra.y, 0.0f, 20.0f);
+                    SliderControls("POINT / MINIMUM PENUMBRA (CENTIMETER)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("PENUMBRA SCALE (cm)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("PENUMBRA SCALE (MILIMETER)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
                 }
             }
             #endregion
@@ -410,9 +410,9 @@ namespace HSSSS
 
                     Separator();
 
-                    SliderControls("RAYTRACE RADIUS (cm)", ref this.sscs.rayRadius, 0.02f, 10.0f);
-                    SliderControls("RAYTRACE DEPTH BIAS (cm)", ref this.sscs.depthBias, 0.0f, 1.0f);
-                    SliderControls("MEAN THICKNESS (m)", ref this.sscs.meanDepth, 0.0f, 2.0f);
+                    SliderControls("RAYTRACE RADIUS (CENTIMETER)", ref this.sscs.rayRadius, 0.02f, 10.0f);
+                    SliderControls("RAYTRACE DEPTH BIAS (MILIMETER)", ref this.sscs.depthBias, 0.0f, 1.0f);
+                    SliderControls("MEAN THICKNESS (METER)", ref this.sscs.meanDepth, 0.0f, 2.0f);
                 }
             }
             #endregion
@@ -435,6 +435,7 @@ namespace HSSSS
                 Separator();
 
                 EnumToolbar("SSAO QUALITY", ref this.ssao.quality);
+                EnumToolbar("SSAO RENDERING SCALE", ref this.ssao.subsample);
 
                 Separator();
 

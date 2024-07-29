@@ -510,6 +510,13 @@ namespace HSSSS
             // gtao pass
             this.mBuffer.Blit(zbf0, flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 2);
 
+            if (Properties.ssao.subsample != Properties.RenderScale.full)
+            {
+                this.mBuffer.Blit(flip, flop, this.mMaterial, 6);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 7);
+            }
+
+
             // spatio noise filtering
             if (Properties.ssao.denoise)
             {
@@ -566,6 +573,7 @@ namespace HSSSS
                 this.mMaterial.SetFloat("_SSAOLightBias", Properties.ssao.lightBias);
                 this.mMaterial.SetFloat("_SSAOMeanDepth", Properties.ssao.meanDepth);
                 this.mMaterial.SetInt(  "_SSAORayStride", Properties.ssao.rayStride);
+                this.mMaterial.SetInt(  "_SSAOSubSample", Convert.ToUInt16(Properties.ssao.subsample));
 
                 Shader.SetGlobalInt("_UseDirectOcclusion", Properties.ssao.usessdo ? 1 : 0);
                 Shader.SetGlobalFloat("_SSDOLightApatureScale", Properties.ssao.doApature);
@@ -662,7 +670,7 @@ namespace HSSSS
 
             this.mBuffer = new CommandBuffer() { name = "HSSSS.SSGI" };
             
-            this.mBuffer.GetTemporaryRT(irad[0], -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(irad[0], -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(irad[1], this.mCamera.pixelWidth / 2, this.mCamera.pixelHeight / 2, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(irad[2], this.mCamera.pixelWidth / 4, this.mCamera.pixelHeight / 4, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(irad[3], this.mCamera.pixelWidth / 8, this.mCamera.pixelHeight / 8, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
