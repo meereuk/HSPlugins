@@ -76,7 +76,7 @@ namespace HSSSS
                 height = this.mCamera.targetTexture.height;
             }
 
-            this.specular.r = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear)
+            this.specular.r = new RenderTexture(width, height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
             {
                 enableRandomWrite = true,
                 filterMode = FilterMode.Point,
@@ -84,7 +84,7 @@ namespace HSSSS
                 generateMips = false
             };
 
-            this.specular.g = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear)
+            this.specular.g = new RenderTexture(width, height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
             {
                 enableRandomWrite = true,
                 filterMode = FilterMode.Point,
@@ -92,7 +92,7 @@ namespace HSSSS
                 generateMips = false
             };
 
-            this.specular.b = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear)
+            this.specular.b = new RenderTexture(width, height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
             {
                 enableRandomWrite = true,
                 filterMode = FilterMode.Point,
