@@ -18,11 +18,13 @@ namespace HSSSS
         private static Material prePass;
         private static Material mainPass;
 
+        private static int count;
+
         public struct RGBTextures
         {
-            public RenderTexture r;
-            public RenderTexture g;
-            public RenderTexture b;
+            public RenderTexture R;
+            public RenderTexture G;
+            public RenderTexture B;
         }
 
         private RGBTextures specular;
@@ -31,6 +33,8 @@ namespace HSSSS
         {
             prePass = new Material(AssetLoader.sssPrePass);
             mainPass = new Material(AssetLoader.sssMainPass);
+
+            count = 1;
         }
 
         public void OnEnable()
@@ -45,10 +49,14 @@ namespace HSSSS
             this.RemoveCommandBuffers();
         }
 
+        private void LateUpdate()
+        {
+            Shader.SetGlobalInt("_FrameCount", count);
+            count = (count + 3) % 64;
+        }
+
         private void OnPreRender()
         {
-            Shader.SetGlobalInt("_FrameCount", Time.frameCount);
-
             if (Properties.skin.lutProfile == Properties.LUTProfile.jimenez)
             {
                 this.SetupSpecularRT();
@@ -59,9 +67,9 @@ namespace HSSSS
         {
             if (Properties.skin.lutProfile == Properties.LUTProfile.jimenez)
             {
-                this.specular.r.Release();
-                this.specular.g.Release();
-                this.specular.b.Release();
+                this.specular.R.Release();
+                this.specular.G.Release();
+                this.specular.B.Release();
             }
         }
 
@@ -76,7 +84,7 @@ namespace HSSSS
                 height = this.mCamera.targetTexture.height;
             }
 
-            this.specular.r = new RenderTexture(width, height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
+            this.specular.R = new RenderTexture(width, height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
             {
                 enableRandomWrite = true,
                 filterMode = FilterMode.Point,
@@ -84,7 +92,7 @@ namespace HSSSS
                 generateMips = false
             };
 
-            this.specular.g = new RenderTexture(width, height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
+            this.specular.G = new RenderTexture(width, height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
             {
                 enableRandomWrite = true,
                 filterMode = FilterMode.Point,
@@ -92,7 +100,7 @@ namespace HSSSS
                 generateMips = false
             };
 
-            this.specular.b = new RenderTexture(width, height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
+            this.specular.B = new RenderTexture(width, height, 0, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear)
             {
                 enableRandomWrite = true,
                 filterMode = FilterMode.Point,
@@ -100,50 +108,50 @@ namespace HSSSS
                 generateMips = false
             };
 
-            this.specular.r.SetGlobalShaderProperty("_SpecularBufferR");
-            this.specular.g.SetGlobalShaderProperty("_SpecularBufferG");
-            this.specular.b.SetGlobalShaderProperty("_SpecularBufferB");
+            this.specular.R.SetGlobalShaderProperty("_SpecularBufferR");
+            this.specular.G.SetGlobalShaderProperty("_SpecularBufferG");
+            this.specular.B.SetGlobalShaderProperty("_SpecularBufferB");
 
-            this.specular.r.Create();
-            this.specular.g.Create();
-            this.specular.b.Create();
+            this.specular.R.Create();
+            this.specular.G.Create();
+            this.specular.B.Create();
 
             RenderTexture rt = RenderTexture.active;
-            RenderTexture.active = this.specular.r;
+            RenderTexture.active = this.specular.R;
             GL.Clear(true, true, Color.black);
-            RenderTexture.active = this.specular.g;
+            RenderTexture.active = this.specular.G;
             GL.Clear(true, true, Color.black);
-            RenderTexture.active = this.specular.b;
+            RenderTexture.active = this.specular.B;
             GL.Clear(true, true, Color.black);
             RenderTexture.active = rt;
 
             Graphics.ClearRandomWriteTargets();
-            Graphics.SetRandomWriteTarget(1, this.specular.r);
-            Graphics.SetRandomWriteTarget(2, this.specular.g);
-            Graphics.SetRandomWriteTarget(3, this.specular.b);
+            Graphics.SetRandomWriteTarget(1, this.specular.R);
+            Graphics.SetRandomWriteTarget(2, this.specular.G);
+            Graphics.SetRandomWriteTarget(3, this.specular.B);
         }
 
         private void RemoveSpecularRT()
         {
-            if (this.specular.r)
+            if (this.specular.R)
             {
-                this.specular.r.Release();
-                DestroyImmediate(this.specular.r);
-                this.specular.r = null;
+                this.specular.R.Release();
+                DestroyImmediate(this.specular.R);
+                this.specular.R = null;
             }
 
-            if (this.specular.g)
+            if (this.specular.G)
             {
-                this.specular.g.Release();
-                DestroyImmediate(this.specular.g);
-                this.specular.g = null;
+                this.specular.G.Release();
+                DestroyImmediate(this.specular.G);
+                this.specular.G = null;
             }
 
-            if (this.specular.b)
+            if (this.specular.B)
             {
-                this.specular.b.Release();
-                DestroyImmediate(this.specular.b);
-                this.specular.b = null;
+                this.specular.B.Release();
+                DestroyImmediate(this.specular.B);
+                this.specular.B = null;
             }
         }
 
@@ -453,11 +461,15 @@ namespace HSSSS
         private CommandBuffer mBuffer;
         private readonly string bufferName = "HSSSS.SSAO";
 
+        private System.Random random;
+
         private void Awake()
         {
             this.mCamera = GetComponent<Camera>();
             this.mMaterial = new Material(AssetLoader.ssao);
             this.mMaterial.SetTexture("_BlueNoise", AssetLoader.blueNoise);
+
+            this.random = new System.Random();
         }
 
         private void OnEnable()
@@ -483,32 +495,40 @@ namespace HSSSS
             // SSAO command buffer
             this.mBuffer = new CommandBuffer() { name = this.bufferName };
 
-            int zbf0 = Shader.PropertyToID("_HierachicalZBuffer0");
-            int zbf1 = Shader.PropertyToID("_HierachicalZBuffer1");
-            int zbf2 = Shader.PropertyToID("_HierachicalZBuffer2");
-            int zbf3 = Shader.PropertyToID("_HierachicalZBuffer3");
+            int[] zbf = new int[5]
+            {
+                Shader.PropertyToID("_HierachicalZBuffer0"),
+                Shader.PropertyToID("_HierachicalZBuffer1"),
+                Shader.PropertyToID("_HierachicalZBuffer2"),
+                Shader.PropertyToID("_HierachicalZBuffer3"),
+                Shader.PropertyToID("_HierachicalZBuffer4"),
+            };
 
             int flip = Shader.PropertyToID("_SSAOFlipRenderTexture");
             int flop = Shader.PropertyToID("_SSAOFlopRenderTexture");
 
-            this.mBuffer.GetTemporaryRT(zbf0, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(zbf1, this.mCamera.pixelWidth / 2, this.mCamera.pixelHeight / 2, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(zbf2, this.mCamera.pixelWidth / 4, this.mCamera.pixelHeight / 4, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(zbf3, this.mCamera.pixelWidth / 8, this.mCamera.pixelHeight / 8, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf[0], -1, -1, 0, FilterMode.Bilinear, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+
+            for (int i = 1; i < 5; i ++)
+            {
+                this.mBuffer.GetTemporaryRT(zbf[i], this.mCamera.pixelWidth / (int)Math.Pow(2, i), this.mCamera.pixelHeight / (int)Math.Pow(2, i),
+                        0, FilterMode.Bilinear, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            }
 
             this.mBuffer.GetTemporaryRT(flip, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             this.mBuffer.GetTemporaryRT(flop, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            
+
             // z-buffer prepass
-            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, zbf0, this.mMaterial, 0);
+            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, zbf[0], this.mMaterial, 0);
 
             // hierachical z buffers
-            this.mBuffer.Blit(zbf0, zbf1, this.mMaterial, 1);
-            this.mBuffer.Blit(zbf1, zbf2, this.mMaterial, 1);
-            this.mBuffer.Blit(zbf2, zbf3, this.mMaterial, 1);
+            this.mBuffer.Blit(zbf[0], zbf[1]);
+            this.mBuffer.Blit(zbf[1], zbf[2]);
+            this.mBuffer.Blit(zbf[2], zbf[3]);
+            this.mBuffer.Blit(zbf[3], zbf[4]);
 
             // gtao pass
-            this.mBuffer.Blit(zbf0, flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 2);
+            this.mBuffer.Blit(zbf[0], flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 2);
 
             if (Properties.ssao.subsample != Properties.RenderScale.full)
             {
@@ -516,18 +536,17 @@ namespace HSSSS
                 this.mBuffer.Blit(flop, flip, this.mMaterial, 7);
             }
 
-
             // spatio noise filtering
             if (Properties.ssao.denoise)
             {
                 this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 9);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
                 this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 9);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
                 this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 9);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
                 this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 9);
+                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
             }
 
             this.mBuffer.SetGlobalTexture("_SSDOBentNormalTexture", flip);
@@ -538,14 +557,14 @@ namespace HSSSS
             // specular occlusion
             this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flop, this.mMaterial, 12);
             this.mBuffer.Blit(flop, BuiltinRenderTextureType.Reflections);
-            // direct occlusion
 
             this.mBuffer.ReleaseTemporaryRT(flip);
             this.mBuffer.ReleaseTemporaryRT(flop);
-            this.mBuffer.ReleaseTemporaryRT(zbf0);
-            this.mBuffer.ReleaseTemporaryRT(zbf1);
-            this.mBuffer.ReleaseTemporaryRT(zbf2);
-            this.mBuffer.ReleaseTemporaryRT(zbf3);
+            this.mBuffer.ReleaseTemporaryRT(zbf[0]);
+            this.mBuffer.ReleaseTemporaryRT(zbf[1]);
+            this.mBuffer.ReleaseTemporaryRT(zbf[2]);
+            this.mBuffer.ReleaseTemporaryRT(zbf[3]);
+            this.mBuffer.ReleaseTemporaryRT(zbf[4]);
 
             this.mCamera.AddCommandBuffer(CameraEvent.AfterReflections, this.mBuffer);
         }

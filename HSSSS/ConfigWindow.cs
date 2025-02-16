@@ -925,17 +925,7 @@ namespace HSSSS
         private static void Separator(bool vertical = false, int width = 1)
         {
             GUILayout.Space(tetraSpace);
-
-            if (vertical)
-            {
-                GUILayout.Box("", GUILayout.Width(width));
-            }
-
-            else
-            {
-                GUILayout.Box("", GUILayout.Height(width));
-            }
-
+            GUILayout.Box("", vertical ? GUILayout.Width(width) : GUILayout.Height(width));
             GUILayout.Space(doubleSpace);
         }
         #endregion

@@ -218,31 +218,14 @@ namespace HSSSS
                 {
                     if (Properties.tess.enabled)
                     {
-                        if (Properties.skin.microDetails)
-                        {
-                            material.shader.maximumLOD = 450;
-                        }
-
-                        else
-                        {
-                            material.shader.maximumLOD = 400;
-                        }
-
+                        material.shader.maximumLOD = Properties.skin.microDetails ? 450 : 400;
                         material.SetFloat("_Phong", Properties.tess.phong);
                         material.SetFloat("_EdgeLength", Properties.tess.edge);
                     }
 
                     else
                     {
-                        if (Properties.skin.microDetails)
-                        {
-                            material.shader.maximumLOD = 350;
-                        }
-
-                        else
-                        {
-                            material.shader.maximumLOD = 300;
-                        }
+                        material.shader.maximumLOD = Properties.skin.microDetails ? 350 : 300;
                     }
                 }
             }
