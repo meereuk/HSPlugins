@@ -389,7 +389,7 @@ namespace HSSSS
 
                 if (ssao.enabled)
                 {
-                    HSSSS.SSAORenderer.UpdateSSAOSettings();
+                    HSSSS.SSAORenderer.UpdateSettings();
                     Shader.SetGlobalInt("_UseAmbientOcclusion", 1);
                 }
 
@@ -409,7 +409,7 @@ namespace HSSSS
 
                 if (ssgi.enabled)
                 {
-                    HSSSS.SSGIRenderer.UpdateSSGISettings();
+                    HSSSS.SSGIRenderer.UpdateSettings();
                 }
             }
         }

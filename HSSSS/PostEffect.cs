@@ -12,15 +12,15 @@ namespace HSSSS
         private CommandBuffer copyBuffer;
         private CommandBuffer blurBuffer;
 
-        private readonly string copyBufferName = "HSSSS.SSSPrePass";
-        private readonly string blurBufferName = "HSSSS.SSSMainPass";
+        private const string CopyBufferName = "HSSSS.SSSPrePass";
+        private const string BlurBufferName = "HSSSS.SSSMainPass";
 
         private static Material prePass;
         private static Material mainPass;
 
         private static int count;
 
-        public struct RGBTextures
+        private struct RGBTextures
         {
             public RenderTexture R;
             public RenderTexture G;
@@ -41,7 +41,7 @@ namespace HSSSS
         {
             this.mCamera = GetComponent<Camera>();
             this.RefreshProperties();
-            this.SecupCommandBuffers();
+            this.SetupCommandBuffers();
         }
 
         public void OnDisable()
@@ -263,13 +263,13 @@ namespace HSSSS
             ///////////////////////////////////
             ///////////////////////////////////
 
-            this.copyBuffer = new CommandBuffer() { name = this.copyBufferName };
+            this.copyBuffer = new CommandBuffer() { name = CopyBufferName };
 
-            // get temporary rendertextures
+            // get temporary render textures
             this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
-            // extract thickness map from gbuffer 3
+            // extract thickness map from g-buffer 3
             this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, prePass, 0);
-            // add commandbuffer
+            // add command buffer
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
 
             ///////////////////////////////////
@@ -278,9 +278,9 @@ namespace HSSSS
             ///////////////////////////////////
             ///////////////////////////////////
             
-            this.blurBuffer = new CommandBuffer() { name = this.blurBufferName };
+            this.blurBuffer = new CommandBuffer() { name = BlurBufferName };
 
-            // get temporary rendertextures
+            // get temporary render textures
             this.blurBuffer.GetTemporaryRT(flipRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             this.blurBuffer.GetTemporaryRT(flopRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
@@ -293,18 +293,18 @@ namespace HSSSS
                 this.blurBuffer.Blit(flopRT, flipRT, mainPass, 2);
             }
 
-            // collect all lightings
+            // collect all lighting
             this.blurBuffer.Blit(flipRT, flopRT, mainPass, 3);
 
             // to camera target
             this.blurBuffer.Blit(flopRT, BuiltinRenderTextureType.CameraTarget);
 
-            // release rendertextures
+            // release render textures
             this.blurBuffer.ReleaseTemporaryRT(flipRT);
             this.blurBuffer.ReleaseTemporaryRT(flopRT);
             this.blurBuffer.ReleaseTemporaryRT(copyRT);
 
-            // add commandbuffer
+            // add command buffer
             this.mCamera.AddCommandBuffer(CameraEvent.AfterLighting, this.blurBuffer);
         }
 
@@ -315,20 +315,15 @@ namespace HSSSS
             //// transmission & ambient lights ////
             ///////////////////////////////////////
             ///////////////////////////////////////
-
-            int ambiRT = Shader.PropertyToID("_AmbientReflectionBuffer");
+            
             int copyRT = Shader.PropertyToID("_DeferredTransmissionBuffer");
 
-            this.copyBuffer = new CommandBuffer() { name = this.copyBufferName };
-            // get temporary rendertextures
+            this.copyBuffer = new CommandBuffer() { name = CopyBufferName };
+            // get temporary render textures
             this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RHalf, RenderTextureReadWrite.Linear);
-            this.copyBuffer.GetTemporaryRT(ambiRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            // extract thickness map from gbuffer 3
+            // extract thickness map from g-buffer 3
             this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, copyRT, prePass, 0);
-            // ambient reflections
-            this.copyBuffer.Blit(BuiltinRenderTextureType.CameraTarget, ambiRT, prePass, 2);
-            this.copyBuffer.Blit(ambiRT, BuiltinRenderTextureType.CameraTarget);
-            // add commandbuffer
+            // add command buffer
             this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.copyBuffer);
 
             //////////////////////////////////
@@ -337,7 +332,7 @@ namespace HSSSS
             //////////////////////////////////
             //////////////////////////////////
 
-            this.blurBuffer = new CommandBuffer() { name = this.blurBufferName };
+            this.blurBuffer = new CommandBuffer() { name = BlurBufferName };
 
             if (Properties.skin.sssBlurIter > 0)
             {
@@ -377,7 +372,7 @@ namespace HSSSS
             ///////////////////////////////////
             // transmission & ambient lights //
             ///////////////////////////////////
-            this.copyBuffer = new CommandBuffer() { name = this.copyBufferName };
+            this.copyBuffer = new CommandBuffer() { name = CopyBufferName };
             // get temporary rendertextures
             this.copyBuffer.GetTemporaryRT(copyRT, -1, -1, 0, FilterMode.Point, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
             // extract thickness map from gbuffer 3
@@ -388,7 +383,7 @@ namespace HSSSS
             this.mCamera.AddCommandBuffer(CameraEvent.AfterGBuffer, this.copyBuffer);
         }
 
-        private void SecupCommandBuffers()
+        private void SetupCommandBuffers()
         {
             // buffer 0: hsr compatible buffer
             if (HSSSS.hsrCompatible)
@@ -416,7 +411,7 @@ namespace HSSSS
         {
             foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(CameraEvent.BeforeLighting))
             {
-                if (buffer.name == this.copyBufferName || buffer.name == this.blurBufferName)
+                if (buffer.name == CopyBufferName || buffer.name == BlurBufferName)
                 {
                     this.mCamera.RemoveCommandBuffer(CameraEvent.BeforeLighting, buffer);
                 }
@@ -424,7 +419,7 @@ namespace HSSSS
 
             foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(CameraEvent.AfterLighting))
             {
-                if (buffer.name == this.blurBufferName)
+                if (buffer.name == BlurBufferName)
                 {
                     this.mCamera.RemoveCommandBuffer(CameraEvent.AfterLighting, buffer);
                 }
@@ -444,7 +439,7 @@ namespace HSSSS
             this.RefreshTransmissionProperties();
 
             this.RemoveCommandBuffers();
-            this.SecupCommandBuffers();
+            this.SetupCommandBuffers();
 
             if (Properties.skin.lutProfile != Properties.LUTProfile.jimenez)
             {
@@ -459,22 +454,20 @@ namespace HSSSS
         private Camera mCamera;
         private Material mMaterial;
         private CommandBuffer mBuffer;
-        private readonly string bufferName = "HSSSS.SSAO";
-
-        private System.Random random;
+        private static Mesh mrtMesh = null;
+        private const string BufferName = "HSSSS.SSAO";
 
         private void Awake()
         {
             this.mCamera = GetComponent<Camera>();
             this.mMaterial = new Material(AssetLoader.ssao);
             this.mMaterial.SetTexture("_BlueNoise", AssetLoader.blueNoise);
-
-            this.random = new System.Random();
         }
 
         private void OnEnable()
         {
-            this.UpdateSSAOSettings();
+            this.SetupFullScreenMesh();
+            this.UpdateSettings();
 
             if (this.mCamera && Properties.ssao.enabled)
             {
@@ -493,96 +486,118 @@ namespace HSSSS
         private void SetupCommandBuffer()
         {
             // SSAO command buffer
-            this.mBuffer = new CommandBuffer() { name = this.bufferName };
-
+            this.mBuffer = new CommandBuffer() { name = BufferName };
+            
             int[] zbf = new int[5]
             {
-                Shader.PropertyToID("_HierachicalZBuffer0"),
-                Shader.PropertyToID("_HierachicalZBuffer1"),
-                Shader.PropertyToID("_HierachicalZBuffer2"),
-                Shader.PropertyToID("_HierachicalZBuffer3"),
-                Shader.PropertyToID("_HierachicalZBuffer4"),
+                Shader.PropertyToID("_HierarchicalZBuffer0"),
+                Shader.PropertyToID("_HierarchicalZBuffer1"),
+                Shader.PropertyToID("_HierarchicalZBuffer2"),
+                Shader.PropertyToID("_HierarchicalZBuffer3"),
+                Shader.PropertyToID("_HierarchicalZBuffer4"),
             };
 
-            int flip = Shader.PropertyToID("_SSAOFlipRenderTexture");
-            int flop = Shader.PropertyToID("_SSAOFlopRenderTexture");
+            int[] aoRT = new int[2]
+            {
+                Shader.PropertyToID("_SSAODiffuseBuffer"),
+                Shader.PropertyToID("_SSAOSpecularBuffer")
+            };
+            
+            int mask = Shader.PropertyToID("_SSAOMaskRenderTexture");
+            
+            RenderTargetIdentifier[] mrt = { aoRT[0], aoRT[1] };
 
-            this.mBuffer.GetTemporaryRT(zbf[0], -1, -1, 0, FilterMode.Bilinear, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(zbf[0], -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
 
             for (int i = 1; i < 5; i ++)
             {
                 this.mBuffer.GetTemporaryRT(zbf[i], this.mCamera.pixelWidth / (int)Math.Pow(2, i), this.mCamera.pixelHeight / (int)Math.Pow(2, i),
-                        0, FilterMode.Bilinear, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+                        0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             }
-
-            this.mBuffer.GetTemporaryRT(flip, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            this.mBuffer.GetTemporaryRT(flop, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            
+            this.mBuffer.GetTemporaryRT(aoRT[0], -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(aoRT[1], -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.mBuffer.GetTemporaryRT(mask, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
             // z-buffer prepass
             this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, zbf[0], this.mMaterial, 0);
 
-            // hierachical z buffers
+            // hierarchical z buffers
             this.mBuffer.Blit(zbf[0], zbf[1]);
             this.mBuffer.Blit(zbf[1], zbf[2]);
             this.mBuffer.Blit(zbf[2], zbf[3]);
             this.mBuffer.Blit(zbf[3], zbf[4]);
 
-            // gtao pass
-            this.mBuffer.Blit(zbf[0], flip, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 2);
-
-            if (Properties.ssao.subsample != Properties.RenderScale.full)
-            {
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 6);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 7);
-            }
-
-            // spatio noise filtering
-            if (Properties.ssao.denoise)
-            {
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
-                this.mBuffer.Blit(flip, flop, this.mMaterial, 8);
-                this.mBuffer.Blit(flop, flip, this.mMaterial, 8);
-            }
-
-            this.mBuffer.SetGlobalTexture("_SSDOBentNormalTexture", flip);
-
+            // GTAO pass
+            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, mask, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 1);
+            
+            // calculate occlusion mrt
+            this.mBuffer.SetRenderTarget(mrt, BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 5);
+            
             // diffuse occlusion
-            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flop, this.mMaterial, 11);
-            this.mBuffer.Blit(flop, BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.Blit(mrt[0], BuiltinRenderTextureType.CameraTarget);
             // specular occlusion
-            this.mBuffer.Blit(BuiltinRenderTextureType.Reflections, flop, this.mMaterial, 12);
-            this.mBuffer.Blit(flop, BuiltinRenderTextureType.Reflections);
-
-            this.mBuffer.ReleaseTemporaryRT(flip);
-            this.mBuffer.ReleaseTemporaryRT(flop);
+            this.mBuffer.Blit(mrt[1], BuiltinRenderTextureType.Reflections);
+            
+            this.mBuffer.ReleaseTemporaryRT(mask);
+            
+            this.mBuffer.ReleaseTemporaryRT(aoRT[0]);
+            this.mBuffer.ReleaseTemporaryRT(aoRT[1]);
+            
             this.mBuffer.ReleaseTemporaryRT(zbf[0]);
             this.mBuffer.ReleaseTemporaryRT(zbf[1]);
             this.mBuffer.ReleaseTemporaryRT(zbf[2]);
             this.mBuffer.ReleaseTemporaryRT(zbf[3]);
             this.mBuffer.ReleaseTemporaryRT(zbf[4]);
 
-            this.mCamera.AddCommandBuffer(CameraEvent.AfterReflections, this.mBuffer);
+            this.mCamera.AddCommandBuffer(CameraEvent.BeforeLighting, this.mBuffer);
         }
 
         private void RemoveCommandBuffer()
         {
-            foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(CameraEvent.AfterReflections))
+            foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(CameraEvent.BeforeLighting))
             {
-                if (buffer.name == this.bufferName)
+                if (buffer.name == BufferName)
                 {
-                    this.mCamera.RemoveCommandBuffer(CameraEvent.AfterReflections, buffer);
+                    this.mCamera.RemoveCommandBuffer(CameraEvent.BeforeLighting, buffer);
                 }
             }
 
             this.mBuffer = null;
         }
+        
+        private void SetupFullScreenMesh()
+        {
+            if (mrtMesh == null)
+            {
+                mrtMesh = new Mesh()
+                {
+                    vertices = new Vector3[]
+                    {
+                        new Vector3(-1.0f, -1.0f, 0.0f),
+                        new Vector3(-1.0f,  3.0f, 0.0f),
+                        new Vector3( 3.0f, -1.0f, 0.0f)
+                    },
 
-        public void UpdateSSAOSettings()
+                    triangles = new int[] { 0, 1, 2 }
+                };
+            }
+
+            else
+            {
+                mrtMesh.vertices = new Vector3[]
+                {
+                    new Vector3(-1.0f, -1.0f, 0.0f),
+                    new Vector3(-1.0f,  3.0f, 0.0f),
+                    new Vector3( 3.0f, -1.0f, 0.0f)
+                };
+
+                mrtMesh.triangles = new int[] { 0, 1, 2 };
+            }
+        }
+
+        public void UpdateSettings()
         {
             if (this.enabled)
             {
@@ -637,7 +652,7 @@ namespace HSSSS
             {
                 this.SetupHistoryBuffer();
                 this.SetupCommandBuffer();
-                this.UpdateSSGISettings();
+                this.UpdateSettings();
             }
         }
 
@@ -842,7 +857,7 @@ namespace HSSSS
             }
         }
 
-        public void UpdateSSGISettings()
+        public void UpdateSettings()
         {
             if (this.enabled)
             {
@@ -948,31 +963,31 @@ namespace HSSSS
     {
         private Camera mCamera;
 
-        public Matrix4x4 CurrentWorldToView;
-        public Matrix4x4 CurrentViewToWorld;
+        public Matrix4x4 currentWorldToView;
+        public Matrix4x4 currentViewToWorld;
 
-        public Matrix4x4 CurrentViewToClip;
-        public Matrix4x4 CurrentClipToView;
+        public Matrix4x4 currentViewToClip;
+        public Matrix4x4 currentClipToView;
 
-        public Matrix4x4 PreviousWorldToView;
-        public Matrix4x4 PreviousViewToWorld;
+        public Matrix4x4 previousWorldToView;
+        public Matrix4x4 previousViewToWorld;
 
-        public Matrix4x4 PreviousViewToClip;
-        public Matrix4x4 PreviousClipToView;
+        public Matrix4x4 previousViewToClip;
+        public Matrix4x4 previousClipToView;
 
         private void Awake()
         {
-            this.CurrentWorldToView = Matrix4x4.identity;
-            this.CurrentViewToWorld = Matrix4x4.identity;
+            this.currentWorldToView = Matrix4x4.identity;
+            this.currentViewToWorld = Matrix4x4.identity;
 
-            this.CurrentViewToClip = Matrix4x4.identity;
-            this.CurrentClipToView = Matrix4x4.identity;
+            this.currentViewToClip = Matrix4x4.identity;
+            this.currentClipToView = Matrix4x4.identity;
 
-            this.PreviousWorldToView = Matrix4x4.identity;
-            this.PreviousViewToWorld = Matrix4x4.identity;
+            this.previousWorldToView = Matrix4x4.identity;
+            this.previousViewToWorld = Matrix4x4.identity;
 
-            this.PreviousViewToClip = Matrix4x4.identity;
-            this.PreviousClipToView = Matrix4x4.identity;
+            this.previousViewToClip = Matrix4x4.identity;
+            this.previousClipToView = Matrix4x4.identity;
         }
 
         private void OnEnable()
@@ -1001,30 +1016,30 @@ namespace HSSSS
         private void UpdateMatrices()
         {
             // previous frame
-            this.PreviousWorldToView = this.CurrentWorldToView;
-            this.PreviousViewToWorld = this.CurrentViewToWorld;
+            this.previousWorldToView = this.currentWorldToView;
+            this.previousViewToWorld = this.currentViewToWorld;
 
-            this.PreviousViewToClip = this.CurrentViewToClip;
-            this.PreviousClipToView = this.CurrentClipToView;
+            this.previousViewToClip = this.currentViewToClip;
+            this.previousClipToView = this.currentClipToView;
 
             // current frame
-            this.CurrentWorldToView = this.mCamera.worldToCameraMatrix;
-            this.CurrentViewToWorld = this.CurrentWorldToView.inverse;
+            this.currentWorldToView = this.mCamera.worldToCameraMatrix;
+            this.currentViewToWorld = this.currentWorldToView.inverse;
 
-            this.CurrentViewToClip = this.mCamera.projectionMatrix;
-            this.CurrentClipToView = this.CurrentViewToClip.inverse;
+            this.currentViewToClip = this.mCamera.projectionMatrix;
+            this.currentClipToView = this.currentViewToClip.inverse;
 
-            Shader.SetGlobalMatrix("_WorldToViewMatrix", this.CurrentWorldToView);
-            Shader.SetGlobalMatrix("_ViewToWorldMatrix", this.CurrentViewToWorld);
+            Shader.SetGlobalMatrix("_WorldToViewMatrix", this.currentWorldToView);
+            Shader.SetGlobalMatrix("_ViewToWorldMatrix", this.currentViewToWorld);
 
-            Shader.SetGlobalMatrix("_ViewToClipMatrix", this.CurrentViewToClip);
-            Shader.SetGlobalMatrix("_ClipToViewMatrix", this.CurrentClipToView);
+            Shader.SetGlobalMatrix("_ViewToClipMatrix", this.currentViewToClip);
+            Shader.SetGlobalMatrix("_ClipToViewMatrix", this.currentClipToView);
 
-            Shader.SetGlobalMatrix("_PrevWorldToViewMatrix", this.PreviousWorldToView);
-            Shader.SetGlobalMatrix("_PrevViewToWorldMatrix", this.PreviousViewToWorld);
+            Shader.SetGlobalMatrix("_PrevWorldToViewMatrix", this.previousWorldToView);
+            Shader.SetGlobalMatrix("_PrevViewToWorldMatrix", this.previousViewToWorld);
 
-            Shader.SetGlobalMatrix("_PrevViewToClipMatrix", this.PreviousViewToClip);
-            Shader.SetGlobalMatrix("_PrevClipToViewMatrix", this.PreviousClipToView);
+            Shader.SetGlobalMatrix("_PrevViewToClipMatrix", this.previousViewToClip);
+            Shader.SetGlobalMatrix("_PrevClipToViewMatrix", this.previousClipToView);
         }
     }
 }
