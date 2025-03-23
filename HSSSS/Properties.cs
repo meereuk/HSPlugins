@@ -158,6 +158,16 @@ namespace HSSSS
             public float phong;
             public float edge;
         }
+        
+        public struct AgXProperties
+        {
+            public bool enabled;
+            public float gamma;
+            public Vector3 saturation;
+            public Vector3 offset;
+            public Vector3 slope;
+            public Vector3 power;
+        }
 
         public static SkinProperties skin = new SkinProperties()
         {
@@ -271,6 +281,16 @@ namespace HSSSS
             fixOverlay = false,
             wetOverlay = false,
             wrapOffset = 0.1f
+        };
+
+        public static AgXProperties agx = new AgXProperties()
+        {
+            enabled = false,
+            gamma = 2.2f,
+            saturation = new Vector3(1.0f, 1.0f, 1.0f),
+            offset = new Vector3(0.0f, 0.0f, 0.0f),
+            slope = new Vector3(1.0f, 1.0f, 1.0f),
+            power = new Vector3(1.0f, 1.0f, 1.0f)
         };
 
         public static void UpdateSkin()
@@ -427,6 +447,19 @@ namespace HSSSS
             }
         }
 
+        public static void UpdateAgX()
+        {
+            if (HSSSS.AgXToneMapper)
+            {
+                HSSSS.AgXToneMapper.enabled = agx.enabled;
+
+                if (agx.enabled)
+                {
+                    HSSSS.AgXToneMapper.UpdateSettings();
+                }
+            }
+        }
+
         public static void UpdateAll()
         {
             UpdateSkin();
@@ -434,6 +467,7 @@ namespace HSSSS
             UpdateSSAO();
             UpdateSSGI();
             UpdateTAAU();
+            UpdateAgX();
         }
     }
 }

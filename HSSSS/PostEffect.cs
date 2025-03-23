@@ -5,6 +5,8 @@ using UnityEngine.Rendering;
 
 namespace HSSSS
 {
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(Camera))]
     public class DeferredRenderer : MonoBehaviour
     {
         private Camera mCamera;
@@ -449,6 +451,8 @@ namespace HSSSS
         #endregion
     }
 
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(Camera))]
     public class SSAORenderer : MonoBehaviour
     {
         private Camera mCamera;
@@ -619,6 +623,8 @@ namespace HSSSS
         }
     }
 
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(Camera))]
     public class SSGIRenderer : MonoBehaviour
     {
         private Camera mCamera;
@@ -876,77 +882,45 @@ namespace HSSSS
             }
         }
     }
-
+    
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(Camera))]
     public class TAAURenderer : MonoBehaviour
     {
         private Camera mCamera;
         private Material mMaterial;
-        private CommandBuffer mBuffer;
         private RenderTexture history;
-
-        private readonly string bufferName = "HSSSS.TAAU";
-        private static CameraEvent cameraEvent = CameraEvent.BeforeImageEffects;
-
-        private void Awake()
+        
+        private void OnEnable()
         {
             this.mCamera = GetComponent<Camera>();
             this.mMaterial = new Material(AssetLoader.taau);
-        }
-
-        private void OnEnable()
-        {
-            if (this.mCamera && Properties.taau.enabled)
-            {
-                this.history = new RenderTexture(this.mCamera.pixelWidth, this.mCamera.pixelHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                this.history.SetGlobalShaderProperty("_FrameBufferHistory");
-                this.history.Create();
-
-                RenderTexture rt = RenderTexture.active;
-                RenderTexture.active = this.history;
-                GL.Clear(true, true, Color.black);
-                RenderTexture.active = rt;
-
-                this.SetupCommandBuffer();
-            }
+            
+            this.history = new RenderTexture(this.mCamera.pixelWidth, this.mCamera.pixelHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            this.history.SetGlobalShaderProperty("_FrameBufferHistory");
+            this.history.Create();
+            
+            RenderTexture rt = RenderTexture.active;
+            RenderTexture.active = this.history;
+            GL.Clear(true, true, Color.black);
+            RenderTexture.active = rt;
         }
 
         private void OnDisable()
         {
-            if (this.mCamera && this.mBuffer != null)
-            {
-                this.RemoveCommandBuffer();
-
-                this.history.Release();
-                this.history = null;
-            }
+            this.history.Release();
+            this.history = null;
         }
 
-        private void SetupCommandBuffer()
+        private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            RenderTargetIdentifier hist = new RenderTargetIdentifier(this.history);
-            int buff = Shader.PropertyToID("_TAAUTemporaryBuffer");
-
-            this.mBuffer = new CommandBuffer() { name = this.bufferName };
-            this.mBuffer.GetTemporaryRT(buff, -1, -1, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-
-            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, buff, mMaterial, Convert.ToUInt16(Properties.taau.upscale));
-            this.mBuffer.Blit(buff, BuiltinRenderTextureType.CameraTarget);
-            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, hist);
-
-            this.mCamera.AddCommandBuffer(cameraEvent, this.mBuffer);
-        }
-
-        private void RemoveCommandBuffer()
-        {
-            foreach (CommandBuffer buffer in this.mCamera.GetCommandBuffers(cameraEvent))
-            {
-                if (buffer.name == this.bufferName)
-                {
-                    this.mCamera.RemoveCommandBuffer(cameraEvent, buffer);
-                }
-            }
-
-            this.mBuffer = null;
+            RenderTexture rt = RenderTexture.GetTemporary(-1, -1, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                
+            Graphics.Blit(source, rt, this.mMaterial, Convert.ToUInt16(Properties.taau.upscale));
+            Graphics.Blit(rt, this.history);
+            Graphics.Blit(rt, destination);
+                
+            rt.Release();
         }
 
         public void UpdateSettings()
@@ -954,12 +928,12 @@ namespace HSSSS
             if (this.enabled && this.mMaterial)
             {
                 this.mMaterial.SetFloat("_TemporalMixFactor", Properties.taau.mixWeight);
-                this.RemoveCommandBuffer();
-                this.SetupCommandBuffer();
             }
         }
     }
     
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(Camera))]
     public class CameraProjector : MonoBehaviour
     {
         private Camera mCamera;
@@ -1041,6 +1015,36 @@ namespace HSSSS
 
             Shader.SetGlobalMatrix("_PrevViewToClipMatrix", this.previousViewToClip);
             Shader.SetGlobalMatrix("_PrevClipToViewMatrix", this.previousClipToView);
+        }
+    }
+
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(Camera))]
+    public class AgXToneMapper : MonoBehaviour
+    {
+        private Material mMaterial;
+
+        private void Awake()
+        {
+            this.mMaterial = new Material(AssetLoader.agx);
+        }
+        
+        [ImageEffectTransformsToLDR]
+        private void OnRenderImage(RenderTexture source, RenderTexture destination)
+        {
+            Graphics.Blit(source, destination, this.mMaterial, 0);
+        }
+        
+        public void UpdateSettings()
+        {
+            if (this.enabled && this.mMaterial)
+            {
+                this.mMaterial.SetFloat("_AgXGamma", Properties.agx.gamma);
+                this.mMaterial.SetVector("_AgXSaturation", Properties.agx.saturation);
+                this.mMaterial.SetVector("_AgXOffset", Properties.agx.offset);
+                this.mMaterial.SetVector("_AgXSlope", Properties.agx.slope);
+                this.mMaterial.SetVector("_AgXPower", Properties.agx.power);
+            }
         }
     }
 }

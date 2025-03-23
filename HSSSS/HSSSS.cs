@@ -33,6 +33,7 @@ namespace HSSSS
         public static SSAORenderer SSAORenderer = null;
         public static SSGIRenderer SSGIRenderer = null;
         public static TAAURenderer TAAURenderer = null;
+        public static AgXToneMapper AgXToneMapper = null;
         private static GameObject mainCamera = null;
 
         public static Dictionary<Guid, ScreenSpaceShadows> spotDict = new Dictionary<Guid, ScreenSpaceShadows>();
@@ -359,9 +360,15 @@ namespace HSSSS
                     {
                         TAAURenderer = mainCamera.gameObject.AddComponent<TAAURenderer>();
                     }
+                    
+                    // agx
+                    if (AgXToneMapper == null)
+                    {
+                        AgXToneMapper = mainCamera.gameObject.AddComponent<AgXToneMapper>();
+                    }
 
                     // is everything okay?
-                    if (DeferredRenderer && CameraProjector && SSAORenderer && SSGIRenderer && TAAURenderer)
+                    if (DeferredRenderer && CameraProjector && SSAORenderer && SSGIRenderer && TAAURenderer && AgXToneMapper)
                     {
                         return true;
                     }

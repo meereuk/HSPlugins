@@ -24,6 +24,7 @@ namespace HSSSS
         public static Shader ssao = null;
         public static Shader ssgi = null;
         public static Shader taau = null;
+        public static Shader agx = null;
 
         public static GUISkin gui = null;
 
@@ -194,6 +195,7 @@ namespace HSSSS
             ReadAsset<Shader>(ref ssao, "SSAO", "SSAO shader");
             ReadAsset<Shader>(ref ssgi, "SSGI", "SSGI shader");
             ReadAsset<Shader>(ref taau, "TemporalAntiAliasing", "Temporal Anti Aliasing");
+            ReadAsset<Shader>(ref agx, "AgX", "AgX Tone Mapper");
             ReadAsset<GUISkin>(ref gui, "GUISkin", "GUI skin");
         }
 

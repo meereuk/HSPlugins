@@ -36,6 +36,7 @@ namespace HSSSS
         private Properties.TAAUProperties taau;
         private Properties.TESSProperties tess;
         private Properties.MiscProperties misc;
+        private Properties.AgXProperties agx;
 
         private enum TabState
         {
@@ -46,6 +47,7 @@ namespace HSSSS
             ssgi,
             taau,
             miscellaneous,
+            agx,
             preset
         };
 
@@ -59,6 +61,7 @@ namespace HSSSS
             "GLOBAL ILLUMINATION",
             "FRAME ACCUMULATION",
             "MISCELLANEOUS",
+            "TONE MAPPER",
             "PRESET"
         };
 
@@ -155,6 +158,10 @@ namespace HSSSS
 
                             case TabState.miscellaneous:
                                 this.Miscellaneous();
+                                break;
+                            
+                            case TabState.agx:
+                                this.AgXToneMapper();
                                 break;
 
                             case TabState.preset:
@@ -592,7 +599,55 @@ namespace HSSSS
             Separator();
             GUILayout.EndScrollView();
 
-            GUILayout.Label("<color=red>*Save & reload the current scene or waifus to apply the changes</color>", new GUIStyle { fontSize = tetraSpace });
+            GUILayout.Space(doubleSpace);
+            GUILayout.Label("<color=#ff4040>*Save & reload the current scene or waifus to apply the changes</color>", new GUIStyle { fontSize = tetraSpace });
+        }
+
+        private void AgXToneMapper()
+        {
+            GUILayout.Label("<color=white>AgX TONE MAPPER</color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Box("", GUILayout.Height(2));
+            GUILayout.Space(doubleSpace);
+            
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
+            
+            OnOffToolbar(ref this.agx.enabled);
+
+            if (this.agx.enabled)
+            {
+                Separator();
+                SliderControls("GAMMA", ref this.agx.gamma, 0.0f, 4.0f, 2.2f);
+                
+                Separator();
+            
+                SliderControls("SATURATION <color=#ff8040>RED</color>", ref this.agx.saturation.x, 0.0f, 2.0f, 1.0f);
+                SliderControls("SATURATION <color=#40fd80>GREEN</color>", ref this.agx.saturation.y, 0.0f, 2.0f, 1.0f);
+                SliderControls("SATURATION <color=#4080ff>BLUE</color>", ref this.agx.saturation.z, 0.0f, 2.0f, 1.0f);
+                
+                Separator();
+                
+                SliderControls("POWER <color=#ff8040>RED</color>", ref this.agx.power.x, 0.0f, 2.0f, 1.0f);
+                SliderControls("POWER <color=#40fd80>GREEN</color>", ref this.agx.power.y, 0.0f, 2.0f, 1.0f);
+                SliderControls("POWER <color=#4080ff>BLUE</color>", ref this.agx.power.z, 0.0f, 2.0f, 1.0f);
+                
+                Separator();
+                
+                SliderControls("OFFSET <color=#ff8040>RED</color>", ref this.agx.offset.x, 0.0f, 1.0f, 0.0f);
+                SliderControls("OFFSET <color=#40fd80>GREEN</color>", ref this.agx.offset.y, 0.0f, 1.0f, 0.0f);
+                SliderControls("OFFSET <color=#4080ff>BLUE</color>", ref this.agx.offset.z, 0.0f, 1.0f, 0.0f);
+                
+                Separator();
+                
+                SliderControls("SLOPE <color=#ff8040>RED</color>", ref this.agx.slope.x, 0.0f, 2.0f, 1.0f);
+                SliderControls("SLOPE <color=#40fd80>GREEN</color>", ref this.agx.slope.y, 0.0f, 2.0f, 1.0f);
+                SliderControls("SLOPE <color=#4080ff>BLUE</color>", ref this.agx.slope.z, 0.0f, 2.0f, 1.0f);
+            }
+            
+            Separator();
+            GUILayout.EndScrollView();
+            
+            GUILayout.Space(doubleSpace);
+            GUILayout.Label("<color=#ff4040>Disable LRE Tone Mapping, Color Grading, and Color Correction Curve.</color>", new GUIStyle { fontSize = tetraSpace });
         }
 
         private void Presets()
@@ -725,6 +780,10 @@ namespace HSSSS
                 case TabState.taau:
                     Properties.UpdateTAAU();
                     break;
+                
+                case TabState.agx:
+                    Properties.UpdateAgX();
+                    break;
 
                 case TabState.miscellaneous:
                     Properties.UpdateSkin();
@@ -745,6 +804,7 @@ namespace HSSSS
             this.pcss = Properties.pcss;
             this.tess = Properties.tess;
             this.misc = Properties.misc;
+            this.agx = Properties.agx;
         }
 
         private void WriteSettings()
@@ -757,77 +817,43 @@ namespace HSSSS
             Properties.pcss = this.pcss;
             Properties.tess = this.tess;
             Properties.misc = this.misc;
+            Properties.agx = this.agx;
         }
 
         #region Controls
         private static void EnumToolbar(string label, ref Properties.PCFState value)
         {
             GUILayout.Label(label);
-
-            Properties.PCFState temp = (Properties.PCFState)GUILayout.Toolbar((int)value, pcfLabels);
-
-            if (value != temp)
-            {
-                value = temp;
-            }
+            value = (Properties.PCFState)GUILayout.Toolbar((int)value, pcfLabels);
         }
 
         private static void EnumToolbar(string label, ref Properties.LUTProfile value)
         {
             GUILayout.Label(label);
-
-            Properties.LUTProfile temp = (Properties.LUTProfile)GUILayout.Toolbar((int)value, lutLabels);
-
-            if (value != temp)
-            {
-                value = temp;
-            }
+            value = (Properties.LUTProfile)GUILayout.Toolbar((int)value, lutLabels);
         }
 
         private static void EnumToolbar(string label, ref Properties.RenderScale value)
         {
             GUILayout.Label(label);
-
-            Properties.RenderScale temp = (Properties.RenderScale)GUILayout.Toolbar((int)value, scalelabels);
-
-            if (value != temp)
-            {
-                value = temp;
-            }
+            value = (Properties.RenderScale)GUILayout.Toolbar((int)value, scalelabels);
         }
 
         private static void EnumToolbar(string label, ref Properties.QualityPreset value)
         {
             GUILayout.Label(label);
-
-            Properties.QualityPreset temp = (Properties.QualityPreset)GUILayout.Toolbar((int)value, qualitylabels);
-
-            if (value != temp)
-            {
-                value = temp;
-            }
+            value = (Properties.QualityPreset)GUILayout.Toolbar((int)value, qualitylabels);
         }
 
         private static void OnOffToolbar(ref bool value)
         {
-            bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "DISABLE", "ENABLE" }) == 1;
-
-            if (value != temp)
-            {
-                value = temp;
-            }
+            value = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "DISABLE", "ENABLE" }) == 1;
         }
 
         private static void OnOffToolbar(string label, ref bool value)
         {
             GUILayout.Label(label);
-
-            bool temp = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "DISABLE", "ENABLE" }) == 1;
-
-            if (value != temp)
-            {
-                value = temp;
-            }
+            value = GUILayout.Toolbar(Convert.ToUInt16(value), new string[] { "DISABLE", "ENABLE" }) == 1;
         }
 
         private static void OnOffToolbar(string label, string[] text, ref bool value)
@@ -864,6 +890,31 @@ namespace HSSSS
             {
                 value = field;
             }
+
+            GUILayout.EndHorizontal();
+        }
+        
+        private static void SliderControls(string label, ref float value, float min, float max, float reset)
+        {
+            GUILayout.Label(label);
+
+            GUILayout.BeginHorizontal();
+
+            value = GUILayout.HorizontalSlider(value, min, max);
+
+            if (float.TryParse(GUILayout.TextField(value.ToString("0.00"), GUILayout.Width(2 * octaSpace)), out float field))
+            {
+                value = field;
+            }
+
+            GUI.skin.button.fixedHeight = hexaSpace;
+            
+            if (GUILayout.Button("RESET", GUILayout.Width(2 * octaSpace)))
+            {
+                value = reset;
+            }
+            
+            GUI.skin.button.fixedHeight = octaSpace;
 
             GUILayout.EndHorizontal();
         }
