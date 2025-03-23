@@ -285,6 +285,7 @@ namespace HSSSS
             // ambient occlusion
             RGBControls("AO COLOR BLEEDING", ref this.skin.colorBleedWeights);
 
+            Separator();
             GUILayout.EndScrollView();
         }
 
@@ -325,6 +326,7 @@ namespace HSSSS
                 RGBControls("TRANSMISSION ABSORPTION", ref this.skin.transAbsorption);
             }
 
+            Separator();
             GUILayout.EndScrollView();
         }
 
@@ -362,7 +364,7 @@ namespace HSSSS
 
                 else
                 {
-                    SliderControls("PENUMBRA SCALE (MILIMETER)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / PENUMBRA SCALE (MILIMETER)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 Separator();
@@ -377,7 +379,7 @@ namespace HSSSS
 
                 else
                 {
-                    SliderControls("PENUMBRA SCALE (MILIMETER)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("SPOT / PENUMBRA SCALE (MILIMETER)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
                 }
 
                 Separator();
@@ -392,7 +394,7 @@ namespace HSSSS
 
                 else
                 {
-                    SliderControls("PENUMBRA SCALE (MILIMETER)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("POINT / PENUMBRA SCALE (MILIMETER)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
                 }
             }
             #endregion
@@ -416,7 +418,8 @@ namespace HSSSS
                 }
             }
             #endregion
-
+            
+            Separator();
             GUILayout.EndScrollView();
         }
 
@@ -460,12 +463,9 @@ namespace HSSSS
                 {
                     SliderControls("LIGHT APATURE", ref this.ssao.doApature, 0.0f, 1.0f);
                 }
-
-                Separator();
-
-                OnOffToolbar("SPATIAL DENOISER", ref this.ssao.denoise);
             }
-
+            
+            Separator();
             GUILayout.EndScrollView();
         }
 
@@ -507,7 +507,8 @@ namespace HSSSS
                 OnOffToolbar("SPATIAL DENOISER", ref this.ssgi.denoise);
                 SliderControls("TEMPORAL DENOISER", ref this.ssgi.mixWeight, 0.0f, 1.0f);
             }
-
+            
+            Separator();
             GUILayout.EndScrollView();
         }
 
@@ -530,6 +531,7 @@ namespace HSSSS
                 SliderControls("MIX WEIGHT", ref this.taau.mixWeight, 0.0f, 1.0f);
             }
 
+            Separator();
             GUILayout.EndScrollView();
         }
 
@@ -587,6 +589,7 @@ namespace HSSSS
                 SliderControls("EYEBROW WRAP OFFSET", ref this.misc.wrapOffset, 0.0f, 0.5f);
             }
 
+            Separator();
             GUILayout.EndScrollView();
 
             GUILayout.Label("<color=red>*Save & reload the current scene or waifus to apply the changes</color>", new GUIStyle { fontSize = tetraSpace });

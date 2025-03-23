@@ -529,11 +529,12 @@ namespace HSSSS
             this.mBuffer.Blit(zbf[3], zbf[4]);
 
             // GTAO pass
-            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, mask, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 1);
+            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, mask,
+                this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 4 * Convert.ToInt32(Properties.ssao.subsample) + 1);
             
             // calculate occlusion mrt
             this.mBuffer.SetRenderTarget(mrt, BuiltinRenderTextureType.CameraTarget);
-            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 5);
+            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 13);
             
             // diffuse occlusion
             this.mBuffer.Blit(mrt[0], BuiltinRenderTextureType.CameraTarget);
@@ -717,34 +718,34 @@ namespace HSSSS
 
             // prepass
             this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, irad[0], this.mMaterial, 0);
-            this.mBuffer.Blit(irad[0], irad[1], this.mMaterial, 1);
-            this.mBuffer.Blit(irad[1], irad[2], this.mMaterial, 1);
-            this.mBuffer.Blit(irad[2], irad[3], this.mMaterial, 1);
-            this.mBuffer.Blit(irad[3], irad[4], this.mMaterial, 1);
+            this.mBuffer.Blit(irad[0], irad[1]);
+            this.mBuffer.Blit(irad[1], irad[2]);
+            this.mBuffer.Blit(irad[2], irad[3]);
+            this.mBuffer.Blit(irad[3], irad[4]);
 
             // main pass
             this.mBuffer.SetRenderTarget(flipMRT, BuiltinRenderTextureType.CameraTarget);
-            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, Convert.ToInt32(Properties.ssgi.quality) + 2);
+            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, Convert.ToInt32(Properties.ssgi.quality) + 1);
             // temporal filter
             this.mBuffer.SetRenderTarget(flopMRT, BuiltinRenderTextureType.CameraTarget);
-            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 6);
+            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 5);
             // main blur & post blur
             if (Properties.ssgi.denoise)
             {
                 this.mBuffer.SetRenderTarget(flipMRT, BuiltinRenderTextureType.CameraTarget);
+                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 6);
+                this.mBuffer.SetRenderTarget(flopMRT, BuiltinRenderTextureType.CameraTarget);
                 this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 7);
-                this.mBuffer.SetRenderTarget(flopMRT, BuiltinRenderTextureType.CameraTarget);
-                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 8);
                 this.mBuffer.SetRenderTarget(flipMRT, BuiltinRenderTextureType.CameraTarget);
-                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 9);
+                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 8);
                 this.mBuffer.SetRenderTarget(flopMRT, BuiltinRenderTextureType.CameraTarget);
-                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 12);
+                this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 11);
             }
             // store
             this.mBuffer.SetRenderTarget(hist, BuiltinRenderTextureType.CameraTarget);
-            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 10);
+            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 9);
             // collect
-            this.mBuffer.Blit(flip[0], flip[1], this.mMaterial, 11);
+            this.mBuffer.Blit(flip[0], flip[1], this.mMaterial, 10);
             this.mBuffer.Blit(flip[1], BuiltinRenderTextureType.CameraTarget);
 
             for (int i = 0; i < 4; i ++)
