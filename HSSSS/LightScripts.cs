@@ -70,13 +70,13 @@ namespace HSSSS
 
             this.mMaterial.SetTexture("_BlueNoise", AssetLoader.blueNoise);
 
-            this.mMaterial.SetVector("_DirLightPenumbra", Properties.pcss.dirLightPenumbra);
-            this.mMaterial.SetVector("_SpotLightPenumbra", Properties.pcss.spotLightPenumbra);
-            this.mMaterial.SetVector("_PointLightPenumbra", Properties.pcss.pointLightPenumbra);
+            this.mMaterial.SetVector(Properties.pcss.dirLightPenumbra.Key, Properties.pcss.dirLightPenumbra.Value);
+            this.mMaterial.SetVector(Properties.pcss.spotLightPenumbra.Key, Properties.pcss.spotLightPenumbra.Value);
+            this.mMaterial.SetVector(Properties.pcss.pointLightPenumbra.Key, Properties.pcss.pointLightPenumbra.Value);
 
-            this.mMaterial.SetFloat("_SSCSRayLength", Properties.sscs.rayRadius * 0.01f);
-            this.mMaterial.SetFloat("_SSCSDepthBias", Properties.sscs.depthBias * 0.001f);
-            this.mMaterial.SetFloat("_SSCSMeanDepth", Properties.sscs.meanDepth);
+            this.mMaterial.SetFloat(Properties.sscs.rayRadius.Key, Properties.sscs.rayRadius.Value * 0.01f);
+            this.mMaterial.SetFloat(Properties.sscs.depthBias.Key, Properties.sscs.depthBias.Value * 0.001f);
+            this.mMaterial.SetFloat(Properties.sscs.meanDepth.Key, Properties.sscs.meanDepth.Value);
 
             this.mLight = GetComponent<Light>();
 
@@ -238,13 +238,13 @@ namespace HSSSS
 
             if (this.mMaterial)
             {
-                this.mMaterial.SetVector("_DirLightPenumbra", Properties.pcss.dirLightPenumbra);
-                this.mMaterial.SetVector("_SpotLightPenumbra", Properties.pcss.spotLightPenumbra);
-                this.mMaterial.SetVector("_PointLightPenumbra", Properties.pcss.pointLightPenumbra);
+                this.mMaterial.SetVector(Properties.pcss.dirLightPenumbra.Key, Properties.pcss.dirLightPenumbra.Value);
+                this.mMaterial.SetVector(Properties.pcss.spotLightPenumbra.Key, Properties.pcss.spotLightPenumbra.Value);
+                this.mMaterial.SetVector(Properties.pcss.pointLightPenumbra.Key, Properties.pcss.pointLightPenumbra.Value);
 
-                this.mMaterial.SetFloat("_SSCSRayLength", Properties.sscs.rayRadius * 0.01f);
-                this.mMaterial.SetFloat("_SSCSDepthBias", Properties.sscs.depthBias * 0.001f);
-                this.mMaterial.SetFloat("_SSCSMeanDepth", Properties.sscs.meanDepth);
+                this.mMaterial.SetFloat(Properties.sscs.rayRadius.Key, Properties.sscs.rayRadius.Value * 0.01f);
+                this.mMaterial.SetFloat(Properties.sscs.depthBias.Key, Properties.sscs.depthBias.Value * 0.001f);
+                this.mMaterial.SetFloat(Properties.sscs.meanDepth.Key, Properties.sscs.meanDepth.Value);
             }
         }
     }

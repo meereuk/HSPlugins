@@ -458,7 +458,7 @@ namespace HSSSS
         private Camera mCamera;
         private Material mMaterial;
         private CommandBuffer mBuffer;
-        private static Mesh mrtMesh = null;
+        private static Mesh mrtMesh;
         private const string BufferName = "HSSSS.SSAO";
 
         private void Awake()
@@ -606,16 +606,15 @@ namespace HSSSS
         {
             if (this.enabled)
             {
-                this.mMaterial.SetFloat("_SSAOFadeDepth", Properties.ssao.fadeDepth);
-                this.mMaterial.SetFloat("_SSAORayLength", Properties.ssao.rayRadius);
-                this.mMaterial.SetFloat("_SSAOIntensity", Properties.ssao.intensity);
-                this.mMaterial.SetFloat("_SSAOLightBias", Properties.ssao.lightBias);
-                this.mMaterial.SetFloat("_SSAOMeanDepth", Properties.ssao.meanDepth);
-                this.mMaterial.SetInt(  "_SSAORayStride", Properties.ssao.rayStride);
-                this.mMaterial.SetInt(  "_SSAOSubSample", Convert.ToUInt16(Properties.ssao.subsample));
+                this.mMaterial.SetFloat(Properties.ssao.fadeDepth.Key, Properties.ssao.fadeDepth.Value);
+                this.mMaterial.SetFloat(Properties.ssao.rayRadius.Key, Properties.ssao.rayRadius.Value);
+                this.mMaterial.SetFloat(Properties.ssao.intensity.Key, Properties.ssao.intensity.Value);
+                this.mMaterial.SetFloat(Properties.ssao.lightBias.Key, Properties.ssao.lightBias.Value);
+                this.mMaterial.SetFloat(Properties.ssao.meanDepth.Key, Properties.ssao.meanDepth.Value);
+                this.mMaterial.SetInt(  Properties.ssao.rayStride.Key, Properties.ssao.rayStride.Value);
 
-                Shader.SetGlobalInt("_UseDirectOcclusion", Properties.ssao.usessdo ? 1 : 0);
-                Shader.SetGlobalFloat("_SSDOLightApatureScale", Properties.ssao.doApature);
+                Shader.SetGlobalInt(Properties.ssao.usessdo.Key, Properties.ssao.usessdo.Value ? 1 : 0);
+                Shader.SetGlobalFloat(Properties.ssao.doApature.Key, Properties.ssao.doApature.Value);
 
                 this.RemoveCommandBuffer();
                 this.SetupCommandBuffer();
@@ -631,7 +630,7 @@ namespace HSSSS
         private Material mMaterial;
         private CommandBuffer mBuffer;
 
-        public struct HistoryBuffer
+        private struct HistoryBuffer
         {
             public RenderTexture diffuse;
             public RenderTexture specular;
@@ -641,7 +640,7 @@ namespace HSSSS
 
         private HistoryBuffer history;
 
-        private static Mesh mrtMesh = null;
+        private static Mesh mrtMesh;
         private readonly string bufferName = "HSSSS.SSGI";
 
         private void Awake()
@@ -868,14 +867,14 @@ namespace HSSSS
         {
             if (this.enabled)
             {
-                this.mMaterial.SetFloat("_SSGIMeanDepth", Properties.ssgi.meanDepth);
-                this.mMaterial.SetFloat("_SSGIFadeDepth", Properties.ssgi.fadeDepth);
-                this.mMaterial.SetFloat("_SSGIMixFactor", Properties.ssgi.mixWeight);
-                this.mMaterial.SetFloat("_SSGIRayLength", Properties.ssgi.rayRadius);
-                this.mMaterial.SetFloat("_SSGIIntensity", Properties.ssgi.intensity);
-                this.mMaterial.SetFloat("_SSGISecondary", Properties.ssgi.secondary);
-                this.mMaterial.SetFloat("_SSGIRoughness", Properties.ssgi.roughness);
-                this.mMaterial.SetInt("_SSGIStepPower", Properties.ssgi.rayStride);
+                this.mMaterial.SetFloat(Properties.ssgi.meanDepth.Key, Properties.ssgi.meanDepth.Value);
+                this.mMaterial.SetFloat(Properties.ssgi.fadeDepth.Key, Properties.ssgi.fadeDepth.Value);
+                this.mMaterial.SetFloat(Properties.ssgi.mixWeight.Key, Properties.ssgi.mixWeight.Value);
+                this.mMaterial.SetFloat(Properties.ssgi.rayRadius.Key, Properties.ssgi.rayRadius.Value);
+                this.mMaterial.SetFloat(Properties.ssgi.intensity.Key, Properties.ssgi.intensity.Value);
+                this.mMaterial.SetFloat(Properties.ssgi.secondary.Key, Properties.ssgi.secondary.Value);
+                this.mMaterial.SetFloat(Properties.ssgi.roughness.Key, Properties.ssgi.roughness.Value);
+                this.mMaterial.SetInt(Properties.ssgi.rayStride.Key, Properties.ssgi.rayStride.Value);
 
                 this.RemoveCommandBuffer();
                 this.SetupCommandBuffer();
@@ -927,7 +926,7 @@ namespace HSSSS
         {
             if (this.enabled && this.mMaterial)
             {
-                this.mMaterial.SetFloat("_TemporalMixFactor", Properties.taau.mixWeight);
+                this.mMaterial.SetFloat(Properties.taau.mixWeight.Key, Properties.taau.mixWeight.Value);
             }
         }
     }
@@ -1039,11 +1038,11 @@ namespace HSSSS
         {
             if (this.enabled && this.mMaterial)
             {
-                this.mMaterial.SetFloat("_AgXGamma", Properties.agx.gamma);
-                this.mMaterial.SetFloat("_AgXSaturation", Properties.agx.saturation);
-                this.mMaterial.SetVector("_AgXOffset", Properties.agx.offset);
-                this.mMaterial.SetVector("_AgXSlope", Properties.agx.slope);
-                this.mMaterial.SetVector("_AgXPower", Properties.agx.power);
+                this.mMaterial.SetFloat(Properties.agx.gamma.Key, Properties.agx.gamma.Value);
+                this.mMaterial.SetFloat(Properties.agx.saturation.Key, Properties.agx.saturation.Value);
+                this.mMaterial.SetVector(Properties.agx.offset.Key, Properties.agx.offset.Value);
+                this.mMaterial.SetVector(Properties.agx.slope.Key, Properties.agx.slope.Value);
+                this.mMaterial.SetVector(Properties.agx.power.Key, Properties.agx.power.Value);
             }
         }
     }

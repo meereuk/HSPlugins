@@ -221,8 +221,8 @@ namespace HSSSS
                     if (Properties.tess.enabled)
                     {
                         material.shader.maximumLOD = Properties.skin.microDetails ? 450 : 400;
-                        material.SetFloat("_Phong", Properties.tess.phong);
-                        material.SetFloat("_EdgeLength", Properties.tess.edge);
+                        material.SetFloat(Properties.tess.phong.Key, Properties.tess.phong.Value);
+                        material.SetFloat(Properties.tess.edge.Key, Properties.tess.edge.Value);
                     }
 
                     else
@@ -234,13 +234,13 @@ namespace HSSSS
 
             if (Properties.misc.fixOverlay)
             {
-                eyebrow.SetFloat("_Phong", Properties.tess.phong);
-                eyebrow.SetFloat("_EdgeLength", Properties.tess.edge);
-                eyebrow.SetFloat("_VertexWrapOffset", Properties.misc.wrapOffset);
+                eyebrow.SetFloat(Properties.tess.phong.Key, Properties.tess.phong.Value);
+                eyebrow.SetFloat(Properties.tess.edge.Key, Properties.tess.edge.Value);
+                eyebrow.SetFloat(Properties.misc.wrapOffset.Key, Properties.misc.wrapOffset.Value);
             }
 
-            skin.SetFloat("_DetailNormalMapScale_2", Properties.skin.microDetailWeight_1);
-            skin.SetFloat("_DetailNormalMapScale_3", Properties.skin.microDetailWeight_2);
+            skin.SetFloat(Properties.skin.microDetailWeight_1.Key, Properties.skin.microDetailWeight_1.Value);
+            skin.SetFloat(Properties.skin.microDetailWeight_2.Key, Properties.skin.microDetailWeight_2.Value);
 
             Vector2 tiling = new Vector2(Math.Max(Properties.skin.microDetailTiling, 0.01f), Math.Max(Properties.skin.microDetailTiling, 0.01f));
 

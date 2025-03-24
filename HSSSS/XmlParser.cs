@@ -7,8 +7,8 @@ namespace HSSSS
 {
     public static class XmlParser
     {
-        private static XDocument doc = null;
-        private static string prefix = null;
+        private static XDocument doc;
+        private static string prefix;
 
         public static void SaveXml(XmlWriter writer)
         {
@@ -92,25 +92,25 @@ namespace HSSSS
                 // directional light
                 writer.WriteStartElement("Directional");
                 {
-                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.pcss.dirLightPenumbra.x));
-                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.pcss.dirLightPenumbra.y));
-                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.pcss.dirLightPenumbra.z));
+                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.pcss.dirLightPenumbra.Value.x));
+                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.pcss.dirLightPenumbra.Value.y));
+                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.pcss.dirLightPenumbra.Value.z));
                 }
                 writer.WriteEndElement();
                 // spot light
                 writer.WriteStartElement("Spot");
                 {
-                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.pcss.spotLightPenumbra.x));
-                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.pcss.spotLightPenumbra.y));
-                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.pcss.spotLightPenumbra.z));
+                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.pcss.spotLightPenumbra.Value.x));
+                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.pcss.spotLightPenumbra.Value.y));
+                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.pcss.spotLightPenumbra.Value.z));
                 }
                 writer.WriteEndElement();
                 // spot light
                 writer.WriteStartElement("Point");
                 {
-                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.pcss.pointLightPenumbra.x));
-                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.pcss.pointLightPenumbra.y));
-                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.pcss.pointLightPenumbra.z));
+                    writer.WriteElementString("SearchRadius", XmlConvert.ToString(Properties.pcss.pointLightPenumbra.Value.x));
+                    writer.WriteElementString("LightRadius", XmlConvert.ToString(Properties.pcss.pointLightPenumbra.Value.y));
+                    writer.WriteElementString("MinPenumbra", XmlConvert.ToString(Properties.pcss.pointLightPenumbra.Value.z));
                 }
                 writer.WriteEndElement();
             }
@@ -120,23 +120,23 @@ namespace HSSSS
             {
                 writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.ssao.enabled));
                 // direct occlusion
-                writer.WriteElementString("UseSSDO", XmlConvert.ToString(Properties.ssao.usessdo));
+                writer.WriteElementString("UseSSDO", XmlConvert.ToString(Properties.ssao.usessdo.Value));
                 // quality
                 writer.WriteElementString("Quality", Convert.ToString(Properties.ssao.quality));
                 // intensity
-                writer.WriteElementString("Intensity", XmlConvert.ToString(Properties.ssao.intensity));
+                writer.WriteElementString("Intensity", XmlConvert.ToString(Properties.ssao.intensity.Value));
                 // light bias
-                writer.WriteElementString("LightBias", XmlConvert.ToString(Properties.ssao.lightBias));
+                writer.WriteElementString("LightBias", XmlConvert.ToString(Properties.ssao.lightBias.Value));
                 // ray radius
-                writer.WriteElementString("RayRadius", XmlConvert.ToString(Properties.ssao.rayRadius));
+                writer.WriteElementString("RayRadius", XmlConvert.ToString(Properties.ssao.rayRadius.Value));
                 // ray stride
-                writer.WriteElementString("RayStride", XmlConvert.ToString(Properties.ssao.rayStride));
+                writer.WriteElementString("RayStride", XmlConvert.ToString(Properties.ssao.rayStride.Value));
                 // mean depth
-                writer.WriteElementString("MeanDepth", XmlConvert.ToString(Properties.ssao.meanDepth));
+                writer.WriteElementString("MeanDepth", XmlConvert.ToString(Properties.ssao.meanDepth.Value));
                 // fade depth
-                writer.WriteElementString("FadeDepth", XmlConvert.ToString(Properties.ssao.fadeDepth));
+                writer.WriteElementString("FadeDepth", XmlConvert.ToString(Properties.ssao.fadeDepth.Value));
                 // ssdo apature
-                writer.WriteElementString("DOApature", XmlConvert.ToString(Properties.ssao.doApature));
+                writer.WriteElementString("DOApature", XmlConvert.ToString(Properties.ssao.doApature.Value));
                 // spatial denoiser
                 writer.WriteElementString("Denoiser", XmlConvert.ToString(Properties.ssao.denoise));
             }
@@ -148,21 +148,21 @@ namespace HSSSS
                 // quality
                 writer.WriteElementString("Quality", Convert.ToString(Properties.ssgi.quality));
                 // primary gain
-                writer.WriteElementString("Intensity", XmlConvert.ToString(Properties.ssgi.intensity));
+                writer.WriteElementString("Intensity", XmlConvert.ToString(Properties.ssgi.intensity.Value));
                 // secondary gain
-                writer.WriteElementString("Secondary", XmlConvert.ToString(Properties.ssgi.secondary));
+                writer.WriteElementString("Secondary", XmlConvert.ToString(Properties.ssgi.secondary.Value));
                 // ray radius
-                writer.WriteElementString("RayRadius", XmlConvert.ToString(Properties.ssgi.rayRadius));
+                writer.WriteElementString("RayRadius", XmlConvert.ToString(Properties.ssgi.rayRadius.Value));
                 // ray stride
-                writer.WriteElementString("RayStride", XmlConvert.ToString(Properties.ssgi.rayStride));
+                writer.WriteElementString("RayStride", XmlConvert.ToString(Properties.ssgi.rayStride.Value));
                 // mean depth
-                writer.WriteElementString("MeanDepth", XmlConvert.ToString(Properties.ssgi.meanDepth));
+                writer.WriteElementString("MeanDepth", XmlConvert.ToString(Properties.ssgi.meanDepth.Value));
                 // fade depth
-                writer.WriteElementString("FadeDepth", XmlConvert.ToString(Properties.ssgi.fadeDepth));
+                writer.WriteElementString("FadeDepth", XmlConvert.ToString(Properties.ssgi.fadeDepth.Value));
                 // spatial denoiser
                 writer.WriteElementString("Denoiser", XmlConvert.ToString(Properties.ssgi.denoise));
                 // temporal denoiser
-                writer.WriteElementString("MixWeight", XmlConvert.ToString(Properties.ssgi.mixWeight));
+                writer.WriteElementString("MixWeight", XmlConvert.ToString(Properties.ssgi.mixWeight.Value));
             }
             writer.WriteEndElement();
             // contact shadow
@@ -172,11 +172,39 @@ namespace HSSSS
                 // quality
                 writer.WriteElementString("Quality", Convert.ToString(Properties.sscs.quality));
                 // ray radius
-                writer.WriteElementString("RayRadius", XmlConvert.ToString(Properties.sscs.rayRadius));
+                writer.WriteElementString("RayRadius", XmlConvert.ToString(Properties.sscs.rayRadius.Value));
                 // depth bias
-                writer.WriteElementString("DepthBias", XmlConvert.ToString(Properties.sscs.depthBias));
+                writer.WriteElementString("DepthBias", XmlConvert.ToString(Properties.sscs.depthBias.Value));
                 // mean depth
-                writer.WriteElementString("MeanDepth", XmlConvert.ToString(Properties.sscs.meanDepth));
+                writer.WriteElementString("MeanDepth", XmlConvert.ToString(Properties.sscs.meanDepth.Value));
+            }
+            writer.WriteEndElement();
+            // tone mapper
+            writer.WriteStartElement("ToneMapper");
+            {
+                writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.agx.enabled));
+                // gamma
+                writer.WriteElementString("Gamma", XmlConvert.ToString(Properties.agx.gamma.Value));
+                // saturation
+                writer.WriteElementString("Saturation", XmlConvert.ToString(Properties.agx.saturation.Value));
+                // offset
+                writer.WriteStartElement("Offset");
+                writer.WriteElementString("Red", XmlConvert.ToString(Properties.agx.offset.Value.x));
+                writer.WriteElementString("Green", XmlConvert.ToString(Properties.agx.offset.Value.y));
+                writer.WriteElementString("Blue", XmlConvert.ToString(Properties.agx.offset.Value.z));
+                writer.WriteEndElement();
+                // slope
+                writer.WriteStartElement("Slope");
+                writer.WriteElementString("Red", XmlConvert.ToString(Properties.agx.slope.Value.x));
+                writer.WriteElementString("Green", XmlConvert.ToString(Properties.agx.slope.Value.y));
+                writer.WriteElementString("Blue", XmlConvert.ToString(Properties.agx.slope.Value.z));
+                writer.WriteEndElement();
+                // power
+                writer.WriteStartElement("Power");
+                writer.WriteElementString("Red", XmlConvert.ToString(Properties.agx.power.Value.x));
+                writer.WriteElementString("Green", XmlConvert.ToString(Properties.agx.power.Value.y));
+                writer.WriteElementString("Blue", XmlConvert.ToString(Properties.agx.power.Value.z));
+                writer.WriteEndElement();
             }
             writer.WriteEndElement();
             // miscellaneous
@@ -186,9 +214,9 @@ namespace HSSSS
                 writer.WriteStartElement("MicroDetails");
                 {
                     writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.skin.microDetails));
-                    writer.WriteElementString("Weight_1", XmlConvert.ToString(Properties.skin.microDetailWeight_1));
-                    writer.WriteElementString("Weight_2", XmlConvert.ToString(Properties.skin.microDetailWeight_2));
-                    writer.WriteElementString("Occlusion", XmlConvert.ToString(Properties.skin.microDetailOcclusion));
+                    writer.WriteElementString("Weight_1", XmlConvert.ToString(Properties.skin.microDetailWeight_1.Value));
+                    writer.WriteElementString("Weight_2", XmlConvert.ToString(Properties.skin.microDetailWeight_2.Value));
+                    writer.WriteElementString("Occlusion", XmlConvert.ToString(Properties.skin.microDetailOcclusion.Value));
                     writer.WriteElementString("Tiling", XmlConvert.ToString(Properties.skin.microDetailTiling));
                 }
                 writer.WriteEndElement();
@@ -196,8 +224,8 @@ namespace HSSSS
                 writer.WriteStartElement("Tessellation");
                 {
                     writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.tess.enabled));
-                    writer.WriteElementString("Phong", XmlConvert.ToString(Properties.tess.phong));
-                    writer.WriteElementString("EdgeLength", XmlConvert.ToString(Properties.tess.edge));
+                    writer.WriteElementString("Phong", XmlConvert.ToString(Properties.tess.phong.Value));
+                    writer.WriteElementString("EdgeLength", XmlConvert.ToString(Properties.tess.edge.Value));
                 }
                 writer.WriteEndElement();
                 // dedicated eye shader
@@ -210,7 +238,7 @@ namespace HSSSS
                 writer.WriteStartElement("OverlayShader");
                 {
                     writer.WriteAttributeString("Enabled", XmlConvert.ToString(Properties.misc.fixOverlay));
-                    writer.WriteElementString("WrapOffset", XmlConvert.ToString(Properties.misc.wrapOffset));
+                    writer.WriteElementString("WrapOffset", XmlConvert.ToString(Properties.misc.wrapOffset.Value));
                 }
                 writer.WriteEndElement();
                 // wet skin overlay
@@ -295,17 +323,17 @@ namespace HSSSS
             XmlQuery<Properties.PCFState>(null, "State", ref Properties.pcss.pcfState);
             XmlQuery<bool>("/PCSS", ref Properties.pcss.pcssEnabled);
 
-            XmlQuery<float>("/Directional/SearchRadius", ref Properties.pcss.dirLightPenumbra.x);
-            XmlQuery<float>("/Directional/LightRadius", ref Properties.pcss.dirLightPenumbra.y);
-            XmlQuery<float>("/Directional/MinPenumbra", ref Properties.pcss.dirLightPenumbra.z);
+            XmlQuery<float>("/Directional/SearchRadius", ref Properties.pcss.dirLightPenumbra.Value.x);
+            XmlQuery<float>("/Directional/LightRadius", ref Properties.pcss.dirLightPenumbra.Value.y);
+            XmlQuery<float>("/Directional/MinPenumbra", ref Properties.pcss.dirLightPenumbra.Value.z);
 
-            XmlQuery<float>("/Spot/SearchRadius", ref Properties.pcss.spotLightPenumbra.x);
-            XmlQuery<float>("/Spot/LightRadius", ref Properties.pcss.spotLightPenumbra.y);
-            XmlQuery<float>("/Spot/MinPenumbra", ref Properties.pcss.spotLightPenumbra.z);
+            XmlQuery<float>("/Spot/SearchRadius", ref Properties.pcss.spotLightPenumbra.Value.x);
+            XmlQuery<float>("/Spot/LightRadius", ref Properties.pcss.spotLightPenumbra.Value.y);
+            XmlQuery<float>("/Spot/MinPenumbra", ref Properties.pcss.spotLightPenumbra.Value.z);
 
-            XmlQuery<float>("/Point/SearchRadius", ref Properties.pcss.pointLightPenumbra.x);
-            XmlQuery<float>("/Point/LightRadius", ref Properties.pcss.pointLightPenumbra.y);
-            XmlQuery<float>("/Point/MinPenumbra", ref Properties.pcss.pointLightPenumbra.z);
+            XmlQuery<float>("/Point/SearchRadius", ref Properties.pcss.pointLightPenumbra.Value.x);
+            XmlQuery<float>("/Point/LightRadius", ref Properties.pcss.pointLightPenumbra.Value.y);
+            XmlQuery<float>("/Point/MinPenumbra", ref Properties.pcss.pointLightPenumbra.Value.z);
 
             ///////////////////////
             // ambient occlusion //
@@ -317,17 +345,17 @@ namespace HSSSS
 
             XmlQuery<Properties.QualityPreset>("/Quality", ref Properties.ssao.quality);
 
-            XmlQuery<float>("/Intensity", ref Properties.ssao.intensity);
-            XmlQuery<float>("/LightBias", ref Properties.ssao.lightBias);
+            XmlQuery<float>("/Intensity", ref Properties.ssao.intensity.Value);
+            XmlQuery<float>("/LightBias", ref Properties.ssao.lightBias.Value);
 
-            XmlQuery<float>("/RayRadius", ref Properties.ssao.rayRadius);
-            XmlQuery<int>("/RayStride", ref Properties.ssao.rayStride);
+            XmlQuery<float>("/RayRadius", ref Properties.ssao.rayRadius.Value);
+            XmlQuery<int>("/RayStride", ref Properties.ssao.rayStride.Value);
 
-            XmlQuery<float>("/MeanDepth", ref Properties.ssao.meanDepth);
-            XmlQuery<float>("/FadeDepth", ref Properties.ssao.fadeDepth);
+            XmlQuery<float>("/MeanDepth", ref Properties.ssao.meanDepth.Value);
+            XmlQuery<float>("/FadeDepth", ref Properties.ssao.fadeDepth.Value);
 
-            XmlQuery<bool>("/UseSSDO", ref Properties.ssao.usessdo);
-            XmlQuery<float>("/DOApature", ref Properties.ssao.doApature);
+            XmlQuery<bool>("/UseSSDO", ref Properties.ssao.usessdo.Value);
+            XmlQuery<float>("/DOApature", ref Properties.ssao.doApature.Value);
 
             XmlQuery<bool>("/Denoiser", ref Properties.ssao.denoise);
 
@@ -340,17 +368,17 @@ namespace HSSSS
             XmlQuery<bool>("", "Enabled", ref Properties.ssgi.enabled);
             XmlQuery<Properties.QualityPreset>("/Quality", ref Properties.ssgi.quality);
 
-            XmlQuery<float>("/Intensity", ref Properties.ssgi.intensity);
-            XmlQuery<float>("/Secondary", ref Properties.ssgi.secondary);
+            XmlQuery<float>("/Intensity", ref Properties.ssgi.intensity.Value);
+            XmlQuery<float>("/Secondary", ref Properties.ssgi.secondary.Value);
 
-            XmlQuery<float>("/RayRadius", ref Properties.ssgi.rayRadius);
-            XmlQuery<int>("/RayStride", ref Properties.ssgi.rayStride);
+            XmlQuery<float>("/RayRadius", ref Properties.ssgi.rayRadius.Value);
+            XmlQuery<int>("/RayStride", ref Properties.ssgi.rayStride.Value);
 
-            XmlQuery<float>("/MeanDepth", ref Properties.ssgi.meanDepth);
-            XmlQuery<float>("/FadeDepth", ref Properties.ssgi.fadeDepth);
+            XmlQuery<float>("/MeanDepth", ref Properties.ssgi.meanDepth.Value);
+            XmlQuery<float>("/FadeDepth", ref Properties.ssgi.fadeDepth.Value);
 
             XmlQuery<bool>("/Denoiser", ref Properties.ssgi.denoise);
-            XmlQuery<float>("/MixWeight", ref Properties.ssgi.mixWeight);
+            XmlQuery<float>("/MixWeight", ref Properties.ssgi.mixWeight.Value);
 
             ////////////////////
             // contact shadow //
@@ -360,9 +388,30 @@ namespace HSSSS
 
             XmlQuery<bool>("", "Enabled", ref Properties.sscs.enabled);
             XmlQuery<Properties.QualityPreset>("/Quality", ref Properties.sscs.quality);
-            XmlQuery<float>("/RayRadius", ref Properties.sscs.rayRadius);
-            XmlQuery<float>("/DepthBias", ref Properties.sscs.depthBias);
-            XmlQuery<float>("/MeanDepth", ref Properties.sscs.meanDepth);
+            XmlQuery<float>("/RayRadius", ref Properties.sscs.rayRadius.Value);
+            XmlQuery<float>("/DepthBias", ref Properties.sscs.depthBias.Value);
+            XmlQuery<float>("/MeanDepth", ref Properties.sscs.meanDepth.Value);
+            
+            /////////////////
+            // tone mapper //
+            /////////////////
+
+            prefix = "HSSSS/ToneMapper";
+            XmlQuery<bool>("", "Enabled", ref Properties.agx.enabled);
+            XmlQuery<float>("/Gamma", ref Properties.agx.gamma.Value);
+            XmlQuery<float>("/Saturation", ref Properties.agx.saturation.Value);
+            
+            XmlQuery<float>("/Offset/Red", ref Properties.agx.offset.Value.x);
+            XmlQuery<float>("/Offset/Green", ref Properties.agx.offset.Value.y);
+            XmlQuery<float>("/Offset/Blue", ref Properties.agx.offset.Value.z);
+            
+            XmlQuery<float>("/Slope/Red", ref Properties.agx.slope.Value.x);
+            XmlQuery<float>("/Slope/Green", ref Properties.agx.slope.Value.y);
+            XmlQuery<float>("/Slope/Blue", ref Properties.agx.slope.Value.z);
+            
+            XmlQuery<float>("/Power/Red", ref Properties.agx.power.Value.x);
+            XmlQuery<float>("/Power/Green", ref Properties.agx.power.Value.y);
+            XmlQuery<float>("/Power/Blue", ref Properties.agx.power.Value.z);
 
             ///////////////////
             // miscellaneous //
@@ -372,19 +421,19 @@ namespace HSSSS
 
             // microdetails
             XmlQuery<bool>("/MicroDetails", "Enabled", ref Properties.skin.microDetails);
-            XmlQuery<float>("/MicroDetails/Weight_1", ref Properties.skin.microDetailWeight_1);
-            XmlQuery<float>("/MicroDetails/Weight_2", ref Properties.skin.microDetailWeight_2);
-            XmlQuery<float>("/MicroDetails/Occlusion", ref Properties.skin.microDetailOcclusion);
+            XmlQuery<float>("/MicroDetails/Weight_1", ref Properties.skin.microDetailWeight_1.Value);
+            XmlQuery<float>("/MicroDetails/Weight_2", ref Properties.skin.microDetailWeight_2.Value);
+            XmlQuery<float>("/MicroDetails/Occlusion", ref Properties.skin.microDetailOcclusion.Value);
             XmlQuery<float>("/MicroDetails/Tiling", ref Properties.skin.microDetailTiling);
             // tessellation
             XmlQuery<bool>("/Tessellation", "Enabled", ref Properties.tess.enabled);
-            XmlQuery<float>("/Tessellation/Phong", ref Properties.tess.phong);
-            XmlQuery<float>("/Tessellation/EdgeLength", ref Properties.tess.edge);
+            XmlQuery<float>("/Tessellation/Phong", ref Properties.tess.phong.Value);
+            XmlQuery<float>("/Tessellation/EdgeLength", ref Properties.tess.edge.Value);
             // dedicated eye shader
             XmlQuery<bool>("/POMEyeShader", "Enabled", ref Properties.misc.fixEyeball);
             // fix overlay shadow
             XmlQuery<bool>("/OverlayShader", "Enabled", ref Properties.misc.fixOverlay);
-            XmlQuery<float>("/OverlayShader/WrapOffset", ref Properties.misc.wrapOffset);
+            XmlQuery<float>("/OverlayShader/WrapOffset", ref Properties.misc.wrapOffset.Value);
             // wet skin overlay
             XmlQuery<bool>("/WetSkinOverlay", "Enabled", ref Properties.misc.wetOverlay);
 

@@ -364,14 +364,14 @@ namespace HSSSS
 
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("DIRECTIONAL / SEARCH RADIUS (TANGENT / 100)", ref this.pcss.dirLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("DIRECTIONAL / LIGHT RADIUS (TANGENT / 100)", ref this.pcss.dirLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("DIRECTIONAL / MINIMUM PENUMBRA (MILIMETER)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / SEARCH RADIUS (TANGENT / 100)", ref this.pcss.dirLightPenumbra.Value.x, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / LIGHT RADIUS (TANGENT / 100)", ref this.pcss.dirLightPenumbra.Value.y, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / MINIMUM PENUMBRA (MILIMETER)", ref this.pcss.dirLightPenumbra.Value.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("DIRECTIONAL / PENUMBRA SCALE (MILIMETER)", ref this.pcss.dirLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("DIRECTIONAL / PENUMBRA SCALE (MILIMETER)", ref this.pcss.dirLightPenumbra.Value.z, 0.0f, 20.0f);
                 }
 
                 Separator();
@@ -379,14 +379,14 @@ namespace HSSSS
                 // spot lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("SPOT / SEARCH RADIUS (CENTIMETER)", ref this.pcss.spotLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("SPOT / LIGHT RADIUS (CENTIMETER)", ref this.pcss.spotLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("SPOT / MINIMUM PENUMBRA (MILIMETER)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("SPOT / SEARCH RADIUS (CENTIMETER)", ref this.pcss.spotLightPenumbra.Value.x, 0.0f, 20.0f);
+                    SliderControls("SPOT / LIGHT RADIUS (CENTIMETER)", ref this.pcss.spotLightPenumbra.Value.y, 0.0f, 20.0f);
+                    SliderControls("SPOT / MINIMUM PENUMBRA (MILIMETER)", ref this.pcss.spotLightPenumbra.Value.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("SPOT / PENUMBRA SCALE (MILIMETER)", ref this.pcss.spotLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("SPOT / PENUMBRA SCALE (MILIMETER)", ref this.pcss.spotLightPenumbra.Value.z, 0.0f, 20.0f);
                 }
 
                 Separator();
@@ -394,14 +394,14 @@ namespace HSSSS
                 // point lights
                 if (this.pcss.pcssEnabled)
                 {
-                    SliderControls("POINT / SEARCH RADIUS (CENTIMETER)", ref this.pcss.pointLightPenumbra.x, 0.0f, 20.0f);
-                    SliderControls("POINT / LIGHT RADIUS (CENTIMETER)", ref this.pcss.pointLightPenumbra.y, 0.0f, 20.0f);
-                    SliderControls("POINT / MINIMUM PENUMBRA (CENTIMETER)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("POINT / SEARCH RADIUS (CENTIMETER)", ref this.pcss.pointLightPenumbra.Value.x, 0.0f, 20.0f);
+                    SliderControls("POINT / LIGHT RADIUS (CENTIMETER)", ref this.pcss.pointLightPenumbra.Value.y, 0.0f, 20.0f);
+                    SliderControls("POINT / MINIMUM PENUMBRA (CENTIMETER)", ref this.pcss.pointLightPenumbra.Value.z, 0.0f, 20.0f);
                 }
 
                 else
                 {
-                    SliderControls("POINT / PENUMBRA SCALE (MILIMETER)", ref this.pcss.pointLightPenumbra.z, 0.0f, 20.0f);
+                    SliderControls("POINT / PENUMBRA SCALE (MILIMETER)", ref this.pcss.pointLightPenumbra.Value.z, 0.0f, 20.0f);
                 }
             }
             #endregion
@@ -419,9 +419,9 @@ namespace HSSSS
 
                     Separator();
 
-                    SliderControls("RAYTRACE RADIUS (CENTIMETER)", ref this.sscs.rayRadius, 0.02f, 10.0f);
-                    SliderControls("RAYTRACE DEPTH BIAS (MILIMETER)", ref this.sscs.depthBias, 0.0f, 1.0f);
-                    SliderControls("MEAN THICKNESS (METER)", ref this.sscs.meanDepth, 0.0f, 2.0f);
+                    SliderControls("RAYTRACE RADIUS (CENTIMETER)", ref this.sscs.rayRadius.Value, 0.02f, 10.0f);
+                    SliderControls("RAYTRACE DEPTH BIAS (MILIMETER)", ref this.sscs.depthBias.Value, 0.0f, 1.0f);
+                    SliderControls("MEAN THICKNESS (METER)", ref this.sscs.meanDepth.Value, 0.0f, 2.0f);
                 }
             }
             #endregion
@@ -449,26 +449,26 @@ namespace HSSSS
 
                 Separator();
 
-                SliderControls("OCCLUSION INTENSITY", ref this.ssao.intensity, 0.1f, 10.0f);
-                SliderControls("OCCLUSION BIAS", ref this.ssao.lightBias, 0.0f, 1.0f);
+                SliderControls("OCCLUSION INTENSITY", ref this.ssao.intensity.Value, 0.1f, 10.0f);
+                SliderControls("OCCLUSION BIAS", ref this.ssao.lightBias.Value, 0.0f, 1.0f);
 
                 Separator();
 
-                SliderControls("RAYTRACE RADIUS (METER)", ref this.ssao.rayRadius, 0.0f, 1.0f);
-                SliderControls("RAYTRACE STRIDE", ref this.ssao.rayStride, 1, 4);
+                SliderControls("RAYTRACE RADIUS (METER)", ref this.ssao.rayRadius.Value, 0.0f, 1.0f);
+                SliderControls("RAYTRACE STRIDE", ref this.ssao.rayStride.Value, 1, 4);
 
                 Separator();
 
-                SliderControls("MEAN THICKNESS (METER)", ref this.ssao.meanDepth, 0.0f, 2.00f);
-                SliderControls("FADE DEPTH (METER)", ref this.ssao.fadeDepth, 1.0f, 1000.0f);
+                SliderControls("MEAN THICKNESS (METER)", ref this.ssao.meanDepth.Value, 0.0f, 2.00f);
+                SliderControls("FADE DEPTH (METER)", ref this.ssao.fadeDepth.Value, 1.0f, 1000.0f);
 
                 Separator();
 
-                OnOffToolbar("DIRECTIONAL OCCLUSION", ref this.ssao.usessdo);
+                OnOffToolbar("DIRECTIONAL OCCLUSION", ref this.ssao.usessdo.Value);
 
-                if (this.ssao.usessdo)
+                if (this.ssao.usessdo.Value)
                 {
-                    SliderControls("LIGHT APATURE", ref this.ssao.doApature, 0.0f, 1.0f);
+                    SliderControls("LIGHT APATURE", ref this.ssao.doApature.Value, 0.0f, 1.0f);
                 }
             }
             
@@ -494,25 +494,25 @@ namespace HSSSS
 
                 Separator();
 
-                SliderControls("1ST BOUNCE GAIN", ref this.ssgi.intensity, 0.1f, 100.0f);
-                SliderControls("2ND BOUNCE GAIN", ref this.ssgi.secondary, 0.1f, 100.0f);
-                SliderControls("MINIMUM ROUGHNESS", ref this.ssgi.roughness, 0.1f, 0.5f);
+                SliderControls("1ST BOUNCE GAIN", ref this.ssgi.intensity.Value, 0.1f, 100.0f);
+                SliderControls("2ND BOUNCE GAIN", ref this.ssgi.secondary.Value, 0.1f, 100.0f);
+                SliderControls("MINIMUM ROUGHNESS", ref this.ssgi.roughness.Value, 0.1f, 0.5f);
 
                 Separator();
 
-                SliderControls("RAYTRACE RADIUS (METER)", ref this.ssgi.rayRadius, 0.0f, 50.0f);
-                SliderControls("RAYTRACE STRIDE", ref this.ssgi.rayStride, 1, 4);
+                SliderControls("RAYTRACE RADIUS (METER)", ref this.ssgi.rayRadius.Value, 0.0f, 50.0f);
+                SliderControls("RAYTRACE STRIDE", ref this.ssgi.rayStride.Value, 1, 4);
 
                 Separator();
 
-                SliderControls("MEAN THICKNESS (METER)", ref this.ssgi.meanDepth, 0.0f, 2.0f);
-                SliderControls("FADE DEPTH (METER)", ref this.ssgi.fadeDepth, 1.0f, 1000.0f);
+                SliderControls("MEAN THICKNESS (METER)", ref this.ssgi.meanDepth.Value, 0.0f, 2.0f);
+                SliderControls("FADE DEPTH (METER)", ref this.ssgi.fadeDepth.Value, 1.0f, 1000.0f);
 
 
                 Separator();
 
                 OnOffToolbar("SPATIAL DENOISER", ref this.ssgi.denoise);
-                SliderControls("TEMPORAL DENOISER", ref this.ssgi.mixWeight, 0.0f, 1.0f);
+                SliderControls("TEMPORAL DENOISER", ref this.ssgi.mixWeight.Value, 0.0f, 1.0f);
             }
             
             Separator();
@@ -535,7 +535,7 @@ namespace HSSSS
 
                 OnOffToolbar("TAA METHOD", new string[] { "JUST MIX", "UPSCALE" }, ref this.taau.upscale);
 
-                SliderControls("MIX WEIGHT", ref this.taau.mixWeight, 0.0f, 1.0f);
+                SliderControls("MIX WEIGHT", ref this.taau.mixWeight.Value, 0.0f, 1.0f);
             }
 
             Separator();
@@ -555,9 +555,9 @@ namespace HSSSS
 
             if (this.skin.microDetails)
             {
-                SliderControls("DETAIL NORMAL #1", ref this.skin.microDetailWeight_1, 0.0f, 1.0f);
-                SliderControls("DETAIL NORMAL #2", ref this.skin.microDetailWeight_2, 0.0f, 1.0f);
-                SliderControls("DETAIL OCCLUSION", ref this.skin.microDetailOcclusion, 0.0f, 1.0f);
+                SliderControls("DETAIL NORMAL #1", ref this.skin.microDetailWeight_1.Value, 0.0f, 1.0f);
+                SliderControls("DETAIL NORMAL #2", ref this.skin.microDetailWeight_2.Value, 0.0f, 1.0f);
+                SliderControls("DETAIL OCCLUSION", ref this.skin.microDetailOcclusion.Value, 0.0f, 1.0f);
                 SliderControls("TEXTURE TILING", ref this.skin.microDetailTiling, 0.1f, 100.0f);
             }
 
@@ -568,8 +568,8 @@ namespace HSSSS
 
             if (this.tess.enabled)
             {
-                SliderControls("SOFTENING", ref this.tess.phong, 0.0f, 1.0f);
-                SliderControls("SUBDIVISION", ref this.tess.edge, 2.0f, 50.0f);
+                SliderControls("SOFTENING", ref this.tess.phong.Value, 0.0f, 1.0f);
+                SliderControls("SUBDIVISION", ref this.tess.edge.Value, 2.0f, 50.0f);
             }
 
             Separator();
@@ -593,7 +593,7 @@ namespace HSSSS
 
             if (this.misc.fixOverlay)
             {
-                SliderControls("EYEBROW WRAP OFFSET", ref this.misc.wrapOffset, 0.0f, 0.5f);
+                SliderControls("EYEBROW WRAP OFFSET", ref this.misc.wrapOffset.Value, 0.0f, 0.5f);
             }
 
             Separator();
@@ -616,26 +616,26 @@ namespace HSSSS
             if (this.agx.enabled)
             {
                 Separator();
-                SliderControls("GAMMA", ref this.agx.gamma, 0.0f, 4.0f, 2.2f);
-                SliderControls("SATURATION", ref this.agx.saturation, 0.0f, 2.0f, 1.0f);
+                SliderControls("GAMMA", ref this.agx.gamma.Value, 0.0f, 4.0f, 2.2f);
+                SliderControls("SATURATION", ref this.agx.saturation.Value, 0.0f, 2.0f, 1.0f);
                 
                 Separator();
                 
-                SliderControls("POWER <color=#ff8040>RED</color>", ref this.agx.power.x, 0.0f, 2.0f, 1.0f);
-                SliderControls("POWER <color=#40fd80>GREEN</color>", ref this.agx.power.y, 0.0f, 2.0f, 1.0f);
-                SliderControls("POWER <color=#4080ff>BLUE</color>", ref this.agx.power.z, 0.0f, 2.0f, 1.0f);
+                SliderControls("POWER <color=#ff8040>RED</color>", ref this.agx.power.Value.x, 0.0f, 2.0f, 1.0f);
+                SliderControls("POWER <color=#40fd80>GREEN</color>", ref this.agx.power.Value.y, 0.0f, 2.0f, 1.0f);
+                SliderControls("POWER <color=#4080ff>BLUE</color>", ref this.agx.power.Value.z, 0.0f, 2.0f, 1.0f);
                 
                 Separator();
                 
-                SliderControls("OFFSET <color=#ff8040>RED</color>", ref this.agx.offset.x, 0.0f, 1.0f, 0.0f);
-                SliderControls("OFFSET <color=#40fd80>GREEN</color>", ref this.agx.offset.y, 0.0f, 1.0f, 0.0f);
-                SliderControls("OFFSET <color=#4080ff>BLUE</color>", ref this.agx.offset.z, 0.0f, 1.0f, 0.0f);
+                SliderControls("OFFSET <color=#ff8040>RED</color>", ref this.agx.offset.Value.x, 0.0f, 1.0f, 0.0f);
+                SliderControls("OFFSET <color=#40fd80>GREEN</color>", ref this.agx.offset.Value.y, 0.0f, 1.0f, 0.0f);
+                SliderControls("OFFSET <color=#4080ff>BLUE</color>", ref this.agx.offset.Value.z, 0.0f, 1.0f, 0.0f);
                 
                 Separator();
                 
-                SliderControls("SLOPE <color=#ff8040>RED</color>", ref this.agx.slope.x, 0.0f, 2.0f, 1.0f);
-                SliderControls("SLOPE <color=#40fd80>GREEN</color>", ref this.agx.slope.y, 0.0f, 2.0f, 1.0f);
-                SliderControls("SLOPE <color=#4080ff>BLUE</color>", ref this.agx.slope.z, 0.0f, 2.0f, 1.0f);
+                SliderControls("SLOPE <color=#ff8040>RED</color>", ref this.agx.slope.Value.x, 0.0f, 2.0f, 1.0f);
+                SliderControls("SLOPE <color=#40fd80>GREEN</color>", ref this.agx.slope.Value.y, 0.0f, 2.0f, 1.0f);
+                SliderControls("SLOPE <color=#4080ff>BLUE</color>", ref this.agx.slope.Value.z, 0.0f, 2.0f, 1.0f);
             }
             
             Separator();

@@ -3,6 +3,18 @@ using UnityEngine;
 
 namespace HSSSS
 {
+    public class KeyValue<TKey, TValue>
+    {
+        public readonly TKey Key;
+        public TValue Value;
+
+        public KeyValue(TKey key, TValue value)
+        {
+            Key = key;
+            Value = value;
+        }
+    }
+    
     public static class Properties
     {
         public enum LUTProfile
@@ -77,9 +89,9 @@ namespace HSSSS
 
             public bool microDetails;
 
-            public float microDetailWeight_1;
-            public float microDetailWeight_2;
-            public float microDetailOcclusion;
+            public KeyValue<string, float> microDetailWeight_1;
+            public KeyValue<string, float> microDetailWeight_2;
+            public KeyValue<string, float> microDetailOcclusion;
             public float microDetailTiling;
         }
 
@@ -88,27 +100,28 @@ namespace HSSSS
             public PCFState pcfState;
             public bool pcssEnabled;
 
-            public Vector3 pointLightPenumbra;
-            public Vector3 spotLightPenumbra;
-            public Vector3 dirLightPenumbra;
+            public KeyValue<string, Vector3> pointLightPenumbra;
+            public KeyValue<string, Vector3> spotLightPenumbra;
+            public KeyValue<string, Vector3> dirLightPenumbra;
         }
 
         public struct SSAOProperties
         {
             public bool enabled;
-            public bool usessdo;
             public bool denoise;
 
             public QualityPreset quality;
             public RenderScale subsample;
 
-            public float intensity;
-            public float lightBias;
-            public float rayRadius;
-            public float meanDepth;
-            public float fadeDepth;
-            public float doApature;
-            public int rayStride;
+            public KeyValue<string, float> intensity;
+            public KeyValue<string, float> lightBias;
+            public KeyValue<string, float> rayRadius;
+            public KeyValue<string, float> meanDepth;
+            public KeyValue<string, float> fadeDepth;
+            public KeyValue<string, int> rayStride;
+            
+            public KeyValue<string, bool> usessdo;
+            public KeyValue<string, float> doApature;
         }
 
         public struct SSGIProperties
@@ -118,30 +131,30 @@ namespace HSSSS
 
             public QualityPreset quality;
 
-            public float intensity;
-            public float secondary;
-            public float roughness;
-            public float rayRadius;
-            public float meanDepth;
-            public float fadeDepth;
-            public float mixWeight;
-            public int rayStride;
+            public KeyValue<string, float> intensity;
+            public KeyValue<string, float> secondary;
+            public KeyValue<string, float> roughness;
+            public KeyValue<string, float> rayRadius;
+            public KeyValue<string, float> meanDepth;
+            public KeyValue<string, float> fadeDepth;
+            public KeyValue<string, float> mixWeight;
+            public KeyValue<string, int> rayStride;
         }
 
         public struct TAAUProperties
         {
             public bool enabled;
             public bool upscale;
-            public float mixWeight;
+            public KeyValue<string, float> mixWeight;
         }
 
         public struct SSCSProperties
         {
             public bool enabled;
             public QualityPreset quality;
-            public float rayRadius;
-            public float depthBias;
-            public float meanDepth;
+            public KeyValue<string, float> rayRadius;
+            public KeyValue<string, float> depthBias;
+            public KeyValue<string, float> meanDepth;
         }
 
         public struct MiscProperties
@@ -149,24 +162,24 @@ namespace HSSSS
             public bool fixEyeball;
             public bool fixOverlay;
             public bool wetOverlay;
-            public float wrapOffset;
+            public KeyValue<string, float> wrapOffset;
         }
 
         public struct TESSProperties
         {
             public bool enabled;
-            public float phong;
-            public float edge;
+            public KeyValue<string, float> phong;
+            public KeyValue<string, float> edge;
         }
         
         public struct AgXProperties
         {
             public bool enabled;
-            public float gamma;
-            public float saturation;
-            public Vector3 offset;
-            public Vector3 slope;
-            public Vector3 power;
+            public KeyValue<string, float> gamma;
+            public KeyValue<string, float> saturation;
+            public KeyValue<string, Vector3> offset;
+            public KeyValue<string, Vector3> slope;
+            public KeyValue<string, Vector3> power;
         }
 
         public static SkinProperties skin = new SkinProperties()
@@ -200,9 +213,9 @@ namespace HSSSS
 
             microDetails = false,
 
-            microDetailWeight_1 = 0.5f,
-            microDetailWeight_2 = 0.5f,
-            microDetailOcclusion = 0.5f,
+            microDetailWeight_1 = new KeyValue<string, float>("_DetailNormalMapScale_2", 0.5f),
+            microDetailWeight_2 = new KeyValue<string, float>("_DetailNormalMapScale_3", 0.5f),
+            microDetailOcclusion = new KeyValue<string, float>("_PoreOcclusionStrength", 0.5f),
 
             microDetailTiling = 64.0f
         };
@@ -212,27 +225,28 @@ namespace HSSSS
             pcfState = PCFState.disable,
             pcssEnabled = false,
 
-            dirLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
-            spotLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
-            pointLightPenumbra = new Vector3(1.0f, 1.0f, 1.0f),
+            dirLightPenumbra = new KeyValue<string, Vector3>("_DirLightPenumbra", new Vector3(1.0f, 1.0f, 1.0f)),
+            spotLightPenumbra = new KeyValue<string, Vector3>("_SpotLightPenumbra", new Vector3(1.0f, 1.0f, 1.0f)),
+            pointLightPenumbra = new KeyValue<string, Vector3>("_PointLightPenumbra", new Vector3(1.0f, 1.0f, 1.0f))
         };
 
         public static SSAOProperties ssao = new SSAOProperties()
         {
             enabled = false,
-            usessdo = false,
             denoise = false,
 
             quality = QualityPreset.medium,
             subsample = RenderScale.full,
 
-            intensity = 1.0f,
-            lightBias = 0.0f,
-            rayRadius = 0.1f,
-            meanDepth = 0.5f,
-            fadeDepth = 100.0f,
-            doApature = 0.5f,
-            rayStride = 2
+            intensity = new KeyValue<string, float>("_SSAOIntensity", 1.0f),
+            lightBias = new KeyValue<string, float>("_SSAOLightBias", 0.0f),
+            rayRadius = new KeyValue<string, float>("_SSAORayLength", 0.1f),
+            meanDepth = new KeyValue<string, float>("_SSAOMeanDepth", 0.5f),
+            fadeDepth = new KeyValue<string, float>("_SSAOFadeDepth", 100.0f),
+            rayStride = new KeyValue<string, int>("_SSAORayStride", 2),
+            
+            usessdo = new KeyValue<string, bool>("_UseDirectOcclusion", true),
+            doApature = new KeyValue<string, float>("_SSDOLightApatureScale", 0.5f),
         };
 
         public static SSGIProperties ssgi = new SSGIProperties()
@@ -242,37 +256,37 @@ namespace HSSSS
 
             quality = QualityPreset.medium,
 
-            intensity = 1.0f,
-            secondary = 1.0f,
-            roughness = 0.3f,
-            rayRadius = 1.0f,
-            meanDepth = 1.0f,
-            fadeDepth = 100.0f,
-            mixWeight = 0.5f,
-            rayStride = 2
+            intensity = new KeyValue<string, float>("_SSGIIntensity", 1.0f),
+            secondary = new KeyValue<string, float>("_SSGISecondary", 1.0f),
+            roughness = new KeyValue<string, float>("_SSGIRoughness", 0.3f),
+            rayRadius = new KeyValue<string, float>("_SSGIRayLength", 1.0f),
+            meanDepth = new KeyValue<string, float>("_SSGIMeanDepth", 1.0f),
+            fadeDepth = new KeyValue<string, float>("_SSGIFadeDepth", 100.0f),
+            mixWeight = new KeyValue<string, float>("_SSGIMixFactor", 0.5f),
+            rayStride = new KeyValue<string, int>("_SSGIStepPower", 2)
         };
 
         public static TAAUProperties taau = new TAAUProperties()
         {
             enabled = false,
             upscale = false,
-            mixWeight = 0.5f
+            mixWeight = new KeyValue<string, float>("_TemporalMixFactor", 0.5f)
         };
 
         public static SSCSProperties sscs = new SSCSProperties()
         {
             enabled = false,
             quality = QualityPreset.medium,
-            rayRadius = 10.0f,
-            depthBias = 0.2f,
-            meanDepth = 1.0f
+            rayRadius = new KeyValue<string, float>("_SSCSRayLength", 10.0f),
+            depthBias = new KeyValue<string, float>("_SSCSDepthBias", 0.2f),
+            meanDepth = new KeyValue<string, float>("_SSCSMeanDepth", 1.0f)
         };
 
         public static TESSProperties tess = new TESSProperties()
         {
             enabled = false,
-            phong = 0.5f,
-            edge = 2.0f
+            phong = new KeyValue<string, float>("_Phong", 0.5f),
+            edge = new KeyValue<string, float>("_EdgeLength", 2.0f)
         };
 
         public static MiscProperties misc = new MiscProperties()
@@ -280,17 +294,17 @@ namespace HSSSS
             fixEyeball = false,
             fixOverlay = false,
             wetOverlay = false,
-            wrapOffset = 0.1f
+            wrapOffset = new KeyValue<string, float>("_VertexWrapOffset", 0.0f),
         };
 
         public static AgXProperties agx = new AgXProperties()
         {
             enabled = false,
-            gamma = 2.2f,
-            saturation = 1.0f,
-            offset = new Vector3(0.0f, 0.0f, 0.0f),
-            slope = new Vector3(1.0f, 1.0f, 1.0f),
-            power = new Vector3(1.0f, 1.0f, 1.0f)
+            gamma = new KeyValue<string, float>("_AgXGamma", 2.2f),
+            saturation = new KeyValue<string, float>("_AgXSaturation", 1.0f),
+            offset = new KeyValue<string, Vector3>("_AgXOffset", new Vector3(0.0f, 0.0f, 0.0f)),
+            slope = new KeyValue<string, Vector3>("_AgXSlope", new Vector3(1.0f, 1.0f, 1.0f)),
+            power = new KeyValue<string, Vector3>("_AgXPower", new Vector3(1.0f, 1.0f, 1.0f))
         };
 
         public static void UpdateSkin()
@@ -328,14 +342,14 @@ namespace HSSSS
                 {
                     foreach (Material mat in rend.sharedMaterials)
                     {
-                        if (mat.HasProperty("_DetailNormalMapScale_2"))
+                        if (mat.HasProperty(Properties.skin.microDetailWeight_1.Key))
                         {
-                            mat.SetFloat("_DetailNormalMapScale_2", Properties.skin.microDetailWeight_1);
+                            mat.SetFloat(Properties.skin.microDetailWeight_1.Key, Properties.skin.microDetailWeight_1.Value);
                         }
 
-                        if (mat.HasProperty("_DetailNormalMapScale_3"))
+                        if (mat.HasProperty(Properties.skin.microDetailWeight_2.Key))
                         {
-                            mat.SetFloat("_DetailNormalMapScale_3", Properties.skin.microDetailWeight_2);
+                            mat.SetFloat(Properties.skin.microDetailWeight_2.Key, Properties.skin.microDetailWeight_2.Value);
                         }
 
                         if (mat.HasProperty("_DetailNormalMap_2"))
@@ -353,24 +367,24 @@ namespace HSSSS
                             mat.SetTextureScale("_DetailSkinPoreMap", new Vector2(Properties.skin.microDetailTiling, Properties.skin.microDetailTiling));
                         }
 
-                        if (mat.HasProperty("_PoreOcclusionStrength"))
+                        if (mat.HasProperty(Properties.skin.microDetailOcclusion.Key))
                         {
-                            mat.SetFloat("_PoreOcclusionStrength", Properties.skin.microDetailOcclusion);
+                            mat.SetFloat(Properties.skin.microDetailOcclusion.Key, Properties.skin.microDetailOcclusion.Value);
                         }
 
-                        if (mat.HasProperty("_Phong"))
+                        if (mat.HasProperty(Properties.tess.phong.Key))
                         {
-                            mat.SetFloat("_Phong", Properties.tess.phong);
+                            mat.SetFloat(Properties.tess.phong.Key, Properties.tess.phong.Value);
                         }
 
-                        if (mat.HasProperty("_EdgeLength"))
+                        if (mat.HasProperty(Properties.tess.edge.Key))
                         {
-                            mat.SetFloat("_EdgeLength", Properties.tess.edge);
+                            mat.SetFloat(Properties.tess.edge.Key, Properties.tess.edge.Value);
                         }
 
-                        if (mat.HasProperty("_VertexWrapOffset"))
+                        if (mat.HasProperty(Properties.misc.wrapOffset.Key))
                         {
-                            mat.SetFloat("_VertexWrapOffset", Properties.misc.wrapOffset);
+                            mat.SetFloat(Properties.misc.wrapOffset.Key, Properties.misc.wrapOffset.Value);
                         }
                     }
                 }
