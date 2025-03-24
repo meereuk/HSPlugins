@@ -1040,7 +1040,7 @@ namespace HSSSS
             if (this.enabled && this.mMaterial)
             {
                 this.mMaterial.SetFloat("_AgXGamma", Properties.agx.gamma);
-                this.mMaterial.SetVector("_AgXSaturation", Properties.agx.saturation);
+                this.mMaterial.SetFloat("_AgXSaturation", Properties.agx.saturation);
                 this.mMaterial.SetVector("_AgXOffset", Properties.agx.offset);
                 this.mMaterial.SetVector("_AgXSlope", Properties.agx.slope);
                 this.mMaterial.SetVector("_AgXPower", Properties.agx.power);

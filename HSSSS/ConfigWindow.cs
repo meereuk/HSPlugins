@@ -617,12 +617,7 @@ namespace HSSSS
             {
                 Separator();
                 SliderControls("GAMMA", ref this.agx.gamma, 0.0f, 4.0f, 2.2f);
-                
-                Separator();
-            
-                SliderControls("SATURATION <color=#ff8040>RED</color>", ref this.agx.saturation.x, 0.0f, 2.0f, 1.0f);
-                SliderControls("SATURATION <color=#40fd80>GREEN</color>", ref this.agx.saturation.y, 0.0f, 2.0f, 1.0f);
-                SliderControls("SATURATION <color=#4080ff>BLUE</color>", ref this.agx.saturation.z, 0.0f, 2.0f, 1.0f);
+                SliderControls("SATURATION", ref this.agx.saturation, 0.0f, 2.0f, 1.0f);
                 
                 Separator();
                 
