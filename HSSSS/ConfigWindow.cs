@@ -446,6 +446,7 @@ namespace HSSSS
 
                 EnumToolbar("SSAO QUALITY", ref this.ssao.quality);
                 EnumToolbar("SSAO RENDERING SCALE", ref this.ssao.subsample);
+                OnOffToolbar("MULTIBOUNCE OCCLUSION", ref this.ssao.mbounce);
 
                 Separator();
 

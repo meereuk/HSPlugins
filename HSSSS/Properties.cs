@@ -109,6 +109,7 @@ namespace HSSSS
         {
             public bool enabled;
             public bool denoise;
+            public bool mbounce;
 
             public QualityPreset quality;
             public RenderScale subsample;
@@ -234,6 +235,7 @@ namespace HSSSS
         {
             enabled = false,
             denoise = false,
+            mbounce = false,
 
             quality = QualityPreset.medium,
             subsample = RenderScale.full,

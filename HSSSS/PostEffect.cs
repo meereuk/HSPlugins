@@ -538,7 +538,7 @@ namespace HSSSS
             
             // calculate occlusion mrt
             this.mBuffer.SetRenderTarget(mrt, BuiltinRenderTextureType.CameraTarget);
-            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 13);
+            this.mBuffer.DrawMesh(mrtMesh, Matrix4x4.identity, this.mMaterial, 0, Properties.ssao.mbounce ? 14 : 13);
             
             // diffuse occlusion
             this.mBuffer.Blit(mrt[0], BuiltinRenderTextureType.CameraTarget);

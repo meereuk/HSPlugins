@@ -94,7 +94,6 @@
     </PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>xcopy "$(TargetDir)$(TargetFileName)" "D:\Games\Illusion\HoneySelect\mods\[KKUL] HSSSS\Plugins\" /D /Y /R</PostBuildEvent>
   </PropertyGroup>
 </Project>
