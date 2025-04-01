@@ -897,6 +897,8 @@ namespace HSSSS
             
             this.history = new RenderTexture(this.mCamera.pixelWidth, this.mCamera.pixelHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             this.history.SetGlobalShaderProperty("_FrameBufferHistory");
+            this.history.wrapMode = TextureWrapMode.Clamp;
+            this.history.filterMode = FilterMode.Point;
             this.history.Create();
             
             RenderTexture rt = RenderTexture.active;
@@ -907,19 +909,16 @@ namespace HSSSS
 
         private void OnDisable()
         {
+            this.mCamera = null;
+            this.mMaterial = null;
             this.history.Release();
             this.history = null;
         }
 
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            RenderTexture rt = RenderTexture.GetTemporary(-1, -1, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                
-            Graphics.Blit(source, rt, this.mMaterial, Convert.ToUInt16(Properties.taau.upscale));
-            Graphics.Blit(rt, this.history);
-            Graphics.Blit(rt, destination);
-                
-            rt.Release();
+            Graphics.Blit(source, destination, this.mMaterial, Convert.ToUInt16(Properties.taau.upscale));
+            Graphics.Blit(destination, this.history, this.mMaterial, 2);
         }
 
         public void UpdateSettings()

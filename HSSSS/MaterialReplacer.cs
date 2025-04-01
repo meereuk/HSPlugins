@@ -277,10 +277,10 @@ namespace HSSSS
                 {
                     if (Properties.misc.wetOverlay && material.name == "cf_M_k_kaosiru01")
                     {
-                        material.shader = AssetLoader.headwet.shader;
-                        material.CopyPropertiesFromMaterial(AssetLoader.headwet);
-                        //material.shader = AssetLoader.headtears.shader;
-                        //material.CopyPropertiesFromMaterial(AssetLoader.headtears);
+                        //material.shader = AssetLoader.headwet.shader;
+                        //material.CopyPropertiesFromMaterial(AssetLoader.headwet);
+                        material.shader = AssetLoader.headtears.shader;
+                        material.CopyPropertiesFromMaterial(AssetLoader.headtears);
                     }
 
                     else if (Properties.misc.wetOverlay && material.name == "cf_M_k_munesiru01")
