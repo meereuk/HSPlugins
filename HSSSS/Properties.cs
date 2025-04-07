@@ -123,6 +123,8 @@ namespace HSSSS
             
             public KeyValue<string, bool> usessdo;
             public KeyValue<string, float> doApature;
+
+            public int debug;
         }
 
         public struct SSGIProperties
@@ -140,6 +142,8 @@ namespace HSSSS
             public KeyValue<string, float> fadeDepth;
             public KeyValue<string, float> mixWeight;
             public KeyValue<string, int> rayStride;
+            
+            public int debug;
         }
 
         public struct TAAUProperties
@@ -249,6 +253,8 @@ namespace HSSSS
             
             usessdo = new KeyValue<string, bool>("_UseDirectOcclusion", true),
             doApature = new KeyValue<string, float>("_SSDOLightApatureScale", 0.5f),
+            
+            debug = 0
         };
 
         public static SSGIProperties ssgi = new SSGIProperties()
@@ -265,7 +271,9 @@ namespace HSSSS
             meanDepth = new KeyValue<string, float>("_SSGIMeanDepth", 1.0f),
             fadeDepth = new KeyValue<string, float>("_SSGIFadeDepth", 100.0f),
             mixWeight = new KeyValue<string, float>("_SSGIMixFactor", 0.5f),
-            rayStride = new KeyValue<string, int>("_SSGIStepPower", 2)
+            rayStride = new KeyValue<string, int>("_SSGIStepPower", 2),
+            
+            debug = 0
         };
 
         public static TAAUProperties taau = new TAAUProperties()

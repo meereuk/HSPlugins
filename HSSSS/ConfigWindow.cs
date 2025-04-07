@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using Studio;
 
 namespace HSSSS
 {
@@ -48,6 +49,7 @@ namespace HSSSS
             taau,
             miscellaneous,
             agx,
+            replacer,
             preset
         };
 
@@ -62,6 +64,7 @@ namespace HSSSS
             "FRAME ACCUMULATION",
             "MISCELLANEOUS",
             "TONE MAPPER",
+            "MANUAL REPLACE",
             "PRESET"
         };
 
@@ -155,13 +158,17 @@ namespace HSSSS
                             case TabState.taau:
                                 this.TemporalAntiAliasing();
                                 break;
-
-                            case TabState.miscellaneous:
-                                this.Miscellaneous();
-                                break;
                             
                             case TabState.agx:
                                 this.AgXToneMapper();
+                                break;
+                            
+                            case TabState.replacer:
+                                this.ManualReplacer();
+                                break;
+
+                            case TabState.miscellaneous:
+                                this.Miscellaneous();
                                 break;
 
                             case TabState.preset:
@@ -464,6 +471,11 @@ namespace HSSSS
                 SliderControls("FADE DEPTH (METER)", ref this.ssao.fadeDepth.Value, 1.0f, 1000.0f);
 
                 Separator();
+                
+                GUILayout.Label("DEBUG VIEW");
+                this.ssao.debug = GUILayout.Toolbar(this.ssao.debug, new string[]{"OFF", "OCCLUSION", "BENT NORMAL"});
+                
+                Separator();
 
                 OnOffToolbar("DIRECTIONAL OCCLUSION", ref this.ssao.usessdo.Value);
 
@@ -508,7 +520,11 @@ namespace HSSSS
 
                 SliderControls("MEAN THICKNESS (METER)", ref this.ssgi.meanDepth.Value, 0.0f, 2.0f);
                 SliderControls("FADE DEPTH (METER)", ref this.ssgi.fadeDepth.Value, 1.0f, 1000.0f);
-
+                
+                Separator();
+                
+                GUILayout.Label("DEBUG VIEW");
+                this.ssgi.debug = GUILayout.Toolbar(this.ssgi.debug, new string[]{"OFF", "DIFFUSE", "SPECULAR"});
 
                 Separator();
 
@@ -644,6 +660,47 @@ namespace HSSSS
             
             GUILayout.Space(doubleSpace);
             GUILayout.Label("<color=#ff4040>Disable LRE Tone Mapping, Color Grading, and Color Correction Curve.</color>", new GUIStyle { fontSize = tetraSpace });
+        }
+
+        private void ManualReplacer()
+        {
+            GUILayout.Label("<color=white>MANUAL SHADER REPLACER</color>", new GUIStyle { fontSize = octaSpace });
+            GUILayout.Box("", GUILayout.Height(2));
+            GUILayout.Space(doubleSpace);
+            
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true) });
+            
+            TreeNodeObject node = Studio.Studio.Instance.treeNodeCtrl.selectNode;
+            
+            if (node)
+            {
+                GUILayout.Label("CURRENT OBJECT: " + node.textName);
+                
+                Separator();
+
+                if (Studio.Studio.Instance.dicInfo.TryGetValue(node, out ObjectCtrlInfo info))
+                {
+                    foreach (Renderer renderer in info.guideObject.transformTarget.GetComponentsInChildren<Renderer>())
+                    {
+                        foreach (Material material in renderer.sharedMaterials)
+                        {
+                            if (GUILayout.Button(material.name))
+                            {
+                                MaterialReplacer.ReplaceMaterial(material);
+                            }
+                        }
+                    }
+                }
+            }
+
+            else
+            {
+                GUILayout.Label("NO OBJECT SELECTED");
+            }
+            
+            Separator();
+            GUILayout.EndScrollView();
+            GUILayout.Space(doubleSpace);
         }
 
         private void Presets()
