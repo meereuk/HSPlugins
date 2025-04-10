@@ -485,13 +485,13 @@ namespace HSSSS
         
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            if (this.mMaterial == null || Properties.ssao.debug == 0)
+            if (this.mMaterial == null || Properties.ssao.debugView == 0)
             {
                 Graphics.Blit(source, destination);
                 return;
             }
             
-            Graphics.Blit(source, destination, this.mMaterial, Properties.ssao.debug == 1 ? Properties.ssao.mbounce ? 16 : 15 : 17);
+            Graphics.Blit(source, destination, this.mMaterial, Properties.ssao.debugView == 1 ? Properties.ssao.mbounce ? 8 : 7 : 9);
         }
 
         private void SetupCommandBuffer()
@@ -540,12 +540,11 @@ namespace HSSSS
             this.mBuffer.Blit(zbf[3], zbf[4]);
 
             // GTAO pass
-            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, mask,
-                this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 4 * Convert.ToInt32(Properties.ssao.subsample) + 1);
+            this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, mask, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 1);
             
             // calculate occlusion mrt
             this.mBuffer.SetRenderTarget(mrt, BuiltinRenderTextureType.CameraTarget);
-            this.mBuffer.DrawMesh(CameraProjector.mrtMesh, Matrix4x4.identity, this.mMaterial, 0, Properties.ssao.mbounce ? 14 : 13);
+            this.mBuffer.DrawMesh(CameraProjector.mrtMesh, Matrix4x4.identity, this.mMaterial, 0, Properties.ssao.mbounce ? 6 : 5);
             
             // diffuse occlusion
             this.mBuffer.Blit(mrt[0], BuiltinRenderTextureType.CameraTarget);
@@ -586,7 +585,8 @@ namespace HSSSS
                 this.mMaterial.SetFloat(Properties.ssao.intensity.Key, Properties.ssao.intensity.Value);
                 this.mMaterial.SetFloat(Properties.ssao.lightBias.Key, Properties.ssao.lightBias.Value);
                 this.mMaterial.SetFloat(Properties.ssao.meanDepth.Key, Properties.ssao.meanDepth.Value);
-                this.mMaterial.SetInt(  Properties.ssao.rayStride.Key, Properties.ssao.rayStride.Value);
+                this.mMaterial.SetInt(Properties.ssao.rayStride.Key, Properties.ssao.rayStride.Value);
+                this.mMaterial.SetInt(Properties.ssao.subsample.Key, Convert.ToInt32(Properties.ssao.subsample.Value));
 
                 Shader.SetGlobalInt(Properties.ssao.usessdo.Key, Properties.ssao.usessdo.Value ? 1 : 0);
                 Shader.SetGlobalFloat(Properties.ssao.doApature.Key, Properties.ssao.doApature.Value);
@@ -648,13 +648,13 @@ namespace HSSSS
 
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            if (Properties.ssgi.debug == 0)
+            if (Properties.ssgi.debugView.Value == 0)
             {
                 Graphics.Blit(source, destination);
                 return;
             }
             
-            Graphics.Blit(Properties.ssgi.debug == 1 ? this.history.diffuse : this.history.specular, destination);
+            Graphics.Blit(source, destination, this.mMaterial, 13);
         }
 
         private void SetupCommandBuffer()
@@ -733,8 +733,8 @@ namespace HSSSS
             this.mBuffer.SetRenderTarget(hist, BuiltinRenderTextureType.CameraTarget);
             this.mBuffer.DrawMesh(CameraProjector.mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 9);
             // collect
-            this.mBuffer.Blit(flip[0], flip[1], this.mMaterial, 10);
-            this.mBuffer.Blit(flip[1], BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flip[0], this.mMaterial, 10);
+            this.mBuffer.Blit(flip[0], BuiltinRenderTextureType.CameraTarget);
 
             for (int i = 0; i < 4; i ++)
             {
@@ -827,7 +827,10 @@ namespace HSSSS
                 this.mMaterial.SetFloat(Properties.ssgi.intensity.Key, Properties.ssgi.intensity.Value);
                 this.mMaterial.SetFloat(Properties.ssgi.secondary.Key, Properties.ssgi.secondary.Value);
                 this.mMaterial.SetFloat(Properties.ssgi.roughness.Key, Properties.ssgi.roughness.Value);
+                this.mMaterial.SetFloat(Properties.ssgi.occlusion.Key, Properties.ssgi.occlusion.Value);
+                
                 this.mMaterial.SetInt(Properties.ssgi.rayStride.Key, Properties.ssgi.rayStride.Value);
+                this.mMaterial.SetInt(Properties.ssgi.debugView.Key, Properties.ssgi.debugView.Value);
 
                 this.RemoveCommandBuffer();
                 this.SetupCommandBuffer();
@@ -951,11 +954,6 @@ namespace HSSSS
             {
                 this.UpdateMatrices();
             }
-
-            foreach (KeyValuePair<Guid, ScreenSpaceShadows> spot in HSSSS.spotDict)
-            {
-                spot.Value.UpdateProjectionMatrix();
-            }
         }
 
         private void UpdateMatrices()
@@ -1002,7 +1000,7 @@ namespace HSSSS
         [ImageEffectTransformsToLDR]
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            if (Properties.ssao.debug != 0)
+            if ((Properties.ssao.enabled && Properties.ssao.debugView != 0) || (Properties.ssgi.enabled && Properties.ssgi.debugView.Value == 4))
             {
                 Graphics.Blit(source, destination);
                 return;

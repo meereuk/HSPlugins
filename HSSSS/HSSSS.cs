@@ -28,15 +28,13 @@ namespace HSSSS
         public static string configFile;
 
         // camera effects
-        public static CameraProjector CameraProjector = null;
-        public static DeferredRenderer DeferredRenderer = null;
-        public static SSAORenderer SSAORenderer = null;
-        public static SSGIRenderer SSGIRenderer = null;
-        public static TAAURenderer TAAURenderer = null;
-        public static AgXToneMapper AgXToneMapper = null;
-        private static GameObject mainCamera = null;
-
-        public static Dictionary<Guid, ScreenSpaceShadows> spotDict = new Dictionary<Guid, ScreenSpaceShadows>();
+        public static CameraProjector CameraProjector;
+        public static DeferredRenderer DeferredRenderer;
+        public static SSAORenderer SSAORenderer;
+        public static SSGIRenderer SSGIRenderer;
+        public static TAAURenderer TAAURenderer;
+        public static AgXToneMapper AgXToneMapper;
+        private static GameObject mainCamera;
 
         // modprefs.ini options
         public static bool isStudio;
@@ -56,7 +54,7 @@ namespace HSSSS
         public GameObject windowObj;
 
         // singleton
-        public static HSSSS instance = null;
+        public static HSSSS instance;
         #endregion
 
         #region Unity Methods
@@ -187,16 +185,23 @@ namespace HSSSS
         #region Scene Methods
         private void OnSceneLoad(string path, XmlNode node)
         {
-            spotDict = new Dictionary<Guid, ScreenSpaceShadows>();
+            Properties.ssao.enabled = false;
+            Properties.ssgi.enabled = false;
+            Properties.taau.enabled = false;
+            Properties.agx.enabled = false;
 
-            if (node != null)
+            if (node == null)
+            {
+                Properties.UpdateAll();
+                Console.WriteLine("#### HSSSS: Could not Find Configurations in the Scene File");
+            }
+
+            else
             {
                 try
                 {
                     XmlParser.LoadXml(node);
-
                     Properties.UpdateAll();
-
                     Console.WriteLine("#### HSSSS: Loaded Configurations from the Scene File");
                 }
 
@@ -204,11 +209,6 @@ namespace HSSSS
                 {
                     Console.WriteLine("#### HSSSS: Failed to Load Configurations in the Scene File");
                 }
-            }
-
-            else
-            {
-                Console.WriteLine("#### HSSSS: Could not Find Configurations in the Scene File");
             }
 
             MaterialReplacer.RestoreMilk();
@@ -274,7 +274,7 @@ namespace HSSSS
             }
             catch (Exception)
             {
-                hotKey = new KeyCode[] { KeyCode.ScrollLock };
+                hotKey = new[] { KeyCode.ScrollLock };
             }
             // ui window scale
             uiScale = ModPrefs.GetInt("HSSSS", "UIScale", 4, true);
@@ -303,13 +303,14 @@ namespace HSSSS
             if (isStudio)
             {
                 mainCamera = GameObject.Find("StudioScene/Camera/Main Camera");
-                mainCamera.GetComponent<Camera>();
             }
 
             else
             {
-                mainCamera = Camera.main.gameObject;
-                mainCamera.GetComponent<Camera>();
+                if (Camera.main)
+                {
+                    mainCamera = Camera.main.gameObject;
+                }
             }
 
             if (mainCamera)

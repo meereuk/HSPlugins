@@ -89,9 +89,9 @@ namespace HSSSS
 
             public bool microDetails;
 
-            public KeyValue<string, float> microDetailWeight_1;
-            public KeyValue<string, float> microDetailWeight_2;
-            public KeyValue<string, float> microDetailOcclusion;
+            public KeyValue<int, float> microDetailWeight_1;
+            public KeyValue<int, float> microDetailWeight_2;
+            public KeyValue<int, float> microDetailOcclusion;
             public float microDetailTiling;
         }
 
@@ -100,9 +100,9 @@ namespace HSSSS
             public PCFState pcfState;
             public bool pcssEnabled;
 
-            public KeyValue<string, Vector3> pointLightPenumbra;
-            public KeyValue<string, Vector3> spotLightPenumbra;
-            public KeyValue<string, Vector3> dirLightPenumbra;
+            public KeyValue<int, Vector3> pointLightPenumbra;
+            public KeyValue<int, Vector3> spotLightPenumbra;
+            public KeyValue<int, Vector3> dirLightPenumbra;
         }
 
         public struct SSAOProperties
@@ -112,19 +112,19 @@ namespace HSSSS
             public bool mbounce;
 
             public QualityPreset quality;
-            public RenderScale subsample;
+            public KeyValue<int, RenderScale> subsample;
 
-            public KeyValue<string, float> intensity;
-            public KeyValue<string, float> lightBias;
-            public KeyValue<string, float> rayRadius;
-            public KeyValue<string, float> meanDepth;
-            public KeyValue<string, float> fadeDepth;
-            public KeyValue<string, int> rayStride;
+            public KeyValue<int, float> intensity;
+            public KeyValue<int, float> lightBias;
+            public KeyValue<int, float> rayRadius;
+            public KeyValue<int, float> meanDepth;
+            public KeyValue<int, float> fadeDepth;
+            public KeyValue<int, int> rayStride;
             
-            public KeyValue<string, bool> usessdo;
-            public KeyValue<string, float> doApature;
+            public KeyValue<int, bool> usessdo;
+            public KeyValue<int, float> doApature;
 
-            public int debug;
+            public int debugView;
         }
 
         public struct SSGIProperties
@@ -134,32 +134,33 @@ namespace HSSSS
 
             public QualityPreset quality;
 
-            public KeyValue<string, float> intensity;
-            public KeyValue<string, float> secondary;
-            public KeyValue<string, float> roughness;
-            public KeyValue<string, float> rayRadius;
-            public KeyValue<string, float> meanDepth;
-            public KeyValue<string, float> fadeDepth;
-            public KeyValue<string, float> mixWeight;
-            public KeyValue<string, int> rayStride;
+            public KeyValue<int, float> intensity;
+            public KeyValue<int, float> secondary;
+            public KeyValue<int, float> roughness;
+            public KeyValue<int, float> rayRadius;
+            public KeyValue<int, float> meanDepth;
+            public KeyValue<int, float> fadeDepth;
+            public KeyValue<int, float> mixWeight;
+            public KeyValue<int, float> occlusion;
+            public KeyValue<int, int> rayStride;
             
-            public int debug;
+            public KeyValue<int, int> debugView;
         }
 
         public struct TAAUProperties
         {
             public bool enabled;
             public bool upscale;
-            public KeyValue<string, float> mixWeight;
+            public KeyValue<int, float> mixWeight;
         }
 
         public struct SSCSProperties
         {
             public bool enabled;
             public QualityPreset quality;
-            public KeyValue<string, float> rayRadius;
-            public KeyValue<string, float> depthBias;
-            public KeyValue<string, float> meanDepth;
+            public KeyValue<int, float> rayRadius;
+            public KeyValue<int, float> depthBias;
+            public KeyValue<int, float> meanDepth;
         }
 
         public struct MiscProperties
@@ -167,24 +168,24 @@ namespace HSSSS
             public bool fixEyeball;
             public bool fixOverlay;
             public bool wetOverlay;
-            public KeyValue<string, float> wrapOffset;
+            public KeyValue<int, float> wrapOffset;
         }
 
         public struct TESSProperties
         {
             public bool enabled;
-            public KeyValue<string, float> phong;
-            public KeyValue<string, float> edge;
+            public KeyValue<int, float> phong;
+            public KeyValue<int, float> edge;
         }
         
         public struct AgXProperties
         {
             public bool enabled;
-            public KeyValue<string, float> gamma;
-            public KeyValue<string, float> saturation;
-            public KeyValue<string, Vector3> offset;
-            public KeyValue<string, Vector3> slope;
-            public KeyValue<string, Vector3> power;
+            public KeyValue<int, float> gamma;
+            public KeyValue<int, float> saturation;
+            public KeyValue<int, Vector3> offset;
+            public KeyValue<int, Vector3> slope;
+            public KeyValue<int, Vector3> power;
         }
 
         public static SkinProperties skin = new SkinProperties()
@@ -218,9 +219,9 @@ namespace HSSSS
 
             microDetails = false,
 
-            microDetailWeight_1 = new KeyValue<string, float>("_DetailNormalMapScale_2", 0.5f),
-            microDetailWeight_2 = new KeyValue<string, float>("_DetailNormalMapScale_3", 0.5f),
-            microDetailOcclusion = new KeyValue<string, float>("_PoreOcclusionStrength", 0.5f),
+            microDetailWeight_1 = new KeyValue<int, float>(Shader.PropertyToID("_DetailNormalMapScale_2"), 0.5f),
+            microDetailWeight_2 = new KeyValue<int, float>(Shader.PropertyToID("_DetailNormalMapScale_3"), 0.5f),
+            microDetailOcclusion = new KeyValue<int, float>(Shader.PropertyToID("_PoreOcclusionStrength"), 0.5f),
 
             microDetailTiling = 64.0f
         };
@@ -230,9 +231,9 @@ namespace HSSSS
             pcfState = PCFState.disable,
             pcssEnabled = false,
 
-            dirLightPenumbra = new KeyValue<string, Vector3>("_DirLightPenumbra", new Vector3(1.0f, 1.0f, 1.0f)),
-            spotLightPenumbra = new KeyValue<string, Vector3>("_SpotLightPenumbra", new Vector3(1.0f, 1.0f, 1.0f)),
-            pointLightPenumbra = new KeyValue<string, Vector3>("_PointLightPenumbra", new Vector3(1.0f, 1.0f, 1.0f))
+            dirLightPenumbra = new KeyValue<int, Vector3>(Shader.PropertyToID("_DirLightPenumbra"), new Vector3(1.0f, 1.0f, 1.0f)),
+            spotLightPenumbra = new KeyValue<int, Vector3>(Shader.PropertyToID("_SpotLightPenumbra"), new Vector3(1.0f, 1.0f, 1.0f)),
+            pointLightPenumbra = new KeyValue<int, Vector3>(Shader.PropertyToID("_PointLightPenumbra"), new Vector3(1.0f, 1.0f, 1.0f))
         };
 
         public static SSAOProperties ssao = new SSAOProperties()
@@ -242,19 +243,19 @@ namespace HSSSS
             mbounce = false,
 
             quality = QualityPreset.medium,
-            subsample = RenderScale.full,
+            subsample = new KeyValue<int, RenderScale>(Shader.PropertyToID("_SSAOSubSample"), RenderScale.full),
 
-            intensity = new KeyValue<string, float>("_SSAOIntensity", 1.0f),
-            lightBias = new KeyValue<string, float>("_SSAOLightBias", 0.0f),
-            rayRadius = new KeyValue<string, float>("_SSAORayLength", 0.1f),
-            meanDepth = new KeyValue<string, float>("_SSAOMeanDepth", 0.5f),
-            fadeDepth = new KeyValue<string, float>("_SSAOFadeDepth", 100.0f),
-            rayStride = new KeyValue<string, int>("_SSAORayStride", 2),
+            intensity = new KeyValue<int, float>(Shader.PropertyToID("_SSAOIntensity"), 1.0f),
+            lightBias = new KeyValue<int, float>(Shader.PropertyToID("_SSAOLightBias"), 0.0f),
+            rayRadius = new KeyValue<int, float>(Shader.PropertyToID("_SSAORayLength"), 0.1f),
+            meanDepth = new KeyValue<int, float>(Shader.PropertyToID("_SSAOMeanDepth"), 0.5f),
+            fadeDepth = new KeyValue<int, float>(Shader.PropertyToID("_SSAOFadeDepth"), 100.0f),
+            rayStride = new KeyValue<int, int>(Shader.PropertyToID("_SSAORayStride"), 2),
             
-            usessdo = new KeyValue<string, bool>("_UseDirectOcclusion", true),
-            doApature = new KeyValue<string, float>("_SSDOLightApatureScale", 0.5f),
+            usessdo = new KeyValue<int, bool>(Shader.PropertyToID("_UseDirectOcclusion"), true),
+            doApature = new KeyValue<int, float>(Shader.PropertyToID("_SSDOLightApatureScale"), 0.5f),
             
-            debug = 0
+            debugView = 0
         };
 
         public static SSGIProperties ssgi = new SSGIProperties()
@@ -264,39 +265,40 @@ namespace HSSSS
 
             quality = QualityPreset.medium,
 
-            intensity = new KeyValue<string, float>("_SSGIIntensity", 1.0f),
-            secondary = new KeyValue<string, float>("_SSGISecondary", 1.0f),
-            roughness = new KeyValue<string, float>("_SSGIRoughness", 0.3f),
-            rayRadius = new KeyValue<string, float>("_SSGIRayLength", 1.0f),
-            meanDepth = new KeyValue<string, float>("_SSGIMeanDepth", 1.0f),
-            fadeDepth = new KeyValue<string, float>("_SSGIFadeDepth", 100.0f),
-            mixWeight = new KeyValue<string, float>("_SSGIMixFactor", 0.5f),
-            rayStride = new KeyValue<string, int>("_SSGIStepPower", 2),
+            intensity = new KeyValue<int, float>(Shader.PropertyToID("_SSGIIntensity"), 1.0f),
+            secondary = new KeyValue<int, float>(Shader.PropertyToID("_SSGISecondary"), 1.0f),
+            roughness = new KeyValue<int, float>(Shader.PropertyToID("_SSGIRoughness"), 0.3f),
+            rayRadius = new KeyValue<int, float>(Shader.PropertyToID("_SSGIRayLength"), 1.0f),
+            meanDepth = new KeyValue<int, float>(Shader.PropertyToID("_SSGIMeanDepth"), 1.0f),
+            fadeDepth = new KeyValue<int, float>(Shader.PropertyToID("_SSGIFadeDepth"), 100.0f),
+            mixWeight = new KeyValue<int, float>(Shader.PropertyToID("_SSGIMixFactor"), 0.5f),
+            occlusion = new KeyValue<int, float>(Shader.PropertyToID("_SSGIOcclusion"), 1.0f),
+            rayStride = new KeyValue<int, int>(Shader.PropertyToID("_SSGIStepPower"), 2),
             
-            debug = 0
+            debugView = new KeyValue<int, int>(Shader.PropertyToID("_SSGIDebugView"), 0)
         };
 
         public static TAAUProperties taau = new TAAUProperties()
         {
             enabled = false,
             upscale = false,
-            mixWeight = new KeyValue<string, float>("_TemporalMixFactor", 0.5f)
+            mixWeight = new KeyValue<int, float>(Shader.PropertyToID("_TemporalMixFactor"), 0.5f)
         };
 
         public static SSCSProperties sscs = new SSCSProperties()
         {
             enabled = false,
             quality = QualityPreset.medium,
-            rayRadius = new KeyValue<string, float>("_SSCSRayLength", 10.0f),
-            depthBias = new KeyValue<string, float>("_SSCSDepthBias", 0.2f),
-            meanDepth = new KeyValue<string, float>("_SSCSMeanDepth", 1.0f)
+            rayRadius = new KeyValue<int, float>(Shader.PropertyToID("_SSCSRayLength"), 10.0f),
+            depthBias = new KeyValue<int, float>(Shader.PropertyToID("_SSCSDepthBias"), 0.2f),
+            meanDepth = new KeyValue<int, float>(Shader.PropertyToID("_SSCSMeanDepth"), 1.0f)
         };
 
         public static TESSProperties tess = new TESSProperties()
         {
             enabled = false,
-            phong = new KeyValue<string, float>("_Phong", 0.5f),
-            edge = new KeyValue<string, float>("_EdgeLength", 2.0f)
+            phong = new KeyValue<int, float>(Shader.PropertyToID("_Phong"), 0.5f),
+            edge = new KeyValue<int, float>(Shader.PropertyToID("_EdgeLength"), 2.0f)
         };
 
         public static MiscProperties misc = new MiscProperties()
@@ -304,17 +306,17 @@ namespace HSSSS
             fixEyeball = false,
             fixOverlay = false,
             wetOverlay = false,
-            wrapOffset = new KeyValue<string, float>("_VertexWrapOffset", 0.0f),
+            wrapOffset = new KeyValue<int, float>(Shader.PropertyToID("_VertexWrapOffset"), 0.0f),
         };
 
         public static AgXProperties agx = new AgXProperties()
         {
             enabled = false,
-            gamma = new KeyValue<string, float>("_AgXGamma", 2.2f),
-            saturation = new KeyValue<string, float>("_AgXSaturation", 1.0f),
-            offset = new KeyValue<string, Vector3>("_AgXOffset", new Vector3(0.0f, 0.0f, 0.0f)),
-            slope = new KeyValue<string, Vector3>("_AgXSlope", new Vector3(1.0f, 1.0f, 1.0f)),
-            power = new KeyValue<string, Vector3>("_AgXPower", new Vector3(1.0f, 1.0f, 1.0f))
+            gamma = new KeyValue<int, float>(Shader.PropertyToID("_AgXGamma"), 2.2f),
+            saturation = new KeyValue<int, float>(Shader.PropertyToID("_AgXSaturation"), 1.0f),
+            offset = new KeyValue<int, Vector3>(Shader.PropertyToID("_AgXOffset"), new Vector3(0.0f, 0.0f, 0.0f)),
+            slope = new KeyValue<int, Vector3>(Shader.PropertyToID("_AgXSlope"), new Vector3(1.0f, 1.0f, 1.0f)),
+            power = new KeyValue<int, Vector3>(Shader.PropertyToID("_AgXPower"), new Vector3(1.0f, 1.0f, 1.0f))
         };
 
         public static void UpdateSkin()

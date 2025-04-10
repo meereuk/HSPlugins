@@ -452,7 +452,7 @@ namespace HSSSS
                 Separator();
 
                 EnumToolbar("SSAO QUALITY", ref this.ssao.quality);
-                EnumToolbar("SSAO RENDERING SCALE", ref this.ssao.subsample);
+                EnumToolbar("SSAO RENDERING SCALE", ref this.ssao.subsample.Value);
                 OnOffToolbar("MULTIBOUNCE OCCLUSION", ref this.ssao.mbounce);
 
                 Separator();
@@ -473,7 +473,7 @@ namespace HSSSS
                 Separator();
                 
                 GUILayout.Label("DEBUG VIEW");
-                this.ssao.debug = GUILayout.Toolbar(this.ssao.debug, new string[]{"OFF", "OCCLUSION", "BENT NORMAL"});
+                this.ssao.debugView = GUILayout.Toolbar(this.ssao.debugView, new string[]{"OFF", "OCCLUSION", "BENT NORMAL"});
                 
                 Separator();
 
@@ -507,8 +507,12 @@ namespace HSSSS
 
                 Separator();
 
-                SliderControls("1ST BOUNCE GAIN", ref this.ssgi.intensity.Value, 0.1f, 100.0f);
-                SliderControls("2ND BOUNCE GAIN", ref this.ssgi.secondary.Value, 0.1f, 100.0f);
+                SliderControls("1ST BOUNCE GAIN", ref this.ssgi.intensity.Value, 0.1f, 10.0f);
+                SliderControls("2ND BOUNCE GAIN", ref this.ssgi.secondary.Value, 0.1f, 10.0f);
+                
+                Separator();
+                
+                SliderControls("AMBIENT OCCLUSION", ref this.ssgi.occlusion.Value, 0.1f, 10.0f);
                 SliderControls("MINIMUM ROUGHNESS", ref this.ssgi.roughness.Value, 0.1f, 0.5f);
 
                 Separator();
@@ -524,7 +528,7 @@ namespace HSSSS
                 Separator();
                 
                 GUILayout.Label("DEBUG VIEW");
-                this.ssgi.debug = GUILayout.Toolbar(this.ssgi.debug, new string[]{"OFF", "DIFFUSE", "SPECULAR"});
+                this.ssgi.debugView.Value = GUILayout.Toolbar(this.ssgi.debugView.Value, new string[]{"OFF", "DIFFUSE", "SPECULAR", "COMBINED", "OCCLUSION"});
 
                 Separator();
 

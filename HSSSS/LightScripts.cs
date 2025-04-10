@@ -12,40 +12,49 @@ namespace HSSSS
         private Material mMaterial;
         private Texture mCookie;
 
+        private void Awake()
+        {
+            this.mMaterial = new Material(Shader.Find("Unlit/Texture"))
+            {
+                name = "SpotLightCookie",
+                mainTexture = AssetLoader.spotCookie
+            };
+        }
+
         private void OnEnable()
         {
             this.mLight = GetComponent<Light>();
+            this.mObject = this.mLight.gameObject;
 
-            if (this.mLight != null)
+            if (this.mLight == null || this.mObject == null)
             {
-                this.mObject = this.mLight.gameObject;
-
-                if (this.mObject != null )
-                {
-                    this.mMaterial = new Material(Shader.Find("Unlit/Texture"));
-                    this.mMaterial.name = "SpotLightCookie";
-
-                    if (this.mMaterial.GetTexture("_MainTex") == null)
-                    {
-                        this.mMaterial.SetTexture("_MainTex", AssetLoader.spotCookie);
-                    }
-
-                    this.mRenderer = this.mObject.AddComponent<MeshRenderer>();
-                    this.mRenderer.name = "SpotLightCookie";
-                    this.mRenderer.material = this.mMaterial;
-                }
+                return;
             }
+
+            this.mRenderer = this.mObject.AddComponent<MeshRenderer>();
+            this.mRenderer.name = "SpotLightCookie";
+            this.mRenderer.material = this.mMaterial;
         }
 
         private void OnDisable()
         {
-            Destroy(this.mMaterial);
             Destroy(this.mRenderer);
+        }
+
+        private void OnDestroy()
+        {
+            Destroy(this.mMaterial);
         }
 
         private void Update()
         {
             this.mCookie = this.mRenderer.material.mainTexture;
+
+            if (ReferenceEquals(this.mCookie, null))
+            {
+                return;
+            }
+            
             this.mCookie.wrapMode = TextureWrapMode.Clamp;
             this.mLight.cookie = this.mCookie;
         }
@@ -59,16 +68,16 @@ namespace HSSSS
         private CommandBuffer bBuffer;
         // shadow calculation buffer (for all)
         private CommandBuffer mBuffer;
-        // unique guid
-        public Guid guid;
+        // shader properties
+        private static readonly int blueNoise = Shader.PropertyToID("_BlueNoise");
+        private static readonly int slopeBias = Shader.PropertyToID("_SlopeBiasScale");
+        private static readonly int depthParams = Shader.PropertyToID("_ShadowDepthParams");
+        private static readonly int projMatrix = Shader.PropertyToID("_ShadowProjMatrix");
 
         private void OnEnable()
         {
-            guid = Guid.NewGuid();
-
             this.mMaterial = new Material(AssetLoader.softShadows);
-
-            this.mMaterial.SetTexture("_BlueNoise", AssetLoader.blueNoise);
+            this.mMaterial.SetTexture(blueNoise, AssetLoader.blueNoise);
 
             this.mMaterial.SetVector(Properties.pcss.dirLightPenumbra.Key, Properties.pcss.dirLightPenumbra.Value);
             this.mMaterial.SetVector(Properties.pcss.spotLightPenumbra.Key, Properties.pcss.spotLightPenumbra.Value);
@@ -83,24 +92,12 @@ namespace HSSSS
             if (this.mLight)
             {
                 this.SetupCommandBuffer();
-
-                if (this.mLight.type == LightType.Spot)
-                {
-                    HSSSS.spotDict.Add(guid, this);
-                    Console.WriteLine("Adding" + guid.ToString());
-                }
             }
         }
 
         private void OnDisable()
         {
             this.RemoveCommandBuffer();
-
-            if (this.mLight.type == LightType.Spot)
-            {
-                HSSSS.spotDict.Remove(guid);
-                Console.WriteLine("Deleting" + guid.ToString());
-            }
         }
 
         private void Reset()
@@ -111,7 +108,8 @@ namespace HSSSS
 
         private void Update()
         {
-            this.mMaterial.SetFloat("_SlopeBiasScale", this.mLight.shadowNormalBias);
+            this.mMaterial.SetFloat(slopeBias, this.mLight.shadowNormalBias);
+            this.UpdateProjectionMatrix();
         }
 
         private void SetupCommandBuffer()
@@ -201,8 +199,13 @@ namespace HSSSS
             }
         }
         
-        public void UpdateProjectionMatrix()
+        private void UpdateProjectionMatrix()
         {
+            if (this.mLight.type != LightType.Spot)
+            {
+                return;
+            }
+            
             // light projection
             float near = this.mLight.shadowNearPlane;
             float far = this.mLight.range;
@@ -214,7 +217,7 @@ namespace HSSSS
                 1.0f / near
             );
 
-            this.mMaterial.SetVector("_ShadowDepthParams", Params);
+            this.mMaterial.SetVector(depthParams, Params);
 
             // shadow coordinates
             Matrix4x4 LightClip = Matrix4x4.TRS(new Vector3(0.5f, 0.5f, 0.5f), Quaternion.identity, new Vector3(0.5f, 0.5f, 0.5f));
@@ -228,7 +231,7 @@ namespace HSSSS
             m[2, 2] *= -1;
             m[3, 2] *= -1;
             
-            this.mMaterial.SetMatrix("_ShadowProjMatrix", m * LightView);
+            this.mMaterial.SetMatrix(projMatrix, m * LightView);
         }
 
         public void UpdateSettings()
