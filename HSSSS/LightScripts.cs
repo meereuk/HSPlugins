@@ -109,6 +109,7 @@ namespace HSSSS
         private void Update()
         {
             this.mMaterial.SetFloat(slopeBias, this.mLight.shadowNormalBias);
+            this.mMaterial.SetFloat("_ShadowDistance", QualitySettings.shadowDistance);
             this.UpdateProjectionMatrix();
         }
 

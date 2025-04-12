@@ -64,7 +64,7 @@ namespace HSSSS
             "FRAME ACCUMULATION",
             "MISCELLANEOUS",
             "TONE MAPPER",
-            "MANUAL REPLACE",
+            "SHADER REPLACER",
             "PRESET"
         };
 
@@ -690,7 +690,7 @@ namespace HSSSS
                         {
                             if (GUILayout.Button(material.name))
                             {
-                                MaterialReplacer.ReplaceMaterial(material);
+                                MaterialReplacer.ReplaceManual(material);
                             }
                         }
                     }

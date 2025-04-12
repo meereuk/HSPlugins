@@ -7,7 +7,6 @@ using UnityEngine.Rendering;
 using Studio;
 using Harmony;
 using IllusionPlugin;
-using System.Collections.Generic;
 
 namespace HSSSS
 {
@@ -15,7 +14,7 @@ namespace HSSSS
     {
         #region Plugin Info
         public string Name { get { return "HSSSS";  } }
-        public string Version { get { return "2.0.0b3"; } }
+        public string Version { get { return "2.0.1"; } }
         public string[] Filter { get { return new[] { "HoneySelect_32", "HoneySelect_64", "StudioNEO_32", "StudioNEO_64" }; } }
         #endregion
 

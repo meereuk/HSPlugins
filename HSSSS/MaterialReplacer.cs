@@ -243,9 +243,9 @@ namespace HSSSS
             }
         }
 
-        public static void ReplaceMaterial(Material material)
+        public static void ReplaceManual(Material material)
         {
-            ShaderReplacer(AssetLoader.skin, material);
+            ShaderReplacer(AssetLoader.common, material);
             Console.WriteLine("#### HSSSS Replaced " + material.name);
         }
 
@@ -281,12 +281,16 @@ namespace HSSSS
 
                 if (material)
                 {
-                    if (Properties.misc.wetOverlay && material.name == "cf_M_k_kaosiru01")
+                    if (Properties.misc.wetOverlay && material.name == "cf_M_k_kaosiru00")
+                    {
+                        material.shader = AssetLoader.headtears.shader;
+                        material.CopyPropertiesFromMaterial(AssetLoader.headtears);
+                    }
+                    
+                    else if (Properties.misc.wetOverlay && material.name == "cf_M_k_kaosiru01")
                     {
                         material.shader = AssetLoader.headwet.shader;
                         material.CopyPropertiesFromMaterial(AssetLoader.headwet);
-                        //material.shader = AssetLoader.headtears.shader;
-                        //material.CopyPropertiesFromMaterial(AssetLoader.headtears);
                     }
 
                     else if (Properties.misc.wetOverlay && material.name == "cf_M_k_munesiru01")

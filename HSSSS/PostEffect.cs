@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -499,7 +498,7 @@ namespace HSSSS
             // SSAO command buffer
             this.mBuffer = new CommandBuffer() { name = BufferName };
             
-            int[] zbf = new int[]
+            int[] zbf =
             {
                 Shader.PropertyToID("_HierarchicalZBuffer0"),
                 Shader.PropertyToID("_HierarchicalZBuffer1"),
@@ -508,7 +507,7 @@ namespace HSSSS
                 Shader.PropertyToID("_HierarchicalZBuffer4"),
             };
 
-            int[] aoRT = new int[]
+            int[] aoRT =
             {
                 Shader.PropertyToID("_SSAODiffuseBuffer"),
                 Shader.PropertyToID("_SSAOSpecularBuffer")
@@ -516,7 +515,7 @@ namespace HSSSS
             
             int mask = Shader.PropertyToID("_SSAOMaskRenderTexture");
             
-            RenderTargetIdentifier[] mrt = { aoRT[0], aoRT[1] };
+            RenderTargetIdentifier[] aoMRT = { aoRT[0], aoRT[1] };
 
             this.mBuffer.GetTemporaryRT(zbf[0], -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
 
@@ -543,13 +542,13 @@ namespace HSSSS
             this.mBuffer.Blit(BuiltinRenderTextureType.CurrentActive, mask, this.mMaterial, Convert.ToInt32(Properties.ssao.quality) + 1);
             
             // calculate occlusion mrt
-            this.mBuffer.SetRenderTarget(mrt, BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.SetRenderTarget(aoMRT, BuiltinRenderTextureType.CameraTarget);
             this.mBuffer.DrawMesh(CameraProjector.mrtMesh, Matrix4x4.identity, this.mMaterial, 0, Properties.ssao.mbounce ? 6 : 5);
             
             // diffuse occlusion
-            this.mBuffer.Blit(mrt[0], BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.Blit(aoMRT[0], BuiltinRenderTextureType.CameraTarget);
             // specular occlusion
-            this.mBuffer.Blit(mrt[1], BuiltinRenderTextureType.Reflections);
+            this.mBuffer.Blit(aoMRT[1], BuiltinRenderTextureType.Reflections);
             
             this.mBuffer.ReleaseTemporaryRT(aoRT[0]);
             this.mBuffer.ReleaseTemporaryRT(aoRT[1]);
@@ -659,15 +658,7 @@ namespace HSSSS
 
         private void SetupCommandBuffer()
         {
-            RenderTargetIdentifier[] hist =
-            {
-                new RenderTargetIdentifier(this.history.diffuse),
-                new RenderTargetIdentifier(this.history.specular),
-                new RenderTargetIdentifier(this.history.normal),
-                new RenderTargetIdentifier(this.history.depth)
-            };
-
-            int[] irad = new int[]
+            int[] irad =
             {
                 Shader.PropertyToID("_HierachicalIrradianceBuffer0"),
                 Shader.PropertyToID("_HierachicalIrradianceBuffer1"),
@@ -676,13 +667,13 @@ namespace HSSSS
                 Shader.PropertyToID("_HierachicalIrradianceBuffer4")
             };
 
-            int[] flip = new int[]
+            int[] flip =
             {
                 Shader.PropertyToID("_SSGIFlipDiffuseBuffer"),
                 Shader.PropertyToID("_SSGIFlipSpecularBuffer")
             };
 
-            int[] flop = new int[]
+            int[] flop =
             {
                 Shader.PropertyToID("_SSGIFlopDiffuseBuffer"),
                 Shader.PropertyToID("_SSGIFlopSpecularBuffer")
@@ -690,6 +681,7 @@ namespace HSSSS
 
             RenderTargetIdentifier[] flipMRT = { flip[0], flip[1] };
             RenderTargetIdentifier[] flopMRT = { flop[0], flop[1] };
+            RenderTargetIdentifier[] histMRT = { this.history.diffuse, this.history.specular, this.history.normal, this.history.depth };
 
             this.mBuffer = new CommandBuffer() { name = "HSSSS.SSGI" };
             
@@ -730,7 +722,7 @@ namespace HSSSS
                 this.mBuffer.DrawMesh(CameraProjector.mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 11);
             }
             // store
-            this.mBuffer.SetRenderTarget(hist, BuiltinRenderTextureType.CameraTarget);
+            this.mBuffer.SetRenderTarget(histMRT, BuiltinRenderTextureType.CameraTarget);
             this.mBuffer.DrawMesh(CameraProjector.mrtMesh, Matrix4x4.identity, this.mMaterial, 0, 9);
             // collect
             this.mBuffer.Blit(BuiltinRenderTextureType.CameraTarget, flip[0], this.mMaterial, 10);
@@ -985,7 +977,7 @@ namespace HSSSS
             Shader.SetGlobalMatrix(this.previousClipToView.Key, this.previousClipToView.Value);
         }
     }
-
+    
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Camera))]
     public class AgXToneMapper : MonoBehaviour
@@ -1019,6 +1011,74 @@ namespace HSSSS
                 this.mMaterial.SetVector(Properties.agx.slope.Key, Properties.agx.slope.Value);
                 this.mMaterial.SetVector(Properties.agx.power.Key, Properties.agx.power.Value);
             }
+        }
+    }
+
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(Camera))]
+    public class TangentRenderer : MonoBehaviour
+    {
+        private Camera mCamera;
+        private Camera tCamera;
+        private Shader mShader;
+        private RenderTexture mTexture;
+        private GameObject mObject;
+
+        private void OnEnable()
+        {
+            this.mCamera = GetComponent<Camera>();
+            this.mShader = AssetLoader.drawTangent;
+
+            this.mObject = new GameObject("HSSSS.TangentCamera");
+            this.tCamera = this.mObject.AddComponent<Camera>();
+            
+            this.tCamera.name = "HSSSS.TangentCamera";
+            this.tCamera.enabled = false;
+            this.tCamera.backgroundColor = Color.black;
+            this.tCamera.clearFlags = CameraClearFlags.SolidColor;
+            this.tCamera.depthTextureMode = DepthTextureMode.Depth;
+            this.tCamera.renderingPath = RenderingPath.Forward;
+            
+            int layer1 = LayerMask.NameToLayer("Chara");
+            int layer2 = LayerMask.NameToLayer("Map");
+            int layer3 = LayerMask.NameToLayer("MapNoShadow");
+            
+            int layer1Mask = 1 << layer1;
+            int layer2Mask = 1 << layer2;
+            int layer3Mask = 1 << layer3;
+            
+            this.tCamera.cullingMask = layer1Mask | layer2Mask | layer3Mask;
+
+        }
+
+        private void OnDisable()
+        {
+            DestroyImmediate(this.tCamera);
+            DestroyImmediate(this.mObject);
+            this.mCamera = null;
+        }
+
+        private void Update()
+        {
+            this.tCamera.transform.position = this.mCamera.transform.position;
+            this.tCamera.transform.rotation = this.mCamera.transform.rotation;
+            this.tCamera.nearClipPlane = this.mCamera.nearClipPlane;
+            this.tCamera.farClipPlane = this.mCamera.farClipPlane;
+            this.tCamera.fieldOfView = this.mCamera.fieldOfView;
+        }
+
+        private void OnPreCull()
+        {
+            this.mTexture = RenderTexture.GetTemporary(this.mCamera.pixelWidth, this.mCamera.pixelHeight, 16, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            this.mTexture.SetGlobalShaderProperty("_DeferredTangentBuffer");
+            this.tCamera.targetTexture = this.mTexture;
+            this.tCamera.RenderWithShader(this.mShader, "");
+        }
+
+        private void OnRenderImage(RenderTexture source, RenderTexture destination)
+        {
+            Graphics.Blit(source, destination);
+            RenderTexture.ReleaseTemporary(this.mTexture);
         }
     }
 }

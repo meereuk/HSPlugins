@@ -16,6 +16,9 @@ namespace HSSSS
         // subsurface scattering
         public static Shader sssPrePass;
         public static Shader sssMainPass;
+        
+        // tangent rendering
+        public static Shader drawTangent;
 
         // soft shadows
         public static Shader softShadows;
@@ -63,6 +66,8 @@ namespace HSSSS
         public static Material eyeoverlay;
         public static Material cornea;
         public static Material sclera;
+
+        public static Material common;
         #endregion
 
         private static void LoadAssetBundle()
@@ -183,6 +188,9 @@ namespace HSSSS
             bodywet = ReadAsset<Material>("Bodywet", "body wet material");
             headwet = ReadAsset<Material>("Headwet", "head wet material");
             headtears = ReadAsset<Material>("Headtears", "head tears material");
+            
+            // common
+            common = ReadAsset<Material>("Common", "common material");
         }
 
         private static void LoadMiscellaneous()
@@ -192,6 +200,7 @@ namespace HSSSS
             sssPrePass = ReadAsset<Shader>("SSSPrePass", "SSS prepass shader");
             sssMainPass = ReadAsset<Shader>("SSSMainPass", "SSS mainpass shader");
             softShadows = ReadAsset<Shader>("SoftShadows", "Soft shadow shader");
+            drawTangent = ReadAsset<Shader>("DrawTangent", "draw tangent shader");
             ssao = ReadAsset<Shader>("SSAO", "SSAO shader");
             ssgi = ReadAsset<Shader>("SSGI", "SSGI shader");
             taau = ReadAsset<Shader>("TemporalAntiAliasing", "Temporal Anti Aliasing");

@@ -108,7 +108,6 @@ namespace HSSSS
         public struct SSAOProperties
         {
             public bool enabled;
-            public bool denoise;
             public bool mbounce;
 
             public QualityPreset quality;
@@ -239,7 +238,6 @@ namespace HSSSS
         public static SSAOProperties ssao = new SSAOProperties()
         {
             enabled = false,
-            denoise = false,
             mbounce = false,
 
             quality = QualityPreset.medium,
