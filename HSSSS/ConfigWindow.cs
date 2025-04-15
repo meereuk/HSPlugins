@@ -403,7 +403,7 @@ namespace HSSSS
                 {
                     SliderControls("POINT / SEARCH RADIUS (CENTIMETER)", ref this.pcss.pointLightPenumbra.Value.x, 0.0f, 20.0f);
                     SliderControls("POINT / LIGHT RADIUS (CENTIMETER)", ref this.pcss.pointLightPenumbra.Value.y, 0.0f, 20.0f);
-                    SliderControls("POINT / MINIMUM PENUMBRA (CENTIMETER)", ref this.pcss.pointLightPenumbra.Value.z, 0.0f, 20.0f);
+                    SliderControls("POINT / MINIMUM PENUMBRA (MILIMETER)", ref this.pcss.pointLightPenumbra.Value.z, 0.0f, 20.0f);
                 }
 
                 else

@@ -73,6 +73,7 @@ namespace HSSSS
         private static readonly int slopeBias = Shader.PropertyToID("_SlopeBiasScale");
         private static readonly int depthParams = Shader.PropertyToID("_ShadowDepthParams");
         private static readonly int projMatrix = Shader.PropertyToID("_ShadowProjMatrix");
+        private static readonly int shadowDistance = Shader.PropertyToID("_ShadowDistance");
 
         private void OnEnable()
         {
@@ -109,7 +110,7 @@ namespace HSSSS
         private void Update()
         {
             this.mMaterial.SetFloat(slopeBias, this.mLight.shadowNormalBias);
-            this.mMaterial.SetFloat("_ShadowDistance", QualitySettings.shadowDistance);
+            this.mMaterial.SetFloat(shadowDistance, QualitySettings.shadowDistance);
             this.UpdateProjectionMatrix();
         }
 

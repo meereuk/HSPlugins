@@ -1014,6 +1014,7 @@ namespace HSSSS
         }
     }
 
+    /*
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Camera))]
     public class TangentRenderer : MonoBehaviour
@@ -1081,4 +1082,5 @@ namespace HSSSS
             RenderTexture.ReleaseTemporary(this.mTexture);
         }
     }
+    */
 }

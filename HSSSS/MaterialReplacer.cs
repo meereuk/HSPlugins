@@ -9,6 +9,7 @@ namespace HSSSS
         private static readonly Dictionary<string, string> colorProps = new Dictionary<string, string>()
         {
             { "_Color", "_Color" },
+            { "_Color_3", "_Color_3" },
             { "_SpecColor", "_SpecColor"},
             { "_EmissionColor", "_EmissionColor" },
         };
@@ -28,6 +29,9 @@ namespace HSSSS
         private static readonly Dictionary<string, string> textureProps = new Dictionary<string, string>()
         {
             { "_MainTex", "_MainTex" },
+            { "_Colormask", "_Colormask" },
+            { "_DetailAlbedoMap", "_DetailAlbedoMap" },
+            { "_EmissionMap", "_EmissionMap" },
             { "_SpecGlossMap", "_SpecGlossMap" },
             { "_OcclusionMap", "_OcclusionMap" },
             { "_BumpMap", "_BumpMap" },
@@ -36,7 +40,7 @@ namespace HSSSS
             { "_DetailNormalMap", "_DetailNormalMap" }
         };
 
-        private static Dictionary<string, Material> milks = null;
+        private static Dictionary<string, Material> milks;
 
         public static void ReplaceSkin(CharInfo ___chaInfo, CharReference.TagObjKey tagKey, Material mat)
         {
@@ -389,9 +393,6 @@ namespace HSSSS
                     case CharReference.TagObjKey.ObjEyeHi:
                         ShaderReplacer(AssetLoader.eyeoverlay, material);
                         material.renderQueue = 2451;
-                        break;
-
-                    default:
                         break;
                 }
             }
